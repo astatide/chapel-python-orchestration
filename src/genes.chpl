@@ -4,6 +4,7 @@
 
 use rng;
 use uuid;
+use Random;
 
 // This pulls from its own RNG.  Guarantees a bit more entropy.
 var UUID = new owned uuid.UUID();
@@ -17,7 +18,7 @@ record noiseFunctions {
 
 record deltaRecord {
   var seeds: domain(int);
-  var delta: [seeds] int;
+  var delta: [seeds] real;
 }
 
 class GeneEdge {
@@ -41,11 +42,30 @@ class GeneEdge {
     this.delta = delta;
   }
 
-  proc seedInDelta() {
-
+  proc seedInDelta(seed: int) {
+    for rseed in this.delta.seeds do {
+      if rseed == seed {
+        return true;
+      }
+    }
+    // If it's not in there, it's not in there.
+    return false;
   }
-  proc expressDelta() {
 
+  proc expressDelta(matrix: [real]) {
+    for seed in this.delta.seeds do {
+      matrix += this.gaussian_noise(seed)*delta.delta[seed];
+    }
+  }
+
+  // Sort of assuming this is _actually_ gaussian.
+  proc gaussian_noise(matrix: [real], shape: int, seed: int) {
+    // I'm assuming I can get the shape from the matrix, but still.
+    // Just pulling from the global is fine, really; we don't need a
+    // random stream for all of these.
+    var noise: [1..shape] real;
+    fillRandom(noise, seed);
+    return noise;
   }
 }
 
@@ -69,18 +89,46 @@ class GeneNode {
       this.id = id;
     }
   }
+  // some validation functions
+  proc node_in_edges(id: string) {
+    // Well, okay, that turned out to be easy but whatever.
+    return this.nodes.member(id);
+  }
+
   // Now, the functions to handle the nodes!
   //   proc join(node: GeneNode, delta: [?dom]) {
   proc join(node: GeneNode, delta: deltaRecord) {
     // did I call that function correctly?
-    writeln(node, delta);
+    //writeln(node, delta);
     this.edges[node.id] = new unmanaged GeneEdge(delta);
     // Now, reverse the delta.
     var r_delta = new deltaRecord();
     for seed in delta.seeds do {
       r_delta.delta[seed] = delta.delta[seed] * -1;
     }
-    node.edges[this.id] = new owned GeneEdge(r_.delta);
-    writeln(node.edges[this.id]);
+    node.edges[this.id] = new unmanaged GeneEdge(r_delta);
+    //writeln(node.edges[this.id]);
+  }
+
+  proc return_edge(id: string) {
+    if this.node_in_edges(id) {
+      return this.edges[id];
+    } else {
+      // Return an empty deltaRecord
+      return deltaRecord;
+    }
+  }
+  proc new_node(seed: int, coefficient: real) {
+    // This function is a generic call for whenever we make a modification
+    // Mutations, adding a new seed, whatever.  We just create a new node
+    // and join them properly.
+    var node = new shared GeneNode();
+    var delta = new deltaRecord();
+
+    node.parent = this.id;
+
+    delta.delta[seed] = coefficient;
+    this.join(node, delta);
+    return node;
   }
 }
