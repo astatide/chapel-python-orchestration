@@ -8,9 +8,9 @@ var newrng = new owned rng.UDevRandomHandler();
 
 //var A: [0] int;
 
-var A = new owned genes.GeneNode(id='A');
+var A = new shared genes.GeneNode(id='A');
 //writeln(blah.id);
-var B = new owned genes.GeneNode(id='B');
+var B = new shared genes.GeneNode(id='B');
 //writeln(blah2.id);
 
 //var coefficients: domain(int);
@@ -18,19 +18,26 @@ var B = new owned genes.GeneNode(id='B');
 
 //seeds[164523] = 1;
 
-var delta = new genes.deltaRecord();
-delta.delta[12543] = 1;
+//var delta = new genes.deltaRecord();
+//delta.delta[12543] = 1;
 
-A.join(B, delta);
-var C = A.new_node(324, 1, 'C');
-var D = C.new_node(324, 1, 'D');
-var E = D.new_node(324, 1, 'E');
+//A.join(B, delta);
+//var C = A.new_node(324, 1, 'C');
+//var D = C.new_node(324, 1, 'D');
+//var E = D.new_node(324, 1, 'E');
+
 
 // E, D, C, A
 
 var Net = new owned network.GeneNetwork();
 
-Net.add_nodes({A, B, C, D, E});
+//forall i in {A, B, C, D, E} do {
+//  Net.add_node(i);
+//}
 //writeln(Net.edges);
 
-writeln(Net.calculatePath(A.id, E.id));
+//writeln(Net.calculatePath(A.id, E.id));
+Net.initializeNetwork();
+writeln(Net.ids);
+writeln(Net.edges);
+writeln(Net.nodes);

@@ -16,23 +16,71 @@ class GeneNetwork {
 
   // Yep, we don't have to be careful because this is Chapel and holy fuck.
   // aaahahahaha, suck it languages built not for HPC!
-  var nodes: [0] genes.GeneNode;
+  var nodes: [ids] genes.GeneNode;
+
+  var irng = new owned rng.UDevRandomHandler();
+
+  var rootNode = new unmanaged genes.GeneNode(id='root');
 
   proc add_nodes(nodes: domain(genes.GeneNode)) {
     //writeln(nodes);
     for node in nodes {
       // We are working with the actual node objects, here.
-      //e.clear();
       // Add to our domain!
       this.ids.add(node.id);
+      this.nodes[node.id] = node;
       for edge in node.nodes {
-        //i += 1;
-        //e.add(i);
-        //e.add(edge);
-        //writeln(node.id, edge);
         this.edges[node.id].add(edge);
       }
-      //this.edges[node.id] = e;
+    }
+  }
+
+  proc add_node(node: unmanaged ) {
+    //writeln(nodes);
+    // We are working with the actual node objects, here.
+    // Add to our domain!
+    this.ids.add(node.id);
+    this.nodes[node.id] = node;
+    for edge in node.nodes {
+      this.edges[node.id].add(edge);
+    }
+  }
+
+  proc newSeed() {
+    // Generates a new seed for use with deltas, etc.
+    // we're returning a long.
+    return this.irng.getrandbits(64);
+  }
+
+  proc initializeNetwork(n_seeds=10: int, gen_seeds=true: bool) {
+    var seed: int;
+    //var node: unmanaged genes.GeneNode;
+    var delta: genes.deltaRecord;
+    this.rootNode.ctype = 'root';
+    this.add_node(this.rootNode);
+    if gen_seeds {
+      for n in 1..n_seeds {
+        seed = this.newSeed();
+        var node = new unmanaged genes.GeneNode(ctype='seed', parentSeedNode='', parent='root');
+        delta = new genes.deltaRecord();
+        //node.ctype = 'seed';
+        //node.parentSeedNode = node.id;
+        //node.parent = this.rootNode.id;
+        delta.seeds.add(seed);
+        delta.delta[seed] = 1;
+        node.join(this.rootNode, delta);
+        this.add_node(node);
+      }
+    }
+  }
+
+  proc initializeSeedGenes(seeds: domain(int)) {
+    // We're going to create a whole host of seed type nodes.
+    // These have a special deltaRecord; I'm going to encode an INFINITY
+    // as 'blow away the matrix', then ... or should I?
+    for seed in seeds {
+      var node = new shared genes.GeneNode(seed);
+      this.add_nodes(node);
     }
   }
 

@@ -81,12 +81,23 @@ class GeneNode {
   // but we should generate them by default.
   var id: string;
 
-  proc init(id='') {
+  // Here, we're gonna track our parent at history 0
+  // should make it easier to return histories.
+  var parentSeedNode: string;
+
+  proc init(id='', ctype='', parent='', parentSeedNode='') {
+    this.ctype = ctype;
+    this.parent = parent;
     // Here, we make an ID if we don't already have one.
     if id == '' {
       this.id = UUID.UUID4();
     } else {
       this.id = id;
+    }
+    if parentSeedNode == '' {
+      this.parentSeedNode = this.id;
+    } else {
+      this.parentSeedNode = parentSeedNode;
     }
   }
   // some validation functions
@@ -125,6 +136,7 @@ class GeneNode {
     var node = new shared GeneNode(id=id);
     var delta = new deltaRecord();
 
+    node.parentSeedNode = this.parentSeedNode;
     node.parent = this.id;
 
     delta.delta[seed] = coefficient;
