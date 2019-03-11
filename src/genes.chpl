@@ -118,11 +118,11 @@ class GeneNode {
       return deltaRecord;
     }
   }
-  proc new_node(seed: int, coefficient: real) {
+  proc new_node(seed: int, coefficient: real, id='': string) {
     // This function is a generic call for whenever we make a modification
     // Mutations, adding a new seed, whatever.  We just create a new node
     // and join them properly.
-    var node = new shared GeneNode();
+    var node = new shared GeneNode(id=id);
     var delta = new deltaRecord();
 
     node.parent = this.id;

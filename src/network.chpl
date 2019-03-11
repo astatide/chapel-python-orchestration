@@ -40,46 +40,76 @@ class GeneNetwork {
     // This is an implementation of djikstra's algorithm.
     var nodes: domain(string);
     var visited: [nodes] bool;
-    var dist: [nodes] int;
-    var paths: [nodes] string;
+    var dist: [nodes] real;
+    var paths: [nodes] domain((real, string));
     var currentNode = id_A;
-    var unvisited = [0] string;
-    var unvisited_d = [0] int;
+    var unvisited: domain(string);
+    var unvisited_d: domain(real);
+    var currMinDist = Math.INFINITY;
+    var currMinNode = id_A;
+    var currMinNodeIndex = 0;
+    var i: int;
     // Build up the potential node list.
     for id in this.ids do {
+      nodes.add(id);
       visited[id] = false;
       dist[id] = Math.INFINITY;
-      paths[id] = [0] string;
+      // paths is sorted down there.
     }
     dist[id_A] = 0;
-    paths[id_A].push_front(id_A);
+    paths[id_A].add((0.0, id_A));
     while true {
+      //writeln(paths, ' : ', unvisited);
       for edge in this.edges[currentNode] do {
-        if ~visited[edge] {
+        if !visited[edge] {
           var d = min(dist[edge], dist[currentNode]+1);
-          unvisited.push_front(edge);
-          unvisited_d.push_front(d);
+          //writeln(d);
+          unvisited.add(edge);
+          unvisited_d.add(d);
+          dist[edge] = d;
 
           if d == dist[currentNode]+1 {
-            paths[edge] = paths[currentNode] + [edge];
+            paths[edge].clear();
+            for e in paths[currentNode] {
+              paths[edge].add(e);
+            }
+            //paths[edge] = paths[currentNode] + edge;
+            // We're doing this as a tuple to help sorting later.
+            // That'll also help us calculate how many hops we have to make,
+            // which will be convenient when we're trying to determine who
+            // should do what.
+            paths[edge].add((d, edge));
           }
         }
       }
       visited[currentNode] = true;
-      if ~unvisited.isEmpty() {
-        // get the current minimum from here.
-        var next_node_id = unvisited_d.find(unvisited_d.low)[1];
-        currentNode = unvisited[next_node_id];
-        delete unvisited_d[next_node_id];
-        delete unvisited[next_node_id];
-      }
+
       if visited[id_B] {
         break;
       }
       if unvisited.isEmpty() {
         break;
+      } else {
+        // get the current minimum from here.
+        //var next_node_id = unvisited_d.find(unvisited_d.low)[1];
+        i = 0;
+        currMinDist = Math.INFINITY;
+        for node in unvisited {
+          i += 1;
+          //writeln(currentNode, ' : ', currMinDist, ', ', node, ' : ', dist[node]);
+          if currMinDist > dist[node] {
+            currMinDist = dist[node];
+            currMinNode = node;
+            currMinNodeIndex = i;
+          }
+        }
+        //writeln(currMinNode);
+        currentNode = currMinNode;
+        unvisited_d.remove(currMinDist);
+        unvisited.remove(currMinNode);
       }
     }
+    writeln(nodes, paths);
     return paths[id_B];
 
   }

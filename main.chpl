@@ -22,9 +22,15 @@ var delta = new genes.deltaRecord();
 delta.delta[12543] = 1;
 
 A.join(B, delta);
-var C = A.new_node(324, 1);
+var C = A.new_node(324, 1, 'C');
+var D = C.new_node(324, 1, 'D');
+var E = D.new_node(324, 1, 'E');
+
+// E, D, C, A
 
 var Net = new owned network.GeneNetwork();
 
-Net.add_nodes({A, B, C});
-writeln(Net.edges);
+Net.add_nodes({A, B, C, D, E});
+//writeln(Net.edges);
+
+writeln(Net.calculatePath(A.id, E.id));
