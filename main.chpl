@@ -29,7 +29,7 @@ var B = new shared genes.GeneNode(id='B');
 
 // E, D, C, A
 
-var Net = new owned network.GeneNetwork();
+var ygg = new owned network.GeneNetwork();
 
 //forall i in {A, B, C, D, E} do {
 //  Net.add_node(i);
@@ -37,7 +37,9 @@ var Net = new owned network.GeneNetwork();
 //writeln(Net.edges);
 
 //writeln(Net.calculatePath(A.id, E.id));
-Net.initializeNetwork();
-writeln(Net.ids);
-writeln(Net.edges);
-writeln(Net.nodes);
+//ygg.initializeNetwork();
+//writeln(ygg.ids);
+//writeln(ygg.edges);
+//writeln(ygg.nodes);
+//writeln('\n');
+ygg.testCalculatePath();

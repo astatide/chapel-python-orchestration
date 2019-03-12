@@ -35,7 +35,7 @@ class GeneNetwork {
     }
   }
 
-  proc add_node(node: unmanaged ) {
+  proc add_node(node: unmanaged) {
     //writeln(nodes);
     // We are working with the actual node objects, here.
     // Add to our domain!
@@ -79,7 +79,7 @@ class GeneNetwork {
     // These have a special deltaRecord; I'm going to encode an INFINITY
     // as 'blow away the matrix', then ... or should I?
     for seed in seeds {
-      var node = new shared genes.GeneNode(seed);
+      var node = new unmanaged genes.GeneNode(seed);
       this.add_nodes(node);
     }
   }
@@ -157,9 +157,52 @@ class GeneNetwork {
         unvisited.remove(currMinNode);
       }
     }
-    writeln(nodes, paths);
+    //writeln(nodes, paths);
     return paths[id_B];
 
+  }
+
+  // Set of testing functions.
+
+  proc testAllTests() {
+
+  }
+
+  proc __test_create_network__() {
+    var seed: int;
+    //var node: unmanaged genes.GeneNode;
+    var delta: genes.deltaRecord;
+    const alpha = ['A', 'B', 'C'];
+    this.rootNode.ctype = 'root';
+    this.add_node(this.rootNode);
+    for n in 1..3 {
+      seed = this.newSeed();
+      var node = new unmanaged genes.GeneNode(id=alpha[n], ctype='seed', parentSeedNode='', parent='root');
+      delta = new genes.deltaRecord();
+      delta.seeds.add(seed);
+      delta.delta[seed] = 1;
+      node.join(this.rootNode, delta);
+      this.add_node(node);
+    }
+  }
+
+  proc testInitializeNetwork() {
+
+  }
+
+  proc testCalculatePath() {
+    this.__test_create_network__();
+    var i = 'A';
+    //var node: unmanaged genes.GeneNode;
+    for j in 1..7 {
+      var node = this.nodes[i].new_node(0, 1, j : string);
+      this.add_node(node);
+      this.edges[i].add(node.id);
+      writeln(this.nodes[i].nodes, ' : ', i);
+      writeln(this.edges[i], ' : ', i);
+      i = j : string;
+    }
+    writeln(this.calculatePath('A', '7'));
   }
 
 }
