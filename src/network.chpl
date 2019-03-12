@@ -5,6 +5,76 @@ use rng;
 use uuid;
 use Random;
 use Math;
+use Sort;
+
+// Seems a lot of this is pretty standard
+record Comparator { }
+
+// procedure apparently must be named compare.  I don't make the rules.
+// But I think I sit next to whoever does.
+proc Comparator.compare(a, b) {
+  // We have tuples; sort em!
+//  writeln(a, ' : ', b);
+  return abs(a[1]) - abs(b[1]);
+}
+
+proc Comparator.key(a) {
+  return abs(a);
+}
+
+record pathHistory {
+  var n: domain(int);
+  var node: [n] string;
+
+  iter these() {
+    // This works.  Grand!
+    //if this.n.size > 0 {
+    for i in 0..this.n.size-1 do {
+      yield (i, this.node[i]);
+    }
+    //}
+    //yield node;
+  }
+
+  proc key(i) {
+    return this.node[i];
+  }
+
+  proc compare(a, b) {
+    return abs(a) - abs(b);
+  }
+
+  // There HAS to be a better way to do this.
+  proc remove(a) {
+    //if this.node.member(a) {
+    // search through and find the index to remove.
+    var n_remove = 0;
+    var new_n: domain(int);
+    var new_node: [new_n] string;
+    for i in 0..this.n.size-1 do {
+      //if this.node[i] == a {
+      //  this.n.remove(i);
+      //  n_remove = i+1;
+      //}
+      // Oddly enough I do think this is working, although it's awful.
+      //writeln(this.node[i], ' : ', a, ' ', i-n_remove);
+      if this.node[i] == a {
+        n_remove = i+1;
+      } else {
+        new_n.add(i-n_remove);
+        new_node[i-n_remove] = this.node[i];
+      }
+      // Adjust the ordering, at that.
+    }
+    this.n = new_n;
+    this.node = new_node;
+    //}
+    //this.n.add('0');
+  }
+
+}
+
+//var reverseHistoryTuple: ReverseComparator(Comparator);
 
 class GeneNetwork {
   // Hash table for our nodes and edges.  Basically, it's a dictionary of lists;
@@ -35,7 +105,7 @@ class GeneNetwork {
     }
   }
 
-  proc add_node(node: unmanaged) {
+  proc add_node(node: unmanaged) : void {
     //writeln(nodes);
     // We are working with the actual node objects, here.
     // Add to our domain!
@@ -89,7 +159,8 @@ class GeneNetwork {
     var nodes: domain(string);
     var visited: [nodes] bool;
     var dist: [nodes] real;
-    var paths: [nodes] domain((real, string));
+    //var paths: [nodes] domain((real, string));
+    var paths: [nodes] pathHistory;
     var currentNode = id_A;
     var unvisited: domain(string);
     var unvisited_d: domain(real);
@@ -105,7 +176,9 @@ class GeneNetwork {
       // paths is sorted down there.
     }
     dist[id_A] = 0;
-    paths[id_A].add((0.0, id_A));
+    //paths[id_A].add((0.0, id_A));
+    //paths[id_A].add(0);
+    paths[id_A].node[0] = id_A;
     while true {
       //writeln(paths, ' : ', unvisited);
       for edge in this.edges[currentNode] do {
@@ -117,16 +190,20 @@ class GeneNetwork {
           dist[edge] = d;
 
           if d == dist[currentNode]+1 {
-            paths[edge].clear();
-            for e in paths[currentNode] {
-              paths[edge].add(e);
+            paths[edge].n.clear();
+            //i = 0;
+            for (j, e) in paths[currentNode] {
+              //writeln(e);
+              paths[edge].n.add(j : int);
+              paths[edge].node[j : int] = e;
             }
             //paths[edge] = paths[currentNode] + edge;
             // We're doing this as a tuple to help sorting later.
             // That'll also help us calculate how many hops we have to make,
             // which will be convenient when we're trying to determine who
             // should do what.
-            paths[edge].add((d, edge));
+            paths[edge].n.add(d: int);
+            paths[edge].node[d: int] = edge;
           }
         }
       }
@@ -162,6 +239,49 @@ class GeneNetwork {
 
   }
 
+  proc calculateHistory(id: string) {
+    // Since all nodes carry their ancestor,
+    // simply calculate the path back to the seed node.
+    var path = this.calculatePath(id, this.nodes[id].parentSeedNode);
+    // Cool, we have a path.  Now we need to get all the edges and
+    // aggregate the coefficients.
+    var delta = new genes.deltaRecord;
+    // Get rid of the current node.
+    //path.remove(path[path.size]);
+    //sort(path, comparator=reverseHistoryTuple);
+    var currentNode = id;
+    writeln(path);
+    path.remove(id);
+    writeln(path);
+    // This does need to be sorted in order to get the actual edges.
+    for (i, pt) in path {
+      // get the node itself.
+      writeln(pt);
+      //writeln(pt[2]);
+      //writeln(this.nodes[currentNode].edges);
+      //writeln(this.nodes[currentNode].edges[pt].delta);
+      //writeln(this.nodes[currentNode].edges[pt[2]]);
+      var edge = this.nodes[currentNode].edges[pt : string];
+      //for (seed, c) in edge.delta {
+      writeln(edge);
+      for (seed, c) in zip(edge.delta.seeds, edge.delta.delta) {
+        // If it doesn't exist...
+        //if delta.seeds.member(seed) == true {
+        delta.seeds.add(seed);
+        //}
+        delta.delta[seed] += (c*-1) : real;
+      }
+      currentNode = pt;
+    }
+    for (seed, c) in zip(delta.seeds, delta.delta) {
+      if c == 0 {
+        // Get rid of the seed is the coefficient is 0.
+        delta.seeds.remove(seed);
+      }
+    }
+    return delta;
+  }
+
   // Set of testing functions.
 
   proc testAllTests() {
@@ -195,14 +315,17 @@ class GeneNetwork {
     var i = 'A';
     //var node: unmanaged genes.GeneNode;
     for j in 1..7 {
-      var node = this.nodes[i].new_node(0, 1, j : string);
+      var node = this.nodes[i].new_node(this.newSeed(), 1, j : string);
       this.add_node(node);
       this.edges[i].add(node.id);
       writeln(this.nodes[i].nodes, ' : ', i);
       writeln(this.edges[i], ' : ', i);
       i = j : string;
     }
+    writeln('BLAH!');
+    writeln(this.ids, ' : ', this.nodes);
     writeln(this.calculatePath('A', '7'));
+    writeln(this.calculateHistory('7'));
   }
 
 }

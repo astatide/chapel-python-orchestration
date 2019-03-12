@@ -19,6 +19,15 @@ record noiseFunctions {
 record deltaRecord {
   var seeds: domain(int);
   var delta: [seeds] real;
+
+  iter these() {
+    //yield (seeds, delta);
+    yield (0, 0);
+  }
+
+  proc key(a) {
+    return this.delta[a];
+  }
 }
 
 class GeneEdge {
