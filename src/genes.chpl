@@ -22,13 +22,28 @@ record deltaRecord {
 
   iter these() {
     //yield (seeds, delta);
-    yield (0, 0);
+    for (s, c) in zip(this.seeds, this.delta) do {
+      // We most definitely do not care about order for this.
+      yield (s, c);
+    }
   }
 
-  proc key(a) {
+  proc this(a) ref {
     return this.delta[a];
   }
+
+  proc add(s, c) {
+    // try to add it.
+    if !this.seeds.member(s) {
+      this.seeds.add(s);
+    }
+    this.delta += c;
+  }
 }
+//
+//proc +(a: , b) {
+//
+//}
 
 class GeneEdge {
   // This is mostly just a handler class which stores the information necessary

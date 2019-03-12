@@ -7,21 +7,6 @@ use Random;
 use Math;
 use Sort;
 
-// Seems a lot of this is pretty standard
-record Comparator { }
-
-// procedure apparently must be named compare.  I don't make the rules.
-// But I think I sit next to whoever does.
-proc Comparator.compare(a, b) {
-  // We have tuples; sort em!
-//  writeln(a, ' : ', b);
-  return abs(a[1]) - abs(b[1]);
-}
-
-proc Comparator.key(a) {
-  return abs(a);
-}
-
 record pathHistory {
   var n: domain(int);
   var node: [n] string;
@@ -250,20 +235,21 @@ class GeneNetwork {
     //path.remove(path[path.size]);
     //sort(path, comparator=reverseHistoryTuple);
     var currentNode = id;
-    writeln(path);
+    //writeln(path);
     path.remove(id);
-    writeln(path);
+  //  writeln(path);
     // This does need to be sorted in order to get the actual edges.
+    // OH YEAH IT'S DONE NOW AWWWWW YIS.
     for (i, pt) in path {
       // get the node itself.
-      writeln(pt);
+      //writeln(pt);
       //writeln(pt[2]);
       //writeln(this.nodes[currentNode].edges);
       //writeln(this.nodes[currentNode].edges[pt].delta);
       //writeln(this.nodes[currentNode].edges[pt[2]]);
       var edge = this.nodes[currentNode].edges[pt : string];
       //for (seed, c) in edge.delta {
-      writeln(edge);
+      //writeln(edge);
       for (seed, c) in zip(edge.delta.seeds, edge.delta.delta) {
         // If it doesn't exist...
         //if delta.seeds.member(seed) == true {
@@ -280,6 +266,35 @@ class GeneNetwork {
       }
     }
     return delta;
+  }
+
+  // Here's a function for merging two nodes.
+  proc mergeNodes(id_A: string, id_B: string) {
+    var deltaA = this.calculateHistory(id_A);
+    var deltaB = this.calculateHistory(id_B);
+    var ndeltaA = new genes.deltaRecord;
+    var ndeltaB = new genes.deltaRecord;
+    var node = new unmanaged genes.GeneNode(ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
+    // s, c = seed, coefficient
+    //writeln(deltaA);
+    for (s, c) in deltaA {
+      ndeltaA.add(s, (c/2));
+      ndeltaB.add(s, (-1*c/2));
+    }
+    //writeln(deltaB);
+    for (s, c) in deltaB {
+      //writeln((c*(-1/2)), ' : ', (c/2), ' : ', (-1*c/2));
+      ndeltaA.add(s, (-1*c/2));
+      ndeltaB.add(s, (c/2));
+    }
+    // blah blah, now, set up the new delta...
+    // we need a parent seed node; we could just pick it randomly, but hey.
+    node.join(this.nodes[id_A], ndeltaA);
+    node.join(this.nodes[id_B], ndeltaB);
+    this.add_node(node);
+    writeln(ndeltaA);
+    writeln(ndeltaB);
+    writeln(node);
   }
 
   // Set of testing functions.
@@ -318,14 +333,25 @@ class GeneNetwork {
       var node = this.nodes[i].new_node(this.newSeed(), 1, j : string);
       this.add_node(node);
       this.edges[i].add(node.id);
-      writeln(this.nodes[i].nodes, ' : ', i);
-      writeln(this.edges[i], ' : ', i);
       i = j : string;
     }
     writeln('BLAH!');
     writeln(this.ids, ' : ', this.nodes);
     writeln(this.calculatePath('A', '7'));
     writeln(this.calculateHistory('7'));
+  }
+
+  proc testMergeNodes() {
+    this.__test_create_network__();
+    var i = 'A';
+    //var node: unmanaged genes.GeneNode;
+    for j in 1..7 {
+      var node = this.nodes[i].new_node(this.newSeed(), 1, j : string);
+      this.add_node(node);
+      this.edges[i].add(node.id);
+      i = j : string;
+    }
+    this.mergeNodes('A', '7');
   }
 
 }

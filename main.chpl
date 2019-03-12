@@ -42,4 +42,5 @@ var ygg = new owned network.GeneNetwork();
 //writeln(ygg.edges);
 //writeln(ygg.nodes);
 //writeln('\n');
-ygg.testCalculatePath();
+//ygg.testCalculatePath();
+ygg.testMergeNodes();

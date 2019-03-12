@@ -19,6 +19,7 @@ class UDevRandomHandler {
   }
   proc returnRNG() {
     var RandomNumberGenerator = makeRandomStream(int, seed=this.seed());
+    return RandomNumberGenerator;
   }
   proc seed() {
     var x: int;
