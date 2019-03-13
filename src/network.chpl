@@ -277,6 +277,8 @@ class GeneNetwork {
     var node = new unmanaged genes.GeneNode(ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
     // s, c = seed, coefficient
     //writeln(deltaA);
+    // Why is it in the reverse, you ask?  Because the calculateHistory method
+    // returns the information necessary to go BACK to the seed node from the id given.
     for (s, c) in deltaA {
       ndeltaA.add(s, (c/2));
       ndeltaB.add(s, (-1*c/2));
@@ -295,6 +297,11 @@ class GeneNetwork {
     writeln(ndeltaA);
     writeln(ndeltaB);
     writeln(node);
+    writeln(' ya ya ya ');
+    var delta = (deltaA + deltaB);
+    //delta /= 2;
+    delta = delta * 2;
+    writeln(delta);
   }
 
   // Set of testing functions.

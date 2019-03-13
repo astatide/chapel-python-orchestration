@@ -45,6 +45,46 @@ record deltaRecord {
 //
 //}
 
+proc +(a: deltaRecord, b: deltaRecord) {
+  var d = new deltaRecord;
+  for (s, c) in a {
+    d.add(s, c);
+  }
+  for (s, c) in b {
+    d.add(s, c);
+  }
+  return d;
+}
+
+proc /=(ref a: deltaRecord, b: real) {
+  for (s, c) in a {
+    a[s] = a[s] / b;
+  }
+}
+
+proc *=(ref a: deltaRecord, b: real) {
+  for (s, c) in a {
+    a[s] = a[s] * b;
+  }
+}
+
+proc /(a: deltaRecord, b: real) {
+  var d = new deltaRecord;
+  for (s, c) in a {
+    d.add(s, (c/b));
+  }
+  return d;
+}
+
+proc *(a: deltaRecord, b: real) {
+  var d = new deltaRecord;
+  for (s, c) in a {
+    d.add(s, (c*b));
+  }
+  return d;
+}
+
+
 class GeneEdge {
   // This is mostly just a handler class which stores the information necessary
   // to change the in memory array from one state to another.
