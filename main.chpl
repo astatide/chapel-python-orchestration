@@ -44,3 +44,11 @@ var ygg = new owned network.GeneNetwork();
 //writeln('\n');
 //ygg.testCalculatePath();
 ygg.testMergeNodes();
+//writeln(ygg.locale);
+
+//on Locales[1 % numLocales] {
+  //writeln(ygg.locale);
+  //writeln(ygg.nodes.locale);
+  //writeln(ygg.nodes);
+  //writeln(ygg.nodes.locale);
+//}

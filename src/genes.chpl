@@ -13,7 +13,23 @@ UUID.UUID4();
 
 
 record noiseFunctions {
+  // This is for holding our functions.
+  var which_function: int;
+  var udevrandom = new owned rng.UDevRandomHandler();
+  var newrng = udevrandom.returnRNG();
 
+  proc noise(seed: int, c: int, ref matrix: [real]) {
+    return this.add_uniform_noise(seed, c, matrix);
+  }
+
+  proc add_uniform_noise(seed: int, c: int, ref matrix: [real]) {
+    // This a function that takes in our matrix and adds the appropriate
+    // amount of noise.
+    // Make a new array with the same domain as the input matrix.
+    var m: [matrix.domain] real;
+    this.newrng.fillRandom(m, seed=seed);
+    matrix += (m*c);
+  }
 }
 
 record deltaRecord {
@@ -37,13 +53,14 @@ record deltaRecord {
     if !this.seeds.member(s) {
       this.seeds.add(s);
     }
-    this.delta += c;
+    this.delta[s] += c;
+    if this.delta[s] == 0 {
+      // Pick up your shit, Todd.
+      this.seeds.remove(s);
+    }
   }
+
 }
-//
-//proc +(a: , b) {
-//
-//}
 
 proc +(a: deltaRecord, b: deltaRecord) {
   var d = new deltaRecord;
@@ -68,9 +85,12 @@ proc *=(ref a: deltaRecord, b: real) {
   }
 }
 
+// Probably worth noting these are borked as hell.
 proc /(a: deltaRecord, b: real) {
   var d = new deltaRecord;
   for (s, c) in a {
+    //d.seeds.add(s);
+    //d.delta[s] = (c/b);
     d.add(s, (c/b));
   }
   return d;
@@ -79,6 +99,8 @@ proc /(a: deltaRecord, b: real) {
 proc *(a: deltaRecord, b: real) {
   var d = new deltaRecord;
   for (s, c) in a {
+    //d.seeds.add(s);
+    //d.delta[s] = (c*b);
     d.add(s, (c*b));
   }
   return d;
@@ -102,8 +124,17 @@ class GeneEdge {
   var direction: (string, string);
   var noise_function: int;
 
+  proc init() {
+
+  }
+
   proc init(delta) {
     this.delta = delta;
+  }
+
+  proc init(delta, direction) {
+    this.delta = delta;
+    this.direction = direction;
   }
 
   proc seedInDelta(seed: int) {
@@ -116,21 +147,13 @@ class GeneEdge {
     return false;
   }
 
-  proc expressDelta(matrix: [real]) {
-    for seed in this.delta.seeds do {
-      matrix += this.gaussian_noise(seed)*delta.delta[seed];
+  proc expressDelta(ref matrix: [real]) {
+    for (s,c) in this.delta do {
+      //matrix += this.gaussian_noise(seed)*delta.delta[seed];
+      matrix += noiseFunctions.noise(s, c, matrix);
     }
   }
 
-  // Sort of assuming this is _actually_ gaussian.
-  proc gaussian_noise(matrix: [real], shape: int, seed: int) {
-    // I'm assuming I can get the shape from the matrix, but still.
-    // Just pulling from the global is fine, really; we don't need a
-    // random stream for all of these.
-    var noise: [1..shape] real;
-    fillRandom(noise, seed);
-    return noise;
-  }
 }
 
 class GeneNode {
@@ -175,14 +198,12 @@ class GeneNode {
   proc join(node: GeneNode, delta: deltaRecord) {
     // did I call that function correctly?
     //writeln(node, delta);
-    this.edges[node.id] = new unmanaged GeneEdge(delta);
-    // Now, reverse the delta.
-    var r_delta = new deltaRecord();
-    for seed in delta.seeds do {
-      r_delta.delta[seed] = delta.delta[seed] * -1;
-    }
-    node.edges[this.id] = new unmanaged GeneEdge(r_delta);
-    //writeln(node.edges[this.id]);
+    var d = (this.id, node.id);
+    this.edges[node.id] = new unmanaged GeneEdge(delta, d);
+    // Now, reverse the delta.  Which we can do by multiplying it by
+    // -1.
+    d = (node.id, this.id);
+    node.edges[this.id] = new unmanaged GeneEdge(delta*-1, d);
   }
 
   proc return_edge(id: string) {

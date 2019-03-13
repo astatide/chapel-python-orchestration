@@ -77,6 +77,11 @@ class GeneNetwork {
 
   var rootNode = new unmanaged genes.GeneNode(id='root');
 
+  // Kind of wondering whether this is the appropriate place to handle locales?
+  // Despite the name, this is simply an array which stores where each locale
+  // currently is.
+  var localeLocation: [0..Locales.size] string;
+
   proc add_nodes(nodes: domain(genes.GeneNode)) {
     //writeln(nodes);
     for node in nodes {
@@ -272,36 +277,22 @@ class GeneNetwork {
   proc mergeNodes(id_A: string, id_B: string) {
     var deltaA = this.calculateHistory(id_A);
     var deltaB = this.calculateHistory(id_B);
-    var ndeltaA = new genes.deltaRecord;
-    var ndeltaB = new genes.deltaRecord;
+    //var ndeltaA = new genes.deltaRecord;
+    //var ndeltaB = new genes.deltaRecord;
     var node = new unmanaged genes.GeneNode(ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
     // s, c = seed, coefficient
     //writeln(deltaA);
     // Why is it in the reverse, you ask?  Because the calculateHistory method
     // returns the information necessary to go BACK to the seed node from the id given.
-    for (s, c) in deltaA {
-      ndeltaA.add(s, (c/2));
-      ndeltaB.add(s, (-1*c/2));
-    }
-    //writeln(deltaB);
-    for (s, c) in deltaB {
-      //writeln((c*(-1/2)), ' : ', (c/2), ' : ', (-1*c/2));
-      ndeltaA.add(s, (-1*c/2));
-      ndeltaB.add(s, (c/2));
-    }
-    // blah blah, now, set up the new delta...
-    // we need a parent seed node; we could just pick it randomly, but hey.
-    node.join(this.nodes[id_A], ndeltaA);
-    node.join(this.nodes[id_B], ndeltaB);
+    var delta = ((deltaA*-1) + deltaB)/2;
+    node.join(this.nodes[id_A], delta*-1);
+    node.join(this.nodes[id_B], delta);
     this.add_node(node);
-    writeln(ndeltaA);
-    writeln(ndeltaB);
     writeln(node);
-    writeln(' ya ya ya ');
-    var delta = (deltaA + deltaB);
+    //var delta = (deltaA + deltaB);
     //delta /= 2;
-    delta = delta * 2;
-    writeln(delta);
+    //delta = delta * 2;
+    //writeln(delta/2);
   }
 
   // Set of testing functions.
