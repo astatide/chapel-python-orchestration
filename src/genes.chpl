@@ -78,8 +78,8 @@ record deltaRecord {
       //newrng.seed(int);
       // I'm sure something better exists, but for now.
       udevrandom.returnSpecificRNG(s).fillRandom(arr=m);
-      //matrix += (m*c);
-      matrix += c;
+      matrix += (m*c);
+      //matrix += c;
     }
   }
 
