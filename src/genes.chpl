@@ -21,7 +21,8 @@ record noiseFunctions {
   var newrng = udevrandom.returnRNG();
 
   proc noise(seed: int, c: real, ref matrix: [0] real) {
-    return this.add_uniform_noise(seed, c, matrix);
+    //return this.add_uniform_noise(seed, c, matrix);
+    return this.constant(seed, c, matrix);
   }
 
   proc add_uniform_noise(seed: int, c: real, ref matrix: [0] real) {
@@ -30,6 +31,13 @@ record noiseFunctions {
     // Make a new array with the same domain as the input matrix.
     var m: [matrix.domain] real;
     this.newrng.fillRandom(m, seed=seed);
+    matrix += (m*c);
+  }
+
+  proc constant(seed: int, c: real, ref matrix: [0] real) {
+    var m: [matrix.domain] real;
+    writeln(seed);
+    m = seed;
     matrix += (m*c);
   }
 }
@@ -70,14 +78,15 @@ record deltaRecord {
     var m: [matrix.domain] real;
     for (s, c) in zip(this.seeds, this.delta) do {
       //matrix += noiseFunctions.noise(s, c, matrix);
-      writeln(s, ' ', c);
-      writeln(s.type : string);
+      //writeln(s, ' ', c);
+      //writeln(s.type : string);
       // What the hell is going on here?
       // error: unresolved access of 'int(64)' by '(int(64))'
       // Seriously?  What?
       //newrng.seed(int);
       // I'm sure something better exists, but for now.
-      udevrandom.returnSpecificRNG(s).fillRandom(arr=m);
+      //udevrandom.returnSpecificRNG(s).fillRandom(arr=m);
+      m = s;
       matrix += (m*c);
       //matrix += c;
     }
@@ -193,13 +202,14 @@ class GeneNode {
   // This is a node.  It contains the Chapel implementation of a hash table
   // (akin to a python dict); we're going to store the gene edges in it.
   var nodes: domain(string);
-  var edges: [nodes] unmanaged GeneEdge;
+  var edges: [nodes] shared GeneEdge;
   var generation: int;
   var ctype: string;
   var parent: string;
   // we need a node ID.  I like the ability of being able to specify them.
   // but we should generate them by default.
   var id: string;
+  var debugOrderOfCreation: int;
 
   // Here, we're gonna track our parent at history 0
   // should make it easier to return histories.
@@ -213,6 +223,8 @@ class GeneNode {
       this.id = UUID.UUID4();
     } else {
       this.id = id;
+      //this.id
+      //this.id = 'JAJAYAAA';
     }
     if parentSeedNode == '' {
       this.parentSeedNode = this.id;
@@ -228,15 +240,15 @@ class GeneNode {
 
   // Now, the functions to handle the nodes!
   //   proc join(node: GeneNode, delta: [?dom]) {
-  proc join(node: unmanaged GeneNode, delta: deltaRecord) {
+  proc join(node: shared GeneNode, delta: deltaRecord) {
     // did I call that function correctly?
     //writeln(node, delta);
     var d = (this.id, node.id);
-    this.edges[node.id] = new unmanaged GeneEdge(delta, d);
+    this.edges[node.id] = new shared GeneEdge(delta, d);
     // Now, reverse the delta.  Which we can do by multiplying it by
     // -1.
     d = (node.id, this.id);
-    node.edges[this.id] = new unmanaged GeneEdge(delta*-1, d);
+    node.edges[this.id] = new shared GeneEdge(delta*-1, d);
   }
 
   proc return_edge(id: string) {
@@ -251,7 +263,7 @@ class GeneNode {
     // This function is a generic call for whenever we make a modification
     // Mutations, adding a new seed, whatever.  We just create a new node
     // and join them properly.
-    var node = new unmanaged GeneNode(id=id);
+    var node = new shared GeneNode(id=id);
     var delta = new deltaRecord();
 
     node.parentSeedNode = this.parentSeedNode;

@@ -65,25 +65,26 @@ record pathHistory {
 class GeneNetwork {
   // Hash table for our nodes and edges.  Basically, it's a dictionary of lists;
   // kind of easy to think of it that way, for those of us coming from Python.
-  var ids: unmanaged domain(string);
+  var ids: domain(string);
   var edges: [ids] domain(string);
   // We're going to have to be careful about object ownership.  Might not matter
   // too much at the moment, but.
 
   // Yep, we don't have to be careful because this is Chapel and holy fuck.
   // aaahahahaha, suck it languages built not for HPC!
-  var nodes: [ids] unmanaged genes.GeneNode;
+  var nodes: [ids] shared genes.GeneNode;
   var nodes$: sync bool = false;
 
   var irng = new owned rng.UDevRandomHandler();
 
-  var rootNode = new unmanaged genes.GeneNode(id='root');
+  //var rootNode = new shared genes.GeneNode(id='  root');
+  var rootNode: shared genes.GeneNode;
 
   // Kind of wondering whether this is the appropriate place to handle locales?
   // Despite the name, this is simply an array which stores where each locale
   // currently is.
 
-  proc add_node(node: unmanaged) : void {
+  proc add_node(in node: shared genes.GeneNode) : void {
     //writeln(nodes);
     // We are working with the actual node objects, here.
     // Add to our domain!
@@ -102,6 +103,7 @@ class GeneNetwork {
     // Generates a new seed for use with deltas, etc.
     // we're returning a long.
     return this.irng.getrandbits(64);
+    //return 0;
   }
 
   proc initializeNetwork(n_seeds=10: int, gen_seeds=true: bool) {
@@ -109,10 +111,15 @@ class GeneNetwork {
     //var node: unmanaged genes.GeneNode;
     var delta: genes.deltaRecord;
     //const alpha = ['A', 'B', 'C'];
-    this.rootNode.ctype = 'root';
+    this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
+    //writeln('What is root?');
+    //writeln(this.rootNode.id);
+    //this.rootNode.ctype = 'root';
     for n in 1..n_seeds {
-      seed = this.newSeed();
-      var node = new unmanaged genes.GeneNode(ctype='seed', parentSeedNode='', parent='root');
+      //seed = this.newSeed();
+      seed = n;
+      var node = new shared genes.GeneNode(ctype='seed', parentSeedNode='', parent='root');
+      node.debugOrderOfCreation = n;
       delta = new genes.deltaRecord();
       delta.seeds.add(seed);
       delta.delta[seed] = 1;
@@ -127,7 +134,7 @@ class GeneNetwork {
     // These have a special deltaRecord; I'm going to encode an INFINITY
     // as 'blow away the matrix', then ... or should I?
     for seed in seeds {
-      var node = new unmanaged genes.GeneNode(seed);
+      var node = new shared genes.GeneNode(seed);
       this.add_nodes(node);
     }
   }
@@ -146,19 +153,26 @@ class GeneNetwork {
     var currMinNode = id_A;
     var currMinNodeIndex = 0;
     var i: int;
+    //writeln(this.edges);
     // Build up the potential node list.
+    var n = nodes$;
     for id in this.ids do {
       nodes.add(id);
       visited[id] = false;
       dist[id] = Math.INFINITY;
       // paths is sorted down there.
     }
+    nodes$ = false;
+    // Am I removing 'root' from here?  I suspect yes.
+    nodes.add[id_A];
     dist[id_A] = 0;
     //paths[id_A].add((0.0, id_A));
     //paths[id_A].add(0);
     paths[id_A].node[0] = id_A;
+    //writeln(this.ids);
     while true {
       //writeln(paths, ' : ', unvisited);
+      var n = nodes$;
       for edge in this.edges[currentNode] do {
         if !visited[edge] {
           var d = min(dist[edge], dist[currentNode]+1);
@@ -185,6 +199,7 @@ class GeneNetwork {
           }
         }
       }
+      nodes$ = false;
       visited[currentNode] = true;
 
       if visited[id_B] {
@@ -219,14 +234,11 @@ class GeneNetwork {
 
   proc move(ref v: propagator.valkyrie, id: string) {
     // Bit clonky, but for now.
-    writeln(v.currentNode, id);
     var d = this.moveToNode(v.currentNode, id);
     v.move(d, id);
-    writeln(v.matrixValues);
   }
 
   proc moveToNode(id_A: string, id_B: string) {
-    writeln(id_A, id_B);
     var path = this.calculatePath(id_A, id_B);
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.
@@ -302,7 +314,7 @@ class GeneNetwork {
     var deltaB = this.calculateHistory(id_B);
     //var ndeltaA = new genes.deltaRecord;
     //var ndeltaB = new genes.deltaRecord;
-    var node = new unmanaged genes.GeneNode(ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
+    var node = new shared genes.GeneNode(ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
     // s, c = seed, coefficient
     //writeln(deltaA);
     // Why is it in the reverse, you ask?  Because the calculateHistory method
@@ -332,7 +344,7 @@ class GeneNetwork {
     this.rootNode.ctype = 'root';
     for n in 1..3 {
       seed = this.newSeed();
-      var node = new unmanaged genes.GeneNode(id=alpha[n], ctype='seed', parentSeedNode='', parent='root');
+      var node = new shared genes.GeneNode(id=alpha[n], ctype='seed', parentSeedNode='', parent='root');
       delta = new genes.deltaRecord();
       delta.seeds.add(seed);
       delta.delta[seed] = 1;
