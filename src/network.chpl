@@ -65,14 +65,14 @@ record pathHistory {
 class GeneNetwork {
   // Hash table for our nodes and edges.  Basically, it's a dictionary of lists;
   // kind of easy to think of it that way, for those of us coming from Python.
-  var ids: domain(string);
-  var edges: [ids] domain(string);
+  var ids: unmanaged domain(string);
+  var edges: unmanaged [ids] domain(string);
   // We're going to have to be careful about object ownership.  Might not matter
   // too much at the moment, but.
 
   // Yep, we don't have to be careful because this is Chapel and holy fuck.
   // aaahahahaha, suck it languages built not for HPC!
-  var nodes: [ids] genes.GeneNode;
+  var nodes: [ids] unmanaged genes.GeneNode;
   var nodes$: sync bool = false;
 
   var irng = new owned rng.UDevRandomHandler();
@@ -219,12 +219,14 @@ class GeneNetwork {
 
   proc move(ref v: propagator.valkyrie, id: string) {
     // Bit clonky, but for now.
+    writeln(v.currentNode, id);
     var d = this.moveToNode(v.currentNode, id);
     v.move(d, id);
     writeln(v.matrixValues);
   }
 
   proc moveToNode(id_A: string, id_B: string) {
+    writeln(id_A, id_B);
     var path = this.calculatePath(id_A, id_B);
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.

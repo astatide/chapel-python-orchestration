@@ -193,7 +193,7 @@ class GeneNode {
   // This is a node.  It contains the Chapel implementation of a hash table
   // (akin to a python dict); we're going to store the gene edges in it.
   var nodes: domain(string);
-  var edges: [nodes] GeneEdge;
+  var edges: [nodes] unmanaged GeneEdge;
   var generation: int;
   var ctype: string;
   var parent: string;
@@ -228,7 +228,7 @@ class GeneNode {
 
   // Now, the functions to handle the nodes!
   //   proc join(node: GeneNode, delta: [?dom]) {
-  proc join(node: GeneNode, delta: deltaRecord) {
+  proc join(node: unmanaged GeneNode, delta: deltaRecord) {
     // did I call that function correctly?
     //writeln(node, delta);
     var d = (this.id, node.id);
