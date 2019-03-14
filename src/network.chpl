@@ -117,9 +117,9 @@ class GeneNetwork {
     //this.rootNode.ctype = 'root';
     for n in 1..n_seeds {
       //seed = this.newSeed();
-      seed = n;
-      var node = new shared genes.GeneNode(ctype='seed', parentSeedNode='', parent='root');
-      node.debugOrderOfCreation = n;
+      seed = n*1000;
+      var node = new shared genes.GeneNode(id=(n*1000) : string, ctype='seed', parentSeedNode='', parent='root');
+      node.debugOrderOfCreation = n*1000;
       delta = new genes.deltaRecord();
       delta.seeds.add(seed);
       delta.delta[seed] = 1;
@@ -328,6 +328,18 @@ class GeneNetwork {
     //delta /= 2;
     //delta = delta * 2;
     //writeln(delta/2);
+    return node.id;
+  }
+
+  proc nextNode(id: string) {
+    var seed = this.nodes[id].debugOrderOfCreation;
+    var node = this.nodes[id].new_node(1, 1, (seed+1) : string);
+    node.debugOrderOfCreation = seed+1;
+    this.add_node(node);
+    var n = nodes$;
+    this.edges[id].add(node.id);
+    nodes$ = false;
+    return node.id;
   }
 
   // Set of testing functions.

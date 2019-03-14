@@ -16,6 +16,9 @@ config var startingSeeds = 10;
 // (this is a record for a worker class)
 record valkyrie {
   var matrixValues: [0..mSize-1] real;
+  var takeAnyPath: bool = false;
+  var moved: bool = false;
+  var canMove: bool = false;
   //var matrixValues: [0..20] real;
   //var matrixValues: int;
   var currentNode: string;
@@ -70,27 +73,88 @@ class Propagator {
     //    writeln(j);
     //  }
     //forall i in 1..maxValkyries with ( var v: valkyrie ) {
-    forall i in 1..maxValkyries {
+    var nnodes: atomic int;
+    coforall i in 1..maxValkyries {
       //writeln(v.matrixValues);
       var v = new valkyrie;
       v.moveToRoot();
-      for (processed, id) in zip(this.processedArray, this.nodesToProcess) {
-        // This blocks while it reads the value and sets it to true, then returns
-        // said original value.  No race conditions!
-        if !processed.testAndSet() {
-          // Actually do something.
-          writeln('I am task ', i, ' and I am going to move from node ', v.currentNode, ' to ', id);
-          if id != 'root' {
-            //writeln(this.ygg.calculatePath('root', id));
+      for gen in 1..998 {
+        for (j, processed, id) in zip(1..maxPerGeneration, this.processedArray, this.nodesToProcess) {
+          // This blocks while it reads the value and sets it to true, then returns
+          // said original value.  No race conditions!
+          if !v.takeAnyPath {
+            // if we haven't taken any path, only take ones which are immediate edges.
+            if this.ygg.nodes[v.currentNode].member(id) {
+              // if we're an edge, let's take it!
+              v.canMove = true;
+            }
           }
-          //writeln(this.ygg.edges);
-          this.ygg.move(v, id);
-          writeln('TASK ', i, ', SEED # ', this.ygg.nodes[id].debugOrderOfCreation, ' : ', v.matrixValues);
-          //var d = this.ygg.moveToNode(v.currentNode, id);
-          //v.move(v, id);
-          //processed.write(true);
+          if !processed.testAndSet() {
+            // Actually do something.
+            //writeln('I am task ', i, ' and I am going to move from node ', v.currentNode, ' to ', id);
+            //writeln(this.ygg.edges);
+            this.ygg.move(v, id);
+            writeln('TASK ', i, ', SEED # ', this.ygg.nodes[id].debugOrderOfCreation, ' : ', v.matrixValues);
+            // create another node
+            var nextNode = this.ygg.nextNode(id);
+            id = nextNode;
+            processed.clear();
+            nnodes.add(1);
+            v.moved = true;
+            //var d = this.ygg.moveToNode(v.currentNode, id);
+            //v.move(v, id);
+            //processed.write(true);
+          } else {
+            // Return to not being able to move; we couldn't take this node, so let's try it again.
+            v.canMove = false;
+          }
         }
+        // now determine who is closest.
+        if !v.moved {
+          v.canMove = false;
+          v.takeAnyPath = true;
+        } else
+
       }
+      for gen in 1..998 {
+        for (j, processed, id) in zip(1..maxPerGeneration, this.processedArray, this.nodesToProcess) {
+          // This blocks while it reads the value and sets it to true, then returns
+          // said original value.  No race conditions!
+          if !v.takeAnyPath {
+            // if we haven't taken any path, only take ones which are immediate edges.
+            if this.ygg.nodes[v.currentNode].member(id) {
+              // if we're an edge, let's take it!
+              v.canMove = true;
+            }
+          }
+          if !processed.testAndSet() {
+            // Actually do something.
+            //writeln('I am task ', i, ' and I am going to move from node ', v.currentNode, ' to ', id);
+            //writeln(this.ygg.edges);
+            this.ygg.move(v, id);
+            writeln('TASK ', i, ', SEED # ', this.ygg.nodes[id].debugOrderOfCreation, ' : ', v.matrixValues);
+            // create another node
+            var nextNode = this.ygg.nextNode(id);
+            id = nextNode;
+            processed.clear();
+            nnodes.add(1);
+            v.moved = true;
+            //var d = this.ygg.moveToNode(v.currentNode, id);
+            //v.move(v, id);
+            //processed.write(true);
+          } else {
+            // Return to not being able to move; we couldn't take this node, so let's try it again.
+            v.canMove = false;
+          }
+        }
+        // now determine who is closest.
+        if !v.moved {
+          v.canMove = false;
+          v.takeAnyPath = true;
+        } else
+
+      }
+      writeln(nnodes.read());
     }
   }
 
