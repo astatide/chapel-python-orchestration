@@ -66,7 +66,7 @@ class GeneNetwork {
   // Hash table for our nodes and edges.  Basically, it's a dictionary of lists;
   // kind of easy to think of it that way, for those of us coming from Python.
   var ids: unmanaged domain(string);
-  var edges: unmanaged [ids] domain(string);
+  var edges: [ids] domain(string);
   // We're going to have to be careful about object ownership.  Might not matter
   // too much at the moment, but.
 
