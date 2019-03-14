@@ -2,6 +2,7 @@ use uuid;
 use rng;
 use genes;
 use network;
+use propagator;
 
 var newrng = new owned rng.UDevRandomHandler();
 //var new_uuid = new owned uuid.UUID();
@@ -45,6 +46,15 @@ var ygg = new owned network.GeneNetwork();
 //ygg.testCalculatePath();
 ygg.testMergeNodes();
 //writeln(ygg.locale);
+
+var v = new valkyrie;
+v.moveToRoot();
+ygg.move(v, '7');
+//var d = ygg.move('root', '3');
+//writeln(d);
+//v.move(d, '7');
+
+//writeln(v.matrixValues);
 
 //on Locales[1 % numLocales] {
   //writeln(ygg.locale);

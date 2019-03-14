@@ -17,12 +17,19 @@ class UDevRandomHandler {
     this.EntropyStream.readbits(x, n);
     return x;
   }
+
   proc returnRNG() {
-    var RandomNumberGenerator = makeRandomStream(int, seed=this.seed());
+    var RandomNumberGenerator = makeRandomStream(real, seed=this.seed());
     return RandomNumberGenerator;
   }
+
   proc seed() {
     var x: int;
     return this.EntropyStream.readbits(x, 64);
+  }
+
+  proc returnSpecificRNG(seed: int) {
+    var RandomNumberGenerator = makeRandomStream(real, seed=seed);
+    return RandomNumberGenerator;
   }
 }

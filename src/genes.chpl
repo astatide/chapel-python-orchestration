@@ -9,6 +9,8 @@ use Random;
 // This pulls from its own RNG.  Guarantees a bit more entropy.
 var UUID = new owned uuid.UUID();
 UUID.UUID4();
+var udevrandom = new owned rng.UDevRandomHandler();
+var newrng = udevrandom.returnRNG();
 //writeln(UUID.UUID4());
 
 
@@ -18,11 +20,11 @@ record noiseFunctions {
   var udevrandom = new owned rng.UDevRandomHandler();
   var newrng = udevrandom.returnRNG();
 
-  proc noise(seed: int, c: int, ref matrix: [real]) {
+  proc noise(seed: int, c: real, ref matrix: [0] real) {
     return this.add_uniform_noise(seed, c, matrix);
   }
 
-  proc add_uniform_noise(seed: int, c: int, ref matrix: [real]) {
+  proc add_uniform_noise(seed: int, c: real, ref matrix: [0] real) {
     // This a function that takes in our matrix and adds the appropriate
     // amount of noise.
     // Make a new array with the same domain as the input matrix.
@@ -60,6 +62,27 @@ record deltaRecord {
     }
   }
 
+  proc remove(s) {
+    this.seeds.remove(s);
+  }
+
+  proc express(ref matrix) {
+    var m: [matrix.domain] real;
+    for (s, c) in zip(this.seeds, this.delta) do {
+      //matrix += noiseFunctions.noise(s, c, matrix);
+      writeln(s, ' ', c);
+      writeln(s.type : string);
+      // What the hell is going on here?
+      // error: unresolved access of 'int(64)' by '(int(64))'
+      // Seriously?  What?
+      //newrng.seed(int);
+      // I'm sure something better exists, but for now.
+      udevrandom.returnSpecificRNG(s).fillRandom(arr=m);
+      //matrix += (m*c);
+      matrix += c;
+    }
+  }
+
 }
 
 proc +(a: deltaRecord, b: deltaRecord) {
@@ -71,6 +94,10 @@ proc +(a: deltaRecord, b: deltaRecord) {
     d.add(s, c);
   }
   return d;
+}
+
+proc +=(ref a: deltaRecord, b: (int, real)) {
+  a.add(b[1], b[2]);
 }
 
 proc /=(ref a: deltaRecord, b: real) {

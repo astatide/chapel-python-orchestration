@@ -6,6 +6,7 @@ use uuid;
 use Random;
 use Math;
 use Sort;
+use propagator;
 
 record pathHistory {
   var n: domain(int);
@@ -229,6 +230,39 @@ class GeneNetwork {
 
   }
 
+  proc move(ref v: propagator.valkyrie, id: string) {
+    // Bit clonky, but for now.
+    var d = this.moveToNode(v.currentNode, id);
+    v.move(d, id);
+    writeln(v.matrixValues);
+  }
+
+  proc moveToNode(id_A: string, id_B: string) {
+    var path = this.calculatePath(id_A, id_B);
+    // Cool, we have a path.  Now we need to get all the edges and
+    // aggregate the coefficients.
+    var delta = new genes.deltaRecord;
+    // Get rid of the current node.
+    var currentNode = id_A;
+    path.remove(id_A);
+    for (i, pt) in path {
+      var edge = this.nodes[currentNode].edges[pt : string];
+      for (s, c) in edge.delta {
+        //delta.seeds.add(seed);
+        //delta.delta[seed] += (c*-1) : real;
+        delta += (s, c);
+      }
+      currentNode = pt;
+    }
+    for (s, c) in delta {
+      if c == 0 {
+        // Get rid of the seed is the coefficient is 0.  We don't need that stuff.
+        delta.remove(s);
+      }
+    }
+    return delta;
+  }
+
   proc calculateHistory(id: string) {
     // Since all nodes carry their ancestor,
     // simply calculate the path back to the seed node.
@@ -307,16 +341,16 @@ class GeneNetwork {
     var delta: genes.deltaRecord;
     const alpha = ['A', 'B', 'C'];
     this.rootNode.ctype = 'root';
-    this.add_node(this.rootNode);
     for n in 1..3 {
       seed = this.newSeed();
       var node = new unmanaged genes.GeneNode(id=alpha[n], ctype='seed', parentSeedNode='', parent='root');
       delta = new genes.deltaRecord();
       delta.seeds.add(seed);
       delta.delta[seed] = 1;
-      node.join(this.rootNode, delta);
+      this.rootNode.join(node, delta);
       this.add_node(node);
     }
+    this.add_node(this.rootNode);
   }
 
   proc testInitializeNetwork() {
@@ -349,7 +383,8 @@ class GeneNetwork {
       this.edges[i].add(node.id);
       i = j : string;
     }
-    this.mergeNodes('A', '7');
+    //this.mergeNodes('A', '7');
+    this.moveToNode('A', '7');
   }
 
 }
