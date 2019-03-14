@@ -73,6 +73,7 @@ class GeneNetwork {
   // Yep, we don't have to be careful because this is Chapel and holy fuck.
   // aaahahahaha, suck it languages built not for HPC!
   var nodes: [ids] genes.GeneNode;
+  var nodes$: sync bool = false;
 
   var irng = new owned rng.UDevRandomHandler();
 
@@ -81,30 +82,20 @@ class GeneNetwork {
   // Kind of wondering whether this is the appropriate place to handle locales?
   // Despite the name, this is simply an array which stores where each locale
   // currently is.
-  var localeLocation: [0..Locales.size] string;
-
-  proc add_nodes(nodes: domain(genes.GeneNode)) {
-    //writeln(nodes);
-    for node in nodes {
-      // We are working with the actual node objects, here.
-      // Add to our domain!
-      this.ids.add(node.id);
-      this.nodes[node.id] = node;
-      for edge in node.nodes {
-        this.edges[node.id].add(edge);
-      }
-    }
-  }
 
   proc add_node(node: unmanaged) : void {
     //writeln(nodes);
     // We are working with the actual node objects, here.
     // Add to our domain!
+    // We need to block until such time as we're ready;
+    var n = nodes$;
+    //nodes$.writeEF(true);
     this.ids.add(node.id);
     this.nodes[node.id] = node;
     for edge in node.nodes {
       this.edges[node.id].add(edge);
     }
+    nodes$ = false;
   }
 
   proc newSeed() {
@@ -117,22 +108,18 @@ class GeneNetwork {
     var seed: int;
     //var node: unmanaged genes.GeneNode;
     var delta: genes.deltaRecord;
+    //const alpha = ['A', 'B', 'C'];
     this.rootNode.ctype = 'root';
-    this.add_node(this.rootNode);
-    if gen_seeds {
-      for n in 1..n_seeds {
-        seed = this.newSeed();
-        var node = new unmanaged genes.GeneNode(ctype='seed', parentSeedNode='', parent='root');
-        delta = new genes.deltaRecord();
-        //node.ctype = 'seed';
-        //node.parentSeedNode = node.id;
-        //node.parent = this.rootNode.id;
-        delta.seeds.add(seed);
-        delta.delta[seed] = 1;
-        node.join(this.rootNode, delta);
-        this.add_node(node);
-      }
+    for n in 1..n_seeds {
+      seed = this.newSeed();
+      var node = new unmanaged genes.GeneNode(ctype='seed', parentSeedNode='', parent='root');
+      delta = new genes.deltaRecord();
+      delta.seeds.add(seed);
+      delta.delta[seed] = 1;
+      this.rootNode.join(node, delta);
+      this.add_node(node);
     }
+    this.add_node(this.rootNode);
   }
 
   proc initializeSeedGenes(seeds: domain(int)) {

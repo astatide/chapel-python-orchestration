@@ -96,6 +96,12 @@ proc +(a: deltaRecord, b: deltaRecord) {
   return d;
 }
 
+proc +=(ref a: deltaRecord, b: deltaRecord) {
+  for (s, c) in b {
+    a.add(s, c);
+  }
+}
+
 proc +=(ref a: deltaRecord, b: (int, real)) {
   a.add(b[1], b[2]);
 }

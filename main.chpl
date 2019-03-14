@@ -4,14 +4,17 @@ use genes;
 use network;
 use propagator;
 
+var ragnarok = new owned propagator.Propagator();
+ragnarok.run();
+
 var newrng = new owned rng.UDevRandomHandler();
 //var new_uuid = new owned uuid.UUID();
 
 //var A: [0] int;
 
-var A = new shared genes.GeneNode(id='A');
+//var A = new shared genes.GeneNode(id='A');
 //writeln(blah.id);
-var B = new shared genes.GeneNode(id='B');
+//var B = new shared genes.GeneNode(id='B');
 //writeln(blah2.id);
 
 //var coefficients: domain(int);
@@ -30,7 +33,7 @@ var B = new shared genes.GeneNode(id='B');
 
 // E, D, C, A
 
-var ygg = new owned network.GeneNetwork();
+//var ygg = new owned network.GeneNetwork();
 
 //forall i in {A, B, C, D, E} do {
 //  Net.add_node(i);
@@ -44,12 +47,13 @@ var ygg = new owned network.GeneNetwork();
 //writeln(ygg.nodes);
 //writeln('\n');
 //ygg.testCalculatePath();
-ygg.testMergeNodes();
+//ygg.testMergeNodes();
 //writeln(ygg.locale);
 
-var v = new valkyrie;
-v.moveToRoot();
-ygg.move(v, '7');
+//var v = new valkyrie;
+//v.moveToRoot();
+//ygg.move(v, '7');
+
 //var d = ygg.move('root', '3');
 //writeln(d);
 //v.move(d, '7');
