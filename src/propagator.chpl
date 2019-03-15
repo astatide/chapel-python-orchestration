@@ -4,12 +4,15 @@ use rng;
 use genes;
 use network;
 use uuid;
+use Math;
 
 config const mSize = 20;
 config var maxPerGeneration = 400;
 config var mutationRate = 0.03;
 config var maxValkyries = 1;
 config var startingSeeds = 10;
+config var createEdgeOnMove = true;
+config var edgeDistance = 2;
 
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
@@ -36,28 +39,44 @@ record valkyrie {
   }
 }
 
+class SpinLock {
+  var l: atomic bool;
+
+  inline proc lock() {
+    while l.testAndSet(memory_order_acquire) do chpl_task_yield();
+  }
+
+  inline proc unlock() {
+    l.clear(memory_order_release);
+  }
+}
+
 class Propagator {
   // this is going to actually hold all the logic for running EvoCap.
   var generation: int;
   //var maxValkyries: int;
 
   // now a few globals.
-  var processedArray: [1..maxPerGeneration] atomic bool;
-  var nodesToProcess: [1..maxPerGeneration] string;
+  //var processedArray: [1..maxPerGeneration] atomic bool;
+  var nodesToProcess: domain(string);
+  var lock = new shared SpinLock();
+  var processedArray: [nodesToProcess] atomic bool;
+  //var nodesToProcess: [1..maxPerGeneration] string;
   var inCurrentGeneration: atomic int;
+  var nextGeneration: domain(string);
 
   var ygg: shared network.GeneNetwork();
 
   proc init() {
     this.ygg = new shared network.GeneNetwork();
     this.ygg.initializeNetwork(n_seeds=startingSeeds);
-    this.processedArray.write(true);
+    //this.processedArray.write(true);
     var ids = this.ygg.ids;
     ids.remove('root');
     //this.inCurrentGeneration.add(1);
     for i in ids {
-      this.nodesToProcess[this.inCurrentGeneration.read()+1] = i;
-      this.processedArray[this.inCurrentGeneration.read()+1].write(false);
+      //this.nodesToProcess[this.inCurrentGeneration.read()+1] = i;
+      this.processedArray[i].write(false);
       this.inCurrentGeneration.add(1);
     }
     //writeln(this.ygg.nodes);
@@ -79,82 +98,73 @@ class Propagator {
       var v = new valkyrie;
       v.moveToRoot();
       for gen in 1..998 {
-        for (j, processed, id) in zip(1..maxPerGeneration, this.processedArray, this.nodesToProcess) {
-          // This blocks while it reads the value and sets it to true, then returns
-          // said original value.  No race conditions!
-          if !v.takeAnyPath {
-            // if we haven't taken any path, only take ones which are immediate edges.
-            if this.ygg.nodes[v.currentNode].member(id) {
-              // if we're an edge, let's take it!
-              v.canMove = true;
+        var calculatedDistance: bool = false;
+        var currToProc: string;
+        var currMin: real = Math.INFINITY : real;
+        var pathDomain: domain(string);
+        var pathSet: [pathDomain] network.pathHistory;
+        //var pathSet: network.pathHistory;
+        pathDomain.clear();
+        // first, calculate the distance from the current node to all others.
+        if !calculatedDistance {
+          var toProcess: domain(string);
+          for id in this.nodesToProcess {
+            if !this.processedArray[id].read() {
+              // If we have yet to process it, sort it out.
+              toProcess.add(id);
             }
           }
-          if !processed.testAndSet() {
-            // Actually do something.
-            //writeln('I am task ', i, ' and I am going to move from node ', v.currentNode, ' to ', id);
-            //writeln(this.ygg.edges);
-            this.ygg.move(v, id);
-            writeln('TASK ', i, ', SEED # ', this.ygg.nodes[id].debugOrderOfCreation, ' : ', v.matrixValues);
-            // create another node
-            var nextNode = this.ygg.nextNode(id);
-            id = nextNode;
-            processed.clear();
-            nnodes.add(1);
-            v.moved = true;
-            //var d = this.ygg.moveToNode(v.currentNode, id);
-            //v.move(v, id);
-            //processed.write(true);
-          } else {
-            // Return to not being able to move; we couldn't take this node, so let's try it again.
-            v.canMove = false;
-          }
+          pathSet += this.ygg.calculatePathArray(v.currentNode, toProcess);
+          calculatedDistance = true;
         }
-        // now determine who is closest.
-        if !v.moved {
-          v.canMove = false;
-          v.takeAnyPath = true;
-        } else
-
-      }
-      for gen in 1..998 {
-        for (j, processed, id) in zip(1..maxPerGeneration, this.processedArray, this.nodesToProcess) {
-          // This blocks while it reads the value and sets it to true, then returns
-          // said original value.  No race conditions!
-          if !v.takeAnyPath {
-            // if we haven't taken any path, only take ones which are immediate edges.
-            if this.ygg.nodes[v.currentNode].member(id) {
-              // if we're an edge, let's take it!
-              v.canMove = true;
+        while this.inCurrentGeneration.read()!= 0 {
+          currMin =  Math.INFINITY;
+          for id in this.nodesToProcess {
+            //writeln(pathSet);
+            if pathSet[id].distance() < currMin {
+              currMin = pathSet[id].distance();
+              currToProc = id;
             }
           }
-          if !processed.testAndSet() {
-            // Actually do something.
-            //writeln('I am task ', i, ' and I am going to move from node ', v.currentNode, ' to ', id);
-            //writeln(this.ygg.edges);
-            this.ygg.move(v, id);
-            writeln('TASK ', i, ', SEED # ', this.ygg.nodes[id].debugOrderOfCreation, ' : ', v.matrixValues);
-            // create another node
-            var nextNode = this.ygg.nextNode(id);
-            id = nextNode;
-            processed.clear();
-            nnodes.add(1);
-            v.moved = true;
-            //var d = this.ygg.moveToNode(v.currentNode, id);
-            //v.move(v, id);
-            //processed.write(true);
-          } else {
-            // Return to not being able to move; we couldn't take this node, so let's try it again.
-            v.canMove = false;
+          // try it now!
+          // look, I know this will break it.
+          //writeln(this.processedArray[currToProc].testAndSet());
+          if !this.processedArray[currToProc].testAndSet() {
+            this.lock.lock();
+            this.nodesToProcess.remove(currToProc);
+            this.lock.unlock();
+            pathDomain.remove(currToProc);
+            writeln('TASK ', i, ', SEED # ', this.ygg.nodes[currToProc].debugOrderOfCreation, ' : ', v.matrixValues);
+            this.ygg.move(v, currToProc, createEdgeOnMove, edgeDistance);
+            this.inCurrentGeneration.sub(1);
+            this.lock.lock();
+            var nextNode = this.ygg.nextNode(currToProc);
+            this.nextGeneration.add(nextNode);
+            this.lock.unlock();
+
+            if this.inCurrentGeneration.read() == 0 {
+              break;
+            }
           }
+          pathDomain.remove(currToProc);
+          currMin =  Math.INFINITY;
+          currToProc = '';
         }
-        // now determine who is closest.
-        if !v.moved {
-          v.canMove = false;
-          v.takeAnyPath = true;
-        } else
+        // now, switch over the list.
+        this.lock.lock();
+        //pathDomain.clear();
+        if this.nextGeneration.size != 0 {
+          this.nodesToProcess = this.nextGeneration;
+          this.nextGeneration.clear();
+          this.inCurrentGeneration.write(this.nodesToProcess.size);
+          this.processedArray.write(false);
+        } // otherwise, we assume we already did it.  Because we did.
+        this.lock.unlock();
+
+
 
       }
-      writeln(nnodes.read());
+      //writeln(nnodes.read());
     }
   }
 

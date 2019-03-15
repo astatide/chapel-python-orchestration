@@ -8,6 +8,18 @@ use Math;
 use Sort;
 use propagator;
 
+class SpinLock {
+  var l: atomic bool;
+
+  inline proc lock() {
+    while l.testAndSet(memory_order_acquire) do chpl_task_yield();
+  }
+
+  inline proc unlock() {
+    l.clear(memory_order_release);
+  }
+}
+
 record pathHistory {
   var n: domain(int);
   var node: [n] string;
@@ -58,6 +70,10 @@ record pathHistory {
     //this.n.add('0');
   }
 
+  proc distance() {
+    return this.n.size;
+  }
+
 }
 
 //var reverseHistoryTuple: ReverseComparator(Comparator);
@@ -74,6 +90,7 @@ class GeneNetwork {
   // aaahahahaha, suck it languages built not for HPC!
   var nodes: [ids] shared genes.GeneNode;
   var nodes$: sync bool = false;
+  var lock = new shared SpinLock();
 
   var irng = new owned rng.UDevRandomHandler();
 
@@ -89,14 +106,15 @@ class GeneNetwork {
     // We are working with the actual node objects, here.
     // Add to our domain!
     // We need to block until such time as we're ready;
-    var n = nodes$;
+    //var n = nodes$;
     //nodes$.writeEF(true);
+    this.lock.lock();
     this.ids.add(node.id);
     this.nodes[node.id] = node;
     for edge in node.nodes {
       this.edges[node.id].add(edge);
     }
-    nodes$ = false;
+    this.lock.unlock();
   }
 
   proc newSeed() {
@@ -155,14 +173,14 @@ class GeneNetwork {
     var i: int;
     //writeln(this.edges);
     // Build up the potential node list.
-    var n = nodes$;
+    this.lock.lock();
     for id in this.ids do {
       nodes.add(id);
       visited[id] = false;
       dist[id] = Math.INFINITY;
       // paths is sorted down there.
     }
-    nodes$ = false;
+    this.lock.unlock();
     // Am I removing 'root' from here?  I suspect yes.
     nodes.add[id_A];
     dist[id_A] = 0;
@@ -172,7 +190,7 @@ class GeneNetwork {
     //writeln(this.ids);
     while true {
       //writeln(paths, ' : ', unvisited);
-      var n = nodes$;
+      this.lock.lock();
       for edge in this.edges[currentNode] do {
         if !visited[edge] {
           var d = min(dist[edge], dist[currentNode]+1);
@@ -199,7 +217,7 @@ class GeneNetwork {
           }
         }
       }
-      nodes$ = false;
+      this.lock.unlock();
       visited[currentNode] = true;
 
       if visited[id_B] {
@@ -232,9 +250,119 @@ class GeneNetwork {
 
   }
 
-  proc move(ref v: propagator.valkyrie, id: string) {
+  proc calculatePathArray(id_A: string, id_B: domain(string)) {
+    // This is an implementation of djikstra's algorithm.
+    var nodes: domain(string);
+    var visited: [nodes] bool;
+    var dist: [nodes] real;
+    //var paths: [nodes] domain((real, string));
+    var paths: [nodes] pathHistory;
+    var currentNode = id_A;
+    var unvisited: domain(string);
+    var unvisited_d: domain(real);
+    var currMinDist = Math.INFINITY;
+    var currMinNode = id_A;
+    var currMinNodeIndex = 0;
+    var i: int;
+    var completed: [id_B] bool = false;
+    //writeln(this.edges);
+    // Build up the potential node list
+    this.lock.lock();
+    for id in this.ids do {
+      nodes.add(id);
+      visited[id] = false;
+      dist[id] = Math.INFINITY;
+      // paths is sorted down there.
+    }
+    this.lock.unlock();
+    // Am I removing 'root' from here?  I suspect yes.
+    nodes.add[id_A];
+    dist[id_A] = 0;
+    //paths[id_A].add((0.0, id_A));
+    //paths[id_A].add(0);
+    paths[id_A].node[0] = id_A;
+    //writeln(this.ids);
+    while true {
+      i += 1;
+      //writeln(paths, ' : ', unvisited);
+      this.lock.lock();
+      for edge in this.edges[currentNode] do {
+        if !visited[edge] {
+          var d = min(dist[edge], dist[currentNode]+1);
+          //writeln(d);
+          unvisited.add(edge);
+          unvisited_d.add(d);
+          dist[edge] = d;
+
+          if d == dist[currentNode]+1 {
+            paths[edge].n.clear();
+            //i = 0;
+            for (j, e) in paths[currentNode] {
+              //writeln(e);
+              paths[edge].n.add(j : int);
+              paths[edge].node[j : int] = e;
+            }
+            //paths[edge] = paths[currentNode] + edge;
+            // We're doing this as a tuple to help sorting later.
+            // That'll also help us calculate how many hops we have to make,
+            // which will be convenient when we're trying to determine who
+            // should do what.
+            paths[edge].n.add(d: int);
+            paths[edge].node[d: int] = edge;
+          }
+        }
+      }
+      this.lock.unlock();
+      visited[currentNode] = true;
+      if id_B.member(currentNode) {
+        completed[currentNode] = true;
+      }
+
+      if + reduce completed == id_B.size {
+        break;
+      }
+      if unvisited.isEmpty() {
+        break;
+      } else {
+        // get the current minimum from here.
+        //var next_node_id = unvisited_d.find(unvisited_d.low)[1];
+        i = 0;
+        currMinDist = Math.INFINITY;
+        for node in unvisited {
+          i += 1;
+          //writeln(currentNode, ' : ', currMinDist, ', ', node, ' : ', dist[node]);
+          if currMinDist > dist[node] {
+            currMinDist = dist[node];
+            currMinNode = node;
+            currMinNodeIndex = i;
+          }
+        }
+        //writeln(currMinNode);
+        currentNode = currMinNode;
+        unvisited_d.remove(currMinDist);
+        unvisited.remove(currMinNode);
+      }
+    }
+    //writeln(nodes, paths);
+    writeln(i);
+    return paths;
+
+  }
+
+  proc move(ref v: propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) {
     // Bit clonky, but for now.
-    var d = this.moveToNode(v.currentNode, id);
+    var (d, pl) = this.moveToNode(v.currentNode, id);
+    writeln(d, ' : ', pl);
+    if createEdgeOnMove {
+      if pl > edgeDistance {
+        // If our edge distance is particularly long, create a shortcut.
+        this.lock.lock();
+        this.nodes[v.currentNode].join(this.nodes[id], d);
+        this.edges[id].add(v.currentNode);
+        this.edges[v.currentNode].add(id);
+        this.lock.unlock();
+      }
+    }
     v.move(d, id);
   }
 
@@ -243,6 +371,7 @@ class GeneNetwork {
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.
     var delta = new genes.deltaRecord;
+    var pathLength: int;
     // Get rid of the current node.
     var currentNode = id_A;
     path.remove(id_A);
@@ -254,6 +383,7 @@ class GeneNetwork {
         delta += (s, c);
       }
       currentNode = pt;
+      pathLength += 1;
     }
     for (s, c) in delta {
       if c == 0 {
@@ -261,7 +391,7 @@ class GeneNetwork {
         delta.remove(s);
       }
     }
-    return delta;
+    return (delta, pathLength);
   }
 
   proc calculateHistory(id: string) {
@@ -335,10 +465,11 @@ class GeneNetwork {
     var seed = this.nodes[id].debugOrderOfCreation;
     var node = this.nodes[id].new_node(1, 1, (seed+1) : string);
     node.debugOrderOfCreation = seed+1;
+    node.generation = this.nodes[id].generation + 1;
     this.add_node(node);
-    var n = nodes$;
+    this.lock.lock();
     this.edges[id].add(node.id);
-    nodes$ = false;
+    this.lock.unlock();
     return node.id;
   }
 
