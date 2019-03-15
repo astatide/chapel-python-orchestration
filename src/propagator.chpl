@@ -119,34 +119,43 @@ class Propagator {
         }
         while this.inCurrentGeneration.read()!= 0 {
           currMin =  Math.INFINITY;
+            this.lock.lock();
           for id in this.nodesToProcess {
             //writeln(pathSet);
-            if pathSet[id].distance() < currMin {
-              currMin = pathSet[id].distance();
-              currToProc = id;
+            if pathDomain.member(id) {
+              if pathSet[id].distance() < currMin {
+                currMin = pathSet[id].distance();
+                currToProc = id;
+              }
             }
           }
+          this.lock.unlock();
           // try it now!
           // look, I know this will break it.
           //writeln(this.processedArray[currToProc].testAndSet());
-          if !this.processedArray[currToProc].testAndSet() {
-            this.lock.lock();
-            this.nodesToProcess.remove(currToProc);
-            this.lock.unlock();
-            pathDomain.remove(currToProc);
-            writeln('TASK ', i, ', SEED # ', this.ygg.nodes[currToProc].debugOrderOfCreation, ' : ', v.matrixValues);
-            this.ygg.move(v, currToProc, createEdgeOnMove, edgeDistance);
-            this.inCurrentGeneration.sub(1);
-            this.lock.lock();
-            var nextNode = this.ygg.nextNode(currToProc);
-            this.nextGeneration.add(nextNode);
-            this.lock.unlock();
+          // If we can't get anything, that means we're just waiting for things to have finished processing.
+          if currToProc != '' {
+            if !this.processedArray[currToProc].testAndSet() {
+              this.lock.lock();
+              this.nodesToProcess.remove(currToProc);
+              this.lock.unlock();
+              //pathDomain.remove(currToProc);
+              //writeln('TASK ', i, ', SEED # ', this.ygg.nodes[currToProc].debugOrderOfCreation, ' : ', v.matrixValues);
+              writeln('TASK ', i, ', SEED # ', currToProc, ' : ', v.matrixValues);
 
-            if this.inCurrentGeneration.read() == 0 {
-              break;
+              this.ygg.move(v, currToProc, createEdgeOnMove, edgeDistance);
+              //this.inCurrentGeneration.sub(1);
+              this.lock.lock();
+              var nextNode = this.ygg.nextNode(currToProc);
+              this.nextGeneration.add(nextNode);
+              this.lock.unlock();
+              this.inCurrentGeneration.sub(1);
+              //if this.inCurrentGeneration.read() == 0 {
+              //  break;
+              //}
             }
           }
-          pathDomain.remove(currToProc);
+          //pathDomain.remove(currToProc);
           currMin =  Math.INFINITY;
           currToProc = '';
         }

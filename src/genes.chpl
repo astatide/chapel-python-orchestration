@@ -13,6 +13,17 @@ var udevrandom = new owned rng.UDevRandomHandler();
 var newrng = udevrandom.returnRNG();
 //writeln(UUID.UUID4());
 
+class SpinLock {
+  var l: atomic bool;
+
+  inline proc lock() {
+    while l.testAndSet(memory_order_acquire) do chpl_task_yield();
+  }
+
+  inline proc unlock() {
+    l.clear(memory_order_release);
+  }
+}
 
 record noiseFunctions {
   // This is for holding our functions.
@@ -215,6 +226,8 @@ class GeneNode {
   // should make it easier to return histories.
   var parentSeedNode: string;
 
+  var l = new shared SpinLock();
+
   proc init(id='', ctype='', parent='', parentSeedNode='') {
     this.ctype = ctype;
     this.parent = parent;
@@ -243,12 +256,16 @@ class GeneNode {
   proc join(node: shared GeneNode, delta: deltaRecord) {
     // did I call that function correctly?
     //writeln(node, delta);
+    this.l.lock();
+    node.l.lock();
     var d = (this.id, node.id);
     this.edges[node.id] = new shared GeneEdge(delta, d);
     // Now, reverse the delta.  Which we can do by multiplying it by
     // -1.
     d = (node.id, this.id);
     node.edges[this.id] = new shared GeneEdge(delta*-1, d);
+    this.l.unlock();
+    node.l.unlock();
   }
 
   proc return_edge(id: string) {

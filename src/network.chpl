@@ -113,6 +113,10 @@ class GeneNetwork {
     this.nodes[node.id] = node;
     for edge in node.nodes {
       this.edges[node.id].add(edge);
+      if !this.ids.member(edge) {
+        this.ids.add(edge);
+      }
+      this.edges[edge].add(node.id);
     }
     this.lock.unlock();
   }
@@ -173,14 +177,14 @@ class GeneNetwork {
     var i: int;
     //writeln(this.edges);
     // Build up the potential node list.
-    this.lock.lock();
-    for id in this.ids do {
-      nodes.add(id);
-      visited[id] = false;
-      dist[id] = Math.INFINITY;
+    //this.lock.lock();
+    //for id in this.ids do {
+    //  nodes.add(id);
+    //  visited[id] = false;
+    //  dist[id] = Math.INFINITY;
       // paths is sorted down there.
-    }
-    this.lock.unlock();
+    //}
+    //this.lock.unlock();
     // Am I removing 'root' from here?  I suspect yes.
     nodes.add[id_A];
     dist[id_A] = 0;
@@ -192,6 +196,12 @@ class GeneNetwork {
       //writeln(paths, ' : ', unvisited);
       this.lock.lock();
       for edge in this.edges[currentNode] do {
+        if !nodes.member(edge) {
+            nodes.add(edge);
+            visited[edge] = false;
+            dist[edge] = Math.INFINITY;
+        }
+        //writeln(nodes.member(edge), ' ', edge);
         if !visited[edge] {
           var d = min(dist[edge], dist[currentNode]+1);
           //writeln(d);
@@ -220,8 +230,10 @@ class GeneNetwork {
       this.lock.unlock();
       visited[currentNode] = true;
 
-      if visited[id_B] {
-        break;
+      if nodes.member(id_B) {
+        if visited[id_B] {
+          break;
+        }
       }
       if unvisited.isEmpty() {
         break;
@@ -267,14 +279,14 @@ class GeneNetwork {
     var completed: [id_B] bool = false;
     //writeln(this.edges);
     // Build up the potential node list
-    this.lock.lock();
-    for id in this.ids do {
-      nodes.add(id);
-      visited[id] = false;
-      dist[id] = Math.INFINITY;
+    //this.lock.lock();
+    //for id in this.ids do {
+    //  nodes.add(id);
+    //  visited[id] = false;
+    //  dist[id] = Math.INFINITY;
       // paths is sorted down there.
-    }
-    this.lock.unlock();
+    //}
+    //this.lock.unlock();
     // Am I removing 'root' from here?  I suspect yes.
     nodes.add[id_A];
     dist[id_A] = 0;
@@ -287,6 +299,11 @@ class GeneNetwork {
       //writeln(paths, ' : ', unvisited);
       this.lock.lock();
       for edge in this.edges[currentNode] do {
+        if !nodes.member(edge) {
+            nodes.add(edge);
+            visited[edge] = false;
+            dist[edge] = Math.INFINITY;
+        }
         if !visited[edge] {
           var d = min(dist[edge], dist[currentNode]+1);
           //writeln(d);
@@ -467,9 +484,9 @@ class GeneNetwork {
     node.debugOrderOfCreation = seed+1;
     node.generation = this.nodes[id].generation + 1;
     this.add_node(node);
-    this.lock.lock();
-    this.edges[id].add(node.id);
-    this.lock.unlock();
+    //this.lock.lock();
+    //this.edges[id].add(node.id);
+    //this.lock.unlock();
     return node.id;
   }
 
