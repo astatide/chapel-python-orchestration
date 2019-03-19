@@ -124,7 +124,7 @@ class Propagator {
               toProcess.add(id);
             }
           }
-          pathSet += this.ygg.calculatePathArray(v.currentNode, toProcess);
+          pathSet += this.ygg.calculatePathArray(v.currentNode, toProcess, v.header);
           calculatedDistance = true;
         }
         while this.inCurrentGeneration.read()!= 0 {

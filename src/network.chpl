@@ -111,7 +111,7 @@ class GeneNetwork {
     if hstring != '' {
       vstring = ' '.join(hstring, '__addNode__');
     }
-    this.lock.lock(vstring);
+    this.lock.wl(vstring);
     this.ids.add(node.id);
     this.nodes[node.id] = node;
     for edge in node.nodes {
@@ -123,7 +123,7 @@ class GeneNetwork {
         this.edges[edge].add(node.id);
       }
     }
-    this.lock.unlock(vstring);
+    this.lock.uwl(vstring);
   }
 
   proc newSeed() {
@@ -178,7 +178,7 @@ class GeneNetwork {
     }
   }
 
-  proc calculatePath(id_A: string, id_B: string) {
+  proc calculatePath(id_A: string, id_B: string, hstring: string) {
     // This is an implementation of djikstra's algorithm.
     var nodes: domain(string);
     var visited: [nodes] bool;
@@ -192,6 +192,10 @@ class GeneNetwork {
     var currMinNode = id_A;
     var currMinNodeIndex = 0;
     var i: int;
+    var vstring: string;
+    if hstring != '' {
+      vstring = ' '.join(hstring, 'calculatePath');
+    }
     //writeln(this.edges);
     // Build up the potential node list.
     //this.lock.lock();
@@ -212,6 +216,7 @@ class GeneNetwork {
     while true {
       //writeln(paths, ' : ', unvisited);
       //this.lock.lock();
+      this.lock.rl(vstring);
       for edge in this.edges[currentNode] do {
         if !nodes.member(edge) {
             nodes.add(edge);
@@ -245,6 +250,7 @@ class GeneNetwork {
         }
       }
       //this.lock.unlock();
+      this.lock.url(vstring);
       visited[currentNode] = true;
 
       if nodes.member(id_B) {
@@ -279,7 +285,7 @@ class GeneNetwork {
 
   }
 
-  proc calculatePathArray(id_A: string, id_B: domain(string)) {
+  proc calculatePathArray(id_A: string, id_B: domain(string), hstring: string) {
     // This is an implementation of djikstra's algorithm.
     var nodes: domain(string);
     var visited: [nodes] bool;
@@ -294,6 +300,10 @@ class GeneNetwork {
     var currMinNodeIndex = 0;
     var i: int;
     var completed: [id_B] bool = false;
+    var vstring: string;
+    if hstring != '' {
+      vstring = ' '.join(hstring, 'calculatePath');
+    }
     //writeln(this.edges);
     // Build up the potential node list
     //this.lock.lock();
@@ -315,6 +325,7 @@ class GeneNetwork {
       i += 1;
       //writeln(paths, ' : ', unvisited);
       //this.lock.lock();
+      this.lock.rl(vstring);
       for edge in this.edges[currentNode] do {
         if !nodes.member(edge) {
             nodes.add(edge);
@@ -347,6 +358,7 @@ class GeneNetwork {
         }
       }
       //this.lock.unlock();
+      this.lock.url(vstring);
       visited[currentNode] = true;
       if id_B.member(currentNode) {
         completed[currentNode] = true;
@@ -391,11 +403,11 @@ class GeneNetwork {
     if createEdgeOnMove {
       if pl > edgeDistance {
         // If our edge distance is particularly long, create a shortcut.
-        this.lock.lock(hstring);
+        this.lock.wl(hstring);
         this.nodes[v.currentNode].join(this.nodes[id], d, ' '.join(v.header, 'move'));
         this.edges[id].add(v.currentNode);
         this.edges[v.currentNode].add(id);
-        this.lock.unlock(hstring);
+        this.lock.uwl(hstring);
       }
     }
     v.move(d, id);
@@ -413,9 +425,9 @@ class GeneNetwork {
   proc __moveToNode__(id_A: string, id_B: string, hstring: string) {
     // We do have a lock here.
     var vstring = ' '.join(hstring, '__moveToNode__');
-    this.lock.lock(vstring);
-    var path = this.calculatePath(id_A, id_B);
-    this.lock.unlock(vstring);
+    //this.lock.(vstring);
+    var path = this.calculatePath(id_A, id_B, hstring);
+    //this.lock.unlock(vstring);
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.
     var delta = new genes.deltaRecord();
@@ -424,9 +436,9 @@ class GeneNetwork {
     var currentNode = id_A;
     path.remove(id_A);
     for (i, pt) in path {
-      this.lock.lock(vstring);
+      //this.lock.lock(vstring);
       var edge = this.nodes[currentNode].edges[pt : string];
-      this.lock.unlock(vstring);
+      //this.lock.unlock(vstring);
       for (s, c) in edge.delta {
         //delta.seeds.add(seed);
         //delta.delta[seed] += (c*-1) : real;
@@ -444,12 +456,16 @@ class GeneNetwork {
     return (delta, pathLength);
   }
 
-  proc calculateHistory(id: string) {
+  proc calculateHistory(id: string, hstring: string) {
     // Since all nodes carry their ancestor,
     // simply calculate the path back to the seed node.
-    this.lock.lock();
-    var path = this.calculatePath(id, this.nodes[id].parentSeedNode);
-    this.lock.unlock();
+    //this.lock.lock();
+    var vstring: string;
+    if hstring != '' {
+      vstring = ' '.join(hstring, 'calculateHistory');
+    }
+    var path = this.calculatePath(id, this.nodes[id].parentSeedNode, hstring);
+    //this.lock.unlock();
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.
     var delta = new genes.deltaRecord();
@@ -469,9 +485,9 @@ class GeneNetwork {
       //writeln(this.nodes[currentNode].edges);
       //writeln(this.nodes[currentNode].edges[pt].delta);
       //writeln(this.nodes[currentNode].edges[pt[2]]);
-      this.lock.lock();
+      //this.lock.lock();
       var edge = this.nodes[currentNode].edges[pt : string];
-      this.lock.unlock();
+      //this.lock.unlock();
       //for (seed, c) in edge.delta {
       //writeln(edge);
       for (seed, c) in zip(edge.delta.seeds, edge.delta.delta) {
@@ -507,8 +523,8 @@ class GeneNetwork {
     if hstring != '' {
         vstring = ' '.join(hstring, '__mergeNodes__');
     }
-    var deltaA = this.calculateHistory(id_A);
-    var deltaB = this.calculateHistory(id_B);
+    var deltaA = this.calculateHistory(id_A, vstring);
+    var deltaB = this.calculateHistory(id_B, vstring);
     //var ndeltaA = new genes.deltaRecord;
     //var ndeltaB = new genes.deltaRecord;
     var node = new shared genes.GeneNode(ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
