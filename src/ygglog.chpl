@@ -1,15 +1,5 @@
 
-class SpinLock {
-  var l: atomic bool;
-
-  inline proc lock() {
-    while l.testAndSet(memory_order_acquire) do chpl_task_yield();
-  }
-
-  inline proc unlock() {
-    l.clear(memory_order_release);
-  }
-}
+use spinlock;
 
 class YggdrasilLogging {
   // This is a class to let us handle all input and output.
@@ -23,30 +13,29 @@ class YggdrasilLogging {
   var headerLiner = '_';
   var headerStarter = '/';
   var indent = 5;
-  var l = new shared SpinLock();
+  var l = new shared spinlock.SpinLock();
   var tId: int;
 
-  proc formatHeader(tId: int, mtype: string) {
+  proc formatHeader(mstring: string, mtype: string) {
     // Formats a header for us to print out to stdout.
-    var header = ' '.join(this.headerStarter*5, mtype, ':', 'tId ', tId : string, ' ');
+    var header = ' '.join(this.headerStarter*5, mtype, this.headerStarter);
     var nToEnd = this.maxCharacters - header.size;
     header = header + (this.headerStarter*nToEnd);
     return header;
   }
 
-  proc printToConsole(msg, debugLevel: string, tId: int) {
+  proc printToConsole(msg, debugLevel: string, hstring: string) {
     l.lock();
     if debugLevel != this.lastDebugHeader {
-      writeln(this.formatHeader(tId, debugLevel));
+      writeln(this.formatHeader(hstring, debugLevel));
       this.lastDebugHeader = debugLevel;
     }
-    if tId >= 0 {
-        write(' '*(this.indent+1), 'TASK ', tId: string, ' : ');
+    if hstring != '' {
+        write(' '*(this.indent+1), hstring, ' : ');
     } else {
         write(' '*(this.indent+1), 'YGGDSL : ');
     }
     var tm = this.indent;
-    //for m in msg.split(maxsplit = -1) {
     for im in msg {
       for m in im.split(maxsplit = -1) {
         if tm + m.size > this.maxCharacters {
@@ -55,46 +44,75 @@ class YggdrasilLogging {
           tm = this.indent*3;
         }
         tm += m.size+1;
-        write(m, ' ');
+        write(m : string, ' ');
       }
     }
     writeln('');
     l.unlock();
   }
 
-  proc debug(msg...?n) {
-    var nmsg: [1..n-1] string;
-    if this.currentDebugLevel <= this.DEBUG {
-      if msg[msg.size].type == int {
-        tId = msg[n];
-        //msg = msg[1..(msg.size-1)];
-        //msg.domreturnremove(msg.size);
-        for param m in 1..n-1 {
-          nmsg[m] = msg[m];
-        }
-        this.printToConsole(nmsg, 'DEBUG', tId);
-      } else {
-        tId = -1;
-        this.printToConsole(msg, 'DEBUG', tId);
+  proc genericMessage(msg, mtype: int, debugLevel: string, gt: bool) {
+    if gt {
+      if this.currentDebugLevel <= mtype {
+        this.printToConsole(msg, debugLevel, hstring='');
+      }
+    } else {
+      if this.currentDebugLevel == mtype {
+        this.printToConsole(msg, debugLevel, hstring='');
       }
     }
   }
 
-  proc warning(msg...?n, tId: int = 0) {
-    if this.currentDebugLevel <= this.WARNING {
-      this.printToConsole(msg, 'WARNING', tId);
+  proc genericMessage(msg, mtype: int, debugLevel: string, hstring: string, gt: bool) {
+    if gt {
+      if this.currentDebugLevel <= mtype {
+        this.printToConsole(msg, debugLevel, hstring);
+      }
+    } else {
+      if this.currentDebugLevel == mtype {
+        this.printToConsole(msg, debugLevel, hstring);
+      }
     }
   }
 
-  proc print(msg...?n, tId: int = 0) {
-    if this.currentDebugLevel <= this.RUNTIME {
-      this.printToConsole(msg, 'RUNTIME', tId);
-    }
+  proc debug(msg...?n) {
+    this.genericMessage(msg, this.DEBUG, 'DEBUG', gt=true);
   }
 
-  proc log(msg...?n, tId: int = 0) {
-    if this.currentDebugLevel <= this.RUNTIME {
-      this.printToConsole(msg, 'RUNTIME', tId);
-    }
+  proc debug(msg...?n, hstring: string = '') {
+    this.genericMessage(msg, this.DEBUG, 'DEBUG', hstring, gt=true);
   }
+
+  proc devel(msg...?n) {
+    this.genericMessage(msg, this.DEVEL, 'DEVEL', gt=false);
+  }
+
+  proc devel(msg...?n, hstring: string = '') {
+    this.genericMessage(msg, this.DEVEL, 'DEVEL', hstring, gt=false);
+  }
+
+  proc warning(msg...?n) {
+    this.genericMessage(msg, this.WARNING, 'WARNING', gt=true);
+  }
+
+  proc warning(msg...?n, hstring: string = '') {
+    this.genericMessage(msg, this.WARNING, 'WARNING', hstring, gt=true);
+  }
+
+  proc log(msg...?n) {
+    this.genericMessage(msg, this.RUNTIME, 'RUNTIME', gt=true);
+  }
+
+  proc log(msg...?n, hstring: string = '') {
+    this.genericMessage(msg, this.RUNTIME, 'RUNTIME', hstring, gt=true);
+  }
+
+  proc critical(msg...?n, hstring: string = '') {
+    this.genericMessage(msg, this.currentDebugLevel, 'CRITICAL FAILURE', hstring, gt=true);
+  }
+
+  proc critical(msg...?n) {
+    this.genericMessage(msg, this.currentDebugLevel, 'CRITICAL FAILURE', hstring='', gt=true);
+  }
+
 }

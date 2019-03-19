@@ -8,18 +8,7 @@ use Math;
 use Sort;
 use propagator;
 use ygglog;
-
-class SpinLock {
-  var l: atomic bool;
-
-  inline proc lock() {
-    while l.testAndSet(memory_order_acquire) do chpl_task_yield();
-  }
-
-  inline proc unlock() {
-    l.clear(memory_order_release);
-  }
-}
+use spinlock;
 
 record pathHistory {
   var n: domain(int);
@@ -91,27 +80,38 @@ class GeneNetwork {
   // aaahahahaha, suck it languages built not for HPC!
   var nodes: [ids] shared genes.GeneNode;
   var nodes$: sync bool = false;
-  var lock = new shared SpinLock();
+  var lock: shared spinlock.SpinLock;
 
   var irng = new owned rng.UDevRandomHandler();
 
   //var rootNode = new shared genes.GeneNode(id='  root');
   var rootNode: shared genes.GeneNode;
-
-  var log = new shared ygglog.YggdrasilLogging();
+  var log: shared ygglog.YggdrasilLogging;
 
   // Kind of wondering whether this is the appropriate place to handle locales?
   // Despite the name, this is simply an array which stores where each locale
   // currently is.
 
-  proc add_node(in node: shared genes.GeneNode) : void {
+  proc add_node(in node: shared genes.GeneNode) {
+    this.__addNode__(node, hstring='');
+  }
+
+  proc add_node(in node: shared genes.GeneNode, hstring: string) {
+    this.__addNode__(node, hstring);
+  }
+
+  proc __addNode__(in node: shared genes.GeneNode, hstring: string) : void {
     //writeln(nodes);
     // We are working with the actual node objects, here.
     // Add to our domain!
     // We need to block until such time as we're ready;
     //var n = nodes$;
     //nodes$.writeEF(true);
-    this.lock.lock();
+    var vstring: string;
+    if hstring != '' {
+      vstring = ' '.join(hstring, '__addNode__');
+    }
+    this.lock.lock(vstring);
     this.ids.add(node.id);
     this.nodes[node.id] = node;
     for edge in node.nodes {
@@ -123,7 +123,7 @@ class GeneNetwork {
         this.edges[edge].add(node.id);
       }
     }
-    this.lock.unlock();
+    this.lock.unlock(vstring);
   }
 
   proc newSeed() {
@@ -133,27 +133,39 @@ class GeneNetwork {
     //return 0;
   }
 
+  proc init() {
+    this.lock = new shared spinlock.SpinLock();
+    this.lock.t = 'GeneNetwork';
+    this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
+  }
+
   proc initializeNetwork(n_seeds=10: int, gen_seeds=true: bool) {
     var seed: int;
     //var node: unmanaged genes.GeneNode;
     var delta: genes.deltaRecord;
     //const alpha = ['A', 'B', 'C'];
-    this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
-    //writeln('What is root?');
-    //writeln(this.rootNode.id);
-    //this.rootNode.ctype = 'root';
+    //this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
+    // Initialize the lock
+    //this.lock = new shared spinlock.SpinLock();
+    this.rootNode.log = this.log;
+    this.rootNode.l.log = this.log;
     for n in 1..n_seeds {
       //seed = this.newSeed();
       seed = n*1000;
       var node = new shared genes.GeneNode(id=(n*1000) : string, ctype='seed', parentSeedNode='', parent='root');
+      node.log = this.log;
+      node.l.log = this.log;
+      //writeln(this.log : string, node.log : string, node.l.log : string);
       node.debugOrderOfCreation = n*1000;
       delta = new genes.deltaRecord();
       delta.seeds.add(seed);
       delta.delta[seed] = 1;
-      this.rootNode.join(node, delta);
-      this.add_node(node);
+      this.rootNode.join(node, delta, 'initializeNetwork');
+      this.add_node(node, 'initializeNetwork');
     }
-    this.add_node(this.rootNode);
+    this.add_node(this.rootNode, 'initializeNetwork');
+    // send in the logging infrastructure.
+    //this.lock.log = this.log;
   }
 
   proc initializeSeedGenes(seeds: domain(int)) {
@@ -372,25 +384,38 @@ class GeneNetwork {
 
   proc move(ref v: propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) {
     // Bit clonky, but for now.
-    var (d, pl) = this.moveToNode(v.currentNode, id);
+    var hstring = ' '.join(v.header, 'move');
+    this.log.debug('attempting to move', hstring=hstring);
+    var (d, pl) = this.moveToNode(v.currentNode, id, hstring=v.header);
+    v.nMoves += 1;
     if createEdgeOnMove {
       if pl > edgeDistance {
         // If our edge distance is particularly long, create a shortcut.
-        this.lock.lock();
-        this.nodes[v.currentNode].join(this.nodes[id], d);
+        this.lock.lock(hstring);
+        this.nodes[v.currentNode].join(this.nodes[id], d, ' '.join(v.header, 'move'));
         this.edges[id].add(v.currentNode);
         this.edges[v.currentNode].add(id);
-        this.lock.unlock();
+        this.lock.unlock(hstring);
       }
     }
     v.move(d, id);
+    this.log.debug('move successful', hstring=hstring);
   }
 
   proc moveToNode(id_A: string, id_B: string) {
+    return this.__moveToNode__(id_A, id_B, hstring='');
+  }
+
+  proc moveToNode(id_A: string, id_B: string, hstring: string) {
+    return this.__moveToNode__(id_A, id_B, hstring);
+  }
+
+  proc __moveToNode__(id_A: string, id_B: string, hstring: string) {
     // We do have a lock here.
-    this.lock.lock();
+    var vstring = ' '.join(hstring, '__moveToNode__');
+    this.lock.lock(vstring);
     var path = this.calculatePath(id_A, id_B);
-    this.lock.unlock();
+    this.lock.unlock(vstring);
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.
     var delta = new genes.deltaRecord();
@@ -399,9 +424,9 @@ class GeneNetwork {
     var currentNode = id_A;
     path.remove(id_A);
     for (i, pt) in path {
-      this.lock.lock();
+      this.lock.lock(vstring);
       var edge = this.nodes[currentNode].edges[pt : string];
-      this.lock.unlock();
+      this.lock.unlock(vstring);
       for (s, c) in edge.delta {
         //delta.seeds.add(seed);
         //delta.delta[seed] += (c*-1) : real;
@@ -468,7 +493,20 @@ class GeneNetwork {
   }
 
   // Here's a function for merging two nodes.
+
   proc mergeNodes(id_A: string, id_B: string) {
+    return this.__mergeNodes__(id_A, id_B, hstring='');
+  }
+
+  proc mergeNodes(id_A: string, id_B: string, hstring: string) {
+    return this.__mergeNodes__(id_A, id_B, hstring='');
+  }
+
+  proc __mergeNodes__(id_A: string, id_B: string, hstring: string) {
+    var vstring: string;
+    if hstring != '' {
+        vstring = ' '.join(hstring, '__mergeNodes__');
+    }
     var deltaA = this.calculateHistory(id_A);
     var deltaB = this.calculateHistory(id_B);
     //var ndeltaA = new genes.deltaRecord;
@@ -478,10 +516,12 @@ class GeneNetwork {
     //writeln(deltaA);
     // Why is it in the reverse, you ask?  Because the calculateHistory method
     // returns the information necessary to go BACK to the seed node from the id given.
+    node.log = this.log;
+    node.l.log = this.log;
     var delta = ((deltaA*-1) + deltaB)/2;
-    node.join(this.nodes[id_A], delta*-1);
-    node.join(this.nodes[id_B], delta);
-    this.add_node(node);
+    node.join(this.nodes[id_A], delta*-1, vstring);
+    node.join(this.nodes[id_B], delta, vstring);
+    this.add_node(node, vstring);
     //var delta = (deltaA + deltaB);
     //delta /= 2;
     //delta = delta * 2;
@@ -490,14 +530,27 @@ class GeneNetwork {
   }
 
   proc nextNode(id: string) {
+    return this.__nextNode__(id, hstring='');
+  }
+
+  proc nextNode(id: string, hstring: string) {
+    return this.__nextNode__(id, hstring);
+  }
+
+  proc __nextNode__(id: string, hstring: string) {
+    var vstring: string;
+    if hstring != '' {
+      vstring = ' '.join(hstring, '__nextNode__');
+    }
+    this.log.debug('Adding a seed on to ID', id : string, hstring);
     var seed = this.nodes[id].debugOrderOfCreation;
-    var node = this.nodes[id].new_node(1, 1, (seed+1) : string);
+    var node = this.nodes[id].new_node(1, 1, (seed+1) : string, vstring);
     node.debugOrderOfCreation = seed+1;
     node.generation = this.nodes[id].generation + 1;
-    this.add_node(node);
-    //this.lock.lock();
-    //this.edges[id].add(node.id);
-    //this.lock.unlock();
+    node.log = this.log;
+    node.l.log = this.log;
+    this.add_node(node, vstring);
+    this.log.debug('Successfully added', seed : string, 'to ID', id : string, 'to create ID', node.id : string, hstring=hstring);
     return node.id;
   }
 

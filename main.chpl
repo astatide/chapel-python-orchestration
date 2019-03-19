@@ -3,6 +3,7 @@ use rng;
 use genes;
 use network;
 use propagator;
+use spinlock;
 
 use VisualDebug;
 

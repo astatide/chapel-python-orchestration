@@ -5,6 +5,8 @@
 use rng;
 use uuid;
 use Random;
+use spinlock;
+use ygglog;
 
 // This pulls from its own RNG.  Guarantees a bit more entropy.
 var UUID = new owned uuid.UUID();
@@ -12,18 +14,6 @@ UUID.UUID4();
 var udevrandom = new owned rng.UDevRandomHandler();
 var newrng = udevrandom.returnRNG();
 //writeln(UUID.UUID4());
-
-class SpinLock {
-  var l: atomic bool;
-
-  inline proc lock() {
-    while l.testAndSet(memory_order_acquire) do chpl_task_yield();
-  }
-
-  inline proc unlock() {
-    l.clear(memory_order_release);
-  }
-}
 
 record noiseFunctions {
   // This is for holding our functions.
@@ -225,7 +215,8 @@ class GeneNode {
   // should make it easier to return histories.
   var parentSeedNode: string;
 
-  var l = new shared SpinLock();
+  var l: shared spinlock.SpinLock;
+  var log: shared ygglog.YggdrasilLogging;
 
   proc init(id='', ctype='', parent='', parentSeedNode='') {
     this.ctype = ctype;
@@ -235,14 +226,14 @@ class GeneNode {
       this.id = UUID.UUID4();
     } else {
       this.id = id;
-      //this.id
-      //this.id = 'JAJAYAAA';
     }
     if parentSeedNode == '' {
       this.parentSeedNode = this.id;
     } else {
       this.parentSeedNode = parentSeedNode;
     }
+    this.l = new shared spinlock.SpinLock();
+    this.l.t = ' '.join('GENE', this.id);
   }
   // some validation functions
   proc node_in_edges(id: string) {
@@ -256,31 +247,64 @@ class GeneNode {
 
   // Now, the functions to handle the nodes!
   //   proc join(node: GeneNode, delta: [?dom]) {
+
   proc join(node: shared GeneNode, delta: deltaRecord) {
+    this.__join__(node, delta, hstring='');
+  }
+  proc join(node: shared GeneNode, delta: deltaRecord, hstring: string) {
+    this.__join__(node, delta, hstring);
+  }
+
+  proc __join__(node: shared GeneNode, delta: deltaRecord, hstring: string) {
     // did I call that function correctly?
     //writeln(node, delta);
-    this.l.lock();
-    node.l.lock();
+    var vstring: string;
+    if hstring != '' {
+      vstring = ' '.join(hstring, '__join__');
+    }
+    this.l.lock(vstring);
+    node.l.lock(vstring);
     var d = (this.id, node.id);
     this.edges[node.id] = new shared GeneEdge(delta, d);
     // Now, reverse the delta.  Which we can do by multiplying it by
     // -1.
     d = (node.id, this.id);
     node.edges[this.id] = new shared GeneEdge(delta*-1, d);
-    node.l.unlock();
-    this.l.unlock();
+    node.l.unlock(vstring);
+    this.l.unlock(vstring);
   }
 
-  proc return_edge(id: string) {
-    this.l.lock();
+  proc return_edge(id:string) {
+    return this.__returnEdge__(id, hstring='');
+  }
+
+  proc return_edge(id:string, hstring: string) {
+    return this.__returnEdge__(id, hstring);
+  }
+
+  proc __returnEdge__(id: string, hstring: string) {
+    var vstring: string;
+    if hstring != '' {
+      vstring = ' '.join(hstring, '__returnEdge__');
+    }
+    this.l.lock(vstring);
     var d: deltaRecord;
     if this.node_in_edges(id) {
       d = this.edges[id];
     }
-    this.l.unlock();
+    this.l.unlock(vstring);
     return d;
   }
+
   proc new_node(seed: int, coefficient: real, id='': string) {
+    return this.__newNode__(seed, coefficient, id, hstring='');
+  }
+
+  proc new_node(seed: int, coefficient: real, id='': string, hstring: string) {
+    return this.__newNode__(seed, coefficient, id, hstring);
+  }
+
+  proc __newNode__(seed: int, coefficient: real, id='': string, hstring: string) {
     // This function is a generic call for whenever we make a modification
     // Mutations, adding a new seed, whatever.  We just create a new node
     // and join them properly.
@@ -289,9 +313,15 @@ class GeneNode {
 
     node.parentSeedNode = this.parentSeedNode;
     node.parent = this.id;
+    node.log = this.log;
+    node.l.log = this.log;
 
     delta.delta[seed] = coefficient;
-    this.join(node, delta);
+    var vstring: string;
+    if hstring != '' {
+      vstring = ' '.join(hstring, '__newNode__');
+    }
+    this.join(node, delta, vstring);
     return node;
   }
 }
