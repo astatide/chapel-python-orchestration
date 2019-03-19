@@ -5,6 +5,8 @@ use genes;
 use network;
 use uuid;
 use Math;
+use VisualDebug;
+use ygglog;
 
 config const mSize = 20;
 config var maxPerGeneration = 400;
@@ -66,10 +68,13 @@ class Propagator {
   var nextGeneration: domain(string);
 
   var ygg: shared network.GeneNetwork();
+  var log: shared ygglog.YggdrasilLogging();
 
   proc init() {
     this.ygg = new shared network.GeneNetwork();
+    this.log = new shared ygglog.YggdrasilLogging();
     this.ygg.initializeNetwork(n_seeds=startingSeeds);
+    this.ygg.log = this.log;
     //this.processedArray.write(true);
     var ids = this.ygg.ids;
     ids.remove('root');
@@ -80,7 +85,7 @@ class Propagator {
       this.inCurrentGeneration.add(1);
     }
     //writeln(this.ygg.nodes);
-    writeln(this.inCurrentGeneration);
+    this.log.debug('INITIALIZED', this.inCurrentGeneration.read() : string, 'seeds.');
   }
 
   proc run() {
@@ -92,12 +97,14 @@ class Propagator {
     //    writeln(j);
     //  }
     //forall i in 1..maxValkyries with ( var v: valkyrie ) {
+    startVdebug("E2");
+    this.log.debug('STARTING YGGDRASIL');
     var nnodes: atomic int;
     coforall i in 1..maxValkyries {
       //writeln(v.matrixValues);
-      var v = new valkyrie;
+      var v = new valkyrie();
       v.moveToRoot();
-      for gen in 1..998 {
+      for gen in 1..2 {
         var calculatedDistance: bool = false;
         var currToProc: string;
         var currMin: real = Math.INFINITY : real;
@@ -141,8 +148,13 @@ class Propagator {
               this.lock.unlock();
               //pathDomain.remove(currToProc);
               //writeln('TASK ', i, ', SEED # ', this.ygg.nodes[currToProc].debugOrderOfCreation, ' : ', v.matrixValues);
-              writeln('TASK ', i, ', SEED # ', currToProc, ' : ', v.matrixValues);
+              //this.log.log(' '.join('TASK', i : string, 'SEED #', currToProc : string, ':', v.matrixValues : string), i);
+              //this.log.tId = i;
+              this.log.debug('SEED #', currToProc : string, i);
+              this.log.debug('Hey, so, this is like, a test, you know what I mean?  I want a lot of things here.  Lots and lots of big things.  Things that will definitely test out the logging infrastructure.  Look, I know that you are tired.  I know that you are scared.  Hell, I am, too.  We are all scared.  We are all tired.  But we have to keep fighting.  We have to keep testing this.  It really is the only way to debug this.  So buck up.  Chin up.  Pull your little kitten arms up.');
+              //this.log.debug(v.matrixValues : string, i);
 
+              //this.log.debug('STARTING TO MOVE');
               this.ygg.move(v, currToProc, createEdgeOnMove, edgeDistance);
               //this.inCurrentGeneration.sub(1);
               this.lock.lock();
@@ -175,6 +187,7 @@ class Propagator {
       }
       //writeln(nnodes.read());
     }
+    stopVdebug();
   }
 
 }

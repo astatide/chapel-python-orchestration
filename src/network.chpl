@@ -7,6 +7,7 @@ use Random;
 use Math;
 use Sort;
 use propagator;
+use ygglog;
 
 class SpinLock {
   var l: atomic bool;
@@ -97,6 +98,8 @@ class GeneNetwork {
   //var rootNode = new shared genes.GeneNode(id='  root');
   var rootNode: shared genes.GeneNode;
 
+  var log = new shared ygglog.YggdrasilLogging();
+
   // Kind of wondering whether this is the appropriate place to handle locales?
   // Despite the name, this is simply an array which stores where each locale
   // currently is.
@@ -116,7 +119,9 @@ class GeneNetwork {
       if !this.ids.member(edge) {
         this.ids.add(edge);
       }
-      this.edges[edge].add(node.id);
+      if !this.edges[edge].member(node.id) {
+        this.edges[edge].add(node.id);
+      }
     }
     this.lock.unlock();
   }
@@ -194,7 +199,7 @@ class GeneNetwork {
     //writeln(this.ids);
     while true {
       //writeln(paths, ' : ', unvisited);
-      this.lock.lock();
+      //this.lock.lock();
       for edge in this.edges[currentNode] do {
         if !nodes.member(edge) {
             nodes.add(edge);
@@ -227,7 +232,7 @@ class GeneNetwork {
           }
         }
       }
-      this.lock.unlock();
+      //this.lock.unlock();
       visited[currentNode] = true;
 
       if nodes.member(id_B) {
@@ -297,7 +302,7 @@ class GeneNetwork {
     while true {
       i += 1;
       //writeln(paths, ' : ', unvisited);
-      this.lock.lock();
+      //this.lock.lock();
       for edge in this.edges[currentNode] do {
         if !nodes.member(edge) {
             nodes.add(edge);
@@ -329,7 +334,7 @@ class GeneNetwork {
           }
         }
       }
-      this.lock.unlock();
+      //this.lock.unlock();
       visited[currentNode] = true;
       if id_B.member(currentNode) {
         completed[currentNode] = true;
@@ -361,7 +366,6 @@ class GeneNetwork {
       }
     }
     //writeln(nodes, paths);
-    writeln(i);
     return paths;
 
   }
@@ -369,7 +373,6 @@ class GeneNetwork {
   proc move(ref v: propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) {
     // Bit clonky, but for now.
     var (d, pl) = this.moveToNode(v.currentNode, id);
-    writeln(d, ' : ', pl);
     if createEdgeOnMove {
       if pl > edgeDistance {
         // If our edge distance is particularly long, create a shortcut.
@@ -384,16 +387,21 @@ class GeneNetwork {
   }
 
   proc moveToNode(id_A: string, id_B: string) {
+    // We do have a lock here.
+    this.lock.lock();
     var path = this.calculatePath(id_A, id_B);
+    this.lock.unlock();
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.
-    var delta = new genes.deltaRecord;
+    var delta = new genes.deltaRecord();
     var pathLength: int;
     // Get rid of the current node.
     var currentNode = id_A;
     path.remove(id_A);
     for (i, pt) in path {
+      this.lock.lock();
       var edge = this.nodes[currentNode].edges[pt : string];
+      this.lock.unlock();
       for (s, c) in edge.delta {
         //delta.seeds.add(seed);
         //delta.delta[seed] += (c*-1) : real;
@@ -414,10 +422,12 @@ class GeneNetwork {
   proc calculateHistory(id: string) {
     // Since all nodes carry their ancestor,
     // simply calculate the path back to the seed node.
+    this.lock.lock();
     var path = this.calculatePath(id, this.nodes[id].parentSeedNode);
+    this.lock.unlock();
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.
-    var delta = new genes.deltaRecord;
+    var delta = new genes.deltaRecord();
     // Get rid of the current node.
     //path.remove(path[path.size]);
     //sort(path, comparator=reverseHistoryTuple);
@@ -434,7 +444,9 @@ class GeneNetwork {
       //writeln(this.nodes[currentNode].edges);
       //writeln(this.nodes[currentNode].edges[pt].delta);
       //writeln(this.nodes[currentNode].edges[pt[2]]);
+      this.lock.lock();
       var edge = this.nodes[currentNode].edges[pt : string];
+      this.lock.unlock();
       //for (seed, c) in edge.delta {
       //writeln(edge);
       for (seed, c) in zip(edge.delta.seeds, edge.delta.delta) {
@@ -470,7 +482,6 @@ class GeneNetwork {
     node.join(this.nodes[id_A], delta*-1);
     node.join(this.nodes[id_B], delta);
     this.add_node(node);
-    writeln(node);
     //var delta = (deltaA + deltaB);
     //delta /= 2;
     //delta = delta * 2;
@@ -528,10 +539,6 @@ class GeneNetwork {
       this.edges[i].add(node.id);
       i = j : string;
     }
-    writeln('BLAH!');
-    writeln(this.ids, ' : ', this.nodes);
-    writeln(this.calculatePath('A', '7'));
-    writeln(this.calculateHistory('7'));
   }
 
   proc testMergeNodes() {

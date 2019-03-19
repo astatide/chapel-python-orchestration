@@ -47,7 +47,6 @@ record noiseFunctions {
 
   proc constant(seed: int, c: real, ref matrix: [0] real) {
     var m: [matrix.domain] real;
-    writeln(seed);
     m = seed;
     matrix += (m*c);
   }
@@ -106,7 +105,7 @@ record deltaRecord {
 }
 
 proc +(a: deltaRecord, b: deltaRecord) {
-  var d = new deltaRecord;
+  var d = new deltaRecord();
   for (s, c) in a {
     d.add(s, c);
   }
@@ -140,7 +139,7 @@ proc *=(ref a: deltaRecord, b: real) {
 
 // Probably worth noting these are borked as hell.
 proc /(a: deltaRecord, b: real) {
-  var d = new deltaRecord;
+  var d = new deltaRecord();
   for (s, c) in a {
     //d.seeds.add(s);
     //d.delta[s] = (c/b);
@@ -150,7 +149,7 @@ proc /(a: deltaRecord, b: real) {
 }
 
 proc *(a: deltaRecord, b: real) {
-  var d = new deltaRecord;
+  var d = new deltaRecord();
   for (s, c) in a {
     //d.seeds.add(s);
     //d.delta[s] = (c*b);
@@ -248,7 +247,11 @@ class GeneNode {
   // some validation functions
   proc node_in_edges(id: string) {
     // Well, okay, that turned out to be easy but whatever.
-    return this.nodes.member(id);
+    this.l.lock();
+    var ie = this.nodes.member(id);
+    this.l.unlock();
+    return ie;
+    //this.l.unlock();
   }
 
   // Now, the functions to handle the nodes!
@@ -264,17 +267,18 @@ class GeneNode {
     // -1.
     d = (node.id, this.id);
     node.edges[this.id] = new shared GeneEdge(delta*-1, d);
-    this.l.unlock();
     node.l.unlock();
+    this.l.unlock();
   }
 
   proc return_edge(id: string) {
+    this.l.lock();
+    var d: deltaRecord;
     if this.node_in_edges(id) {
-      return this.edges[id];
-    } else {
-      // Return an empty deltaRecord
-      return deltaRecord;
+      d = this.edges[id];
     }
+    this.l.unlock();
+    return d;
   }
   proc new_node(seed: int, coefficient: real, id='': string) {
     // This function is a generic call for whenever we make a modification
