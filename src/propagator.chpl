@@ -17,6 +17,7 @@ config var startingSeeds = 10;
 config var createEdgeOnMove = true;
 config var edgeDistance = 2;
 config var debug = -1;
+config var generations = 100;
 
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
@@ -66,6 +67,8 @@ class Propagator {
   var ygg: shared network.GeneNetwork();
   var log: shared ygglog.YggdrasilLogging();
   var lock: shared spinlock.SpinLock;
+  var valkyriesDone: sync int = maxValkyries;
+  var moveOn: [1..generations] single bool;
 
   proc init() {
     this.ygg = new shared network.GeneNetwork();
@@ -88,6 +91,8 @@ class Propagator {
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'Ragnarok';
     this.lock.log = this.log;
+    //this.valkyriesDone = maxValkyries;
+    //this.valkyriesDone.reset();
   }
 
   proc run() {
@@ -107,13 +112,16 @@ class Propagator {
       var v = new valkyrie();
       v.currentTask = i;
       v.moveToRoot();
-      for gen in 1..100 {
+      for gen in 1..generations {
+        //this.moveOn = false;
+        this.log.debug('Starting GEN', gen : string, hstring=v.header);
         var calculatedDistance: bool = false;
         var currToProc: string;
         var currMin: real = Math.INFINITY : real;
         var pathDomain: domain(string);
         var pathSet: [pathDomain] network.pathHistory;
         //var pathSet: network.pathHistory;
+        this.log.debug('Clearing the path domain', hstring=v.header);
         pathDomain.clear();
         // first, calculate the distance from the current node to all others.
         if !calculatedDistance {
@@ -129,7 +137,7 @@ class Propagator {
         }
         while this.inCurrentGeneration.read()!= 0 {
           currMin =  Math.INFINITY;
-            this.lock.lock();
+          this.lock.lock();
           for id in this.nodesToProcess {
             //writeln(pathSet);
             if pathDomain.member(id) {
@@ -172,27 +180,43 @@ class Propagator {
               //  break;
               //}
             }
+            pathDomain.remove(currToProc);
           }
-          //pathDomain.remove(currToProc);
           currMin =  Math.INFINITY;
           currToProc = '';
         }
-        // now, switch over the list.
-        this.lock.lock(v.header);
-        //pathDomain.clear();
-        if this.inCurrentGeneration.read() == 0 {
+        //this.valkyriesDone.sub(1);
+        var vd = this.valkyriesDone;
+        if vd != 1 {
+          this.log.debug('Waiting in gen', gen : string, v.header);
+          this.valkyriesDone = vd - 1;
+          this.moveOn[gen];
+          this.log.debug('MOVING ON in gen', gen : string, v.header);
+        } else {
+          // time to move the fuck on.
+          this.moveOn[gen] = true;
+          this.valkyriesDone = maxValkyries;
+          //this.lock.lock(v.header);
+          // reset that shit, yo.
           this.log.debug('Switching generations', v.header);
           this.nodesToProcess = this.nextGeneration;
           this.nextGeneration.clear();
           this.inCurrentGeneration.write(this.nodesToProcess.size);
           this.processedArray.write(false);
-        } else {
-          this.log.debug('Already swapped', v.header);
-        } // otherwise, we assume we already did it.  Because we did.
-        this.lock.unlock(v.header);
-
-
-
+          //this.lock.unlock(v.header);
+          this.log.log('GEN', (gen + 1) : string, this.inCurrentGeneration.read() : string, "to process", hstring='NormalRuntime');
+        }
+        // now, switch over the list.
+        //this.log.log('VALKYRIE DONE in gen ', gen : string, v.header);
+        //var vd = this.valkyriesDone; // should block until we're done.
+        // nice dream, if I say so myself.
+        //while this.valkyriesDone.read() != 0 do {
+        //  this.log.log('VALKYRIE Sleeping in gen ', gen : string, maxValkyries : string, this.valkyriesDone.read() : string, v.header);
+        //  chpl_task_yield();
+        //}
+        //pathDomain.clear();
+         // otherwise, we assume we already did it.  Because we did.
+        //this.log.debug();
       }
       //writeln(nnodes.read());
     }

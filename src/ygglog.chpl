@@ -26,16 +26,18 @@ class YggdrasilLogging {
 
   proc printToConsole(msg, debugLevel: string, hstring: string) {
     l.lock();
+    var tm: int;
     if debugLevel != this.lastDebugHeader {
       writeln(this.formatHeader(hstring, debugLevel));
       this.lastDebugHeader = debugLevel;
     }
     if hstring != '' {
         write(' '*(this.indent+1), hstring, ' : ');
+        tm = (' '*(this.indent+1) + hstring + ' : ').size;
     } else {
         write(' '*(this.indent+1), 'YGGDSL : ');
+        tm = (' '*(this.indent+1) + 'YGGDSL : ').size;
     }
-    var tm = this.indent;
     for im in msg {
       for m in im.split(maxsplit = -1) {
         if tm + m.size > this.maxCharacters {

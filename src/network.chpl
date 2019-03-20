@@ -326,7 +326,9 @@ class GeneNetwork {
       //writeln(paths, ' : ', unvisited);
       //this.lock.lock();
       this.lock.rl(vstring);
+      this.log.debug('Attempting to pass through', currentNode, 'edges', this.ids.contains(currentNode) : string, vstring);
       for edge in this.edges[currentNode] do {
+      this.log.debug(currentNode, edge, vstring);
         if !nodes.member(edge) {
             nodes.add(edge);
             visited[edge] = false;
