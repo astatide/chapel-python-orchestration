@@ -67,7 +67,7 @@ class Propagator {
   var ygg: shared network.GeneNetwork();
   var log: shared ygglog.YggdrasilLogging();
   var lock: shared spinlock.SpinLock;
-  var valkyriesDone: sync int = maxValkyries;
+  var valkyriesDone: [1..generations] sync int = maxValkyries;
   var moveOn: [1..generations] single bool;
 
   proc init() {
@@ -145,10 +145,11 @@ class Propagator {
           // This will just return the closest one, and is really all we need.
           currToProc = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header);
           this.log.debug('Attempting to unlock node', currToProc, hstring=v.header);
+          // Sometimes
           if !this.processedArray[currToProc].testAndSet() {
-            this.lock.lock(v.header);
-            this.nodesToProcess.remove(currToProc);
-            this.lock.unlock(v.header);
+            //this.lock.lock(v.header);
+            //this.nodesToProcess.remove(currToProc);
+            //this.lock.unlock(v.header);
             //pathDomain.remove(currToProc);
             //writeln('TASK ', i, ', SEED # ', this.ygg.nodes[currToProc].debugOrderOfCreation, ' : ', v.matrixValues);
             //this.log.log(' '.join('TASK', i : string, 'SEED #', currToProc : string, ':', v.matrixValues : string), i);
@@ -177,16 +178,16 @@ class Propagator {
           currToProc = '';
         }
         //this.valkyriesDone.sub(1);
-        var vd = this.valkyriesDone;
+        var vd = this.valkyriesDone[gen];
         if vd != 1 {
           this.log.debug('Waiting in gen', gen : string, v.header);
-          this.valkyriesDone = vd - 1;
+          this.valkyriesDone[gen] = vd - 1;
           this.moveOn[gen];
           this.log.debug('MOVING ON in gen', gen : string, v.header);
         } else {
           // time to move the fuck on.
           this.moveOn[gen] = true;
-          this.valkyriesDone = maxValkyries;
+          //this.valkyriesDone[gen] = maxValkyries;
           //this.lock.lock(v.header);
           // reset that shit, yo.
           this.log.debug('Switching generations', v.header);
