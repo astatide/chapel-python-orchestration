@@ -120,39 +120,32 @@ class Propagator {
         var currMin: real = Math.INFINITY : real;
         var pathDomain: domain(string);
         var pathSet: [pathDomain] network.pathHistory;
+        var distance: [pathDomain] real;
+        var currNode: int;
+        var dSorted: [0] real;
+        var toProcess: domain(string);
         //var pathSet: network.pathHistory;
-        this.log.debug('Clearing the path domain', hstring=v.header);
-        pathDomain.clear();
+        this.log.debug('Determining who needs processing', hstring=v.header);
         // first, calculate the distance from the current node to all others.
-        if !calculatedDistance {
-          var toProcess: domain(string);
-          for id in this.nodesToProcess {
-            if !this.processedArray[id].read() {
-              // If we have yet to process it, sort it out.
-              toProcess.add(id);
-            }
+        for id in this.nodesToProcess {
+          if !this.processedArray[id].read() {
+            // If we have yet to process it, sort it out.
+            toProcess.add(id);
           }
-          pathSet += this.ygg.calculatePathArray(v.currentNode, toProcess, v.header);
-          calculatedDistance = true;
         }
+        this.log.debug('Beginning processing', hstring=v.header);
         while this.inCurrentGeneration.read()!= 0 {
-          currMin =  Math.INFINITY;
-          this.lock.lock();
-          for id in this.nodesToProcess {
-            //writeln(pathSet);
-            if pathDomain.member(id) {
-              if pathSet[id].distance() < currMin {
-                currMin = pathSet[id].distance();
-                currToProc = id;
-              }
-            }
-          }
-          this.lock.unlock();
+          //pathSet += this.ygg.calculatePathArray(v.currentNode, toProcess, v.header);
           // try it now!
           // look, I know this will break it.
           //writeln(this.processedArray[currToProc].testAndSet());
           // If we can't get anything, that means we're just waiting for things to have finished processing.
-          if currToProc != '' {
+          // we just want the sorted bit.
+          //this.log.debug(pathDomain.isEmpty() : string, hstring=v.header);
+          if !toProcess.isEmpty() {
+            // This will just return the closest one, and is really all we need.
+            currToProc = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header);
+            this.log.debug('Attempting to unlock node', currToProc, hstring=v.header);
             if !this.processedArray[currToProc].testAndSet() {
               this.lock.lock(v.header);
               this.nodesToProcess.remove(currToProc);
@@ -180,7 +173,7 @@ class Propagator {
               //  break;
               //}
             }
-            pathDomain.remove(currToProc);
+            toProcess.remove(currToProc);
           }
           currMin =  Math.INFINITY;
           currToProc = '';
