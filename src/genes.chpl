@@ -315,6 +315,8 @@ class GeneNode {
     node.parent = this.id;
     node.log = this.log;
     node.l.log = this.log;
+    // Not sure whether I always want to do this, but hey.
+    node.generation = this.generation + 1;
 
     delta.delta[seed] = coefficient;
     var vstring: string;

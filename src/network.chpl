@@ -549,9 +549,9 @@ class GeneNetwork {
     var currentNode = id_A;
     path.remove(id_A);
     for (i, pt) in path {
-      //this.lock.lock(vstring);
+      this.lock.rl(vstring);
       var edge = this.nodes[currentNode].edges[pt : string];
-      //this.lock.unlock(vstring);
+      this.lock.url(vstring);
       for (s, c) in edge.delta {
         //delta.seeds.add(seed);
         //delta.delta[seed] += (c*-1) : real;
@@ -598,9 +598,9 @@ class GeneNetwork {
       //writeln(this.nodes[currentNode].edges);
       //writeln(this.nodes[currentNode].edges[pt].delta);
       //writeln(this.nodes[currentNode].edges[pt[2]]);
-      //this.lock.lock();
+      this.lock.rl(vstring);
       var edge = this.nodes[currentNode].edges[pt : string];
-      //this.lock.unlock();
+      this.lock.url(vstring);
       //for (seed, c) in edge.delta {
       //writeln(edge);
       for (seed, c) in zip(edge.delta.seeds, edge.delta.delta) {
@@ -672,12 +672,15 @@ class GeneNetwork {
       vstring = ' '.join(hstring, '__nextNode__');
     }
     this.log.debug('Adding a seed on to ID', id : string, hstring);
+    this.lock.rl(hstring);
     var seed = this.nodes[id].debugOrderOfCreation;
     var node = this.nodes[id].new_node(1, 1, (seed+1) : string, vstring);
     node.debugOrderOfCreation = seed+1;
-    node.generation = this.nodes[id].generation + 1;
+    // why in the world does this make it fail?  Attempt to compute modulus by 0?
+    //node.generation = this.nodes[id].generation + 1;
     node.log = this.log;
     node.l.log = this.log;
+    this.lock.url(hstring);
     this.add_node(node, vstring);
     this.log.debug('Successfully added', seed : string, 'to ID', id : string, 'to create ID', node.id : string, hstring=hstring);
     return node.id;

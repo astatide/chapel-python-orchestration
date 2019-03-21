@@ -134,48 +134,46 @@ class Propagator {
           }
         }
         this.log.debug('Beginning processing', hstring=v.header);
-        while this.inCurrentGeneration.read()!= 0 {
-          //pathSet += this.ygg.calculatePathArray(v.currentNode, toProcess, v.header);
-          // try it now!
-          // look, I know this will break it.
-          //writeln(this.processedArray[currToProc].testAndSet());
-          // If we can't get anything, that means we're just waiting for things to have finished processing.
-          // we just want the sorted bit.
-          //this.log.debug(pathDomain.isEmpty() : string, hstring=v.header);
-          if !toProcess.isEmpty() {
-            // This will just return the closest one, and is really all we need.
-            currToProc = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header);
-            this.log.debug('Attempting to unlock node', currToProc, hstring=v.header);
-            if !this.processedArray[currToProc].testAndSet() {
-              this.lock.lock(v.header);
-              this.nodesToProcess.remove(currToProc);
-              this.lock.unlock(v.header);
-              //pathDomain.remove(currToProc);
-              //writeln('TASK ', i, ', SEED # ', this.ygg.nodes[currToProc].debugOrderOfCreation, ' : ', v.matrixValues);
-              //this.log.log(' '.join('TASK', i : string, 'SEED #', currToProc : string, ':', v.matrixValues : string), i);
-              //this.log.tId = i;
-              //this.log.debug('SEED #', currToProc : string, hstring=' '.join('TASK', i : string));
-              this.log.debug('SEED #', currToProc : string, hstring=v.header);
-              //this.log.devel('Hey, so, this is like, a test, you know what I mean?  I want a lot of things here.  Lots and lots of big things.  Things that will definitely test out the logging infrastructure.  Look, I know that you are tired.  I know that you are scared.  Hell, I am, too.  We are all scared.  We are all tired.  But we have to keep fighting.  We have to keep testing this.  It really is the only way to debug this.  So buck up.  Chin up.  Pull your little kitten arms up.');
-              //this.log.debug(v.matrixValues : string, i);
+        //pathSet += this.ygg.calculatePathArray(v.currentNode, toProcess, v.header);
+        // try it now!
+        // look, I know this will break it.
+        //writeln(this.processedArray[currToProc].testAndSet());
+        // If we can't get anything, that means we're just waiting for things to have finished processing.
+        // we just want the sorted bit.
+        //this.log.debug(pathDomain.isEmpty() : string, hstring=v.header);
+        while !toProcess.isEmpty() {
+          // This will just return the closest one, and is really all we need.
+          currToProc = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header);
+          this.log.debug('Attempting to unlock node', currToProc, hstring=v.header);
+          if !this.processedArray[currToProc].testAndSet() {
+            this.lock.lock(v.header);
+            this.nodesToProcess.remove(currToProc);
+            this.lock.unlock(v.header);
+            //pathDomain.remove(currToProc);
+            //writeln('TASK ', i, ', SEED # ', this.ygg.nodes[currToProc].debugOrderOfCreation, ' : ', v.matrixValues);
+            //this.log.log(' '.join('TASK', i : string, 'SEED #', currToProc : string, ':', v.matrixValues : string), i);
+            //this.log.tId = i;
+            //this.log.debug('SEED #', currToProc : string, hstring=' '.join('TASK', i : string));
+            this.log.debug('SEED #', currToProc : string, hstring=v.header);
+            //this.log.devel('Hey, so, this is like, a test, you know what I mean?  I want a lot of things here.  Lots and lots of big things.  Things that will definitely test out the logging infrastructure.  Look, I know that you are tired.  I know that you are scared.  Hell, I am, too.  We are all scared.  We are all tired.  But we have to keep fighting.  We have to keep testing this.  It really is the only way to debug this.  So buck up.  Chin up.  Pull your little kitten arms up.');
+            //this.log.debug(v.matrixValues : string, i);
 
-              //this.log.debug('STARTING TO MOVE');
-              this.ygg.move(v, currToProc, createEdgeOnMove, edgeDistance);
-              //this.inCurrentGeneration.sub(1);
-              this.lock.lock(v.header);
-              this.log.debug('Attempting to create another node', hstring=v.header);
-              var nextNode = this.ygg.nextNode(currToProc, hstring=v.header);
-              this.log.debug('Node added; attempting to increase count for nextGeneration', hstring=v.header);
-              this.nextGeneration.add(nextNode);
-              this.inCurrentGeneration.sub(1);
-              this.lock.unlock(v.header);
-              //if this.inCurrentGeneration.read() == 0 {
-              //  break;
-              //}
-            }
-            toProcess.remove(currToProc);
+            //this.log.debug('STARTING TO MOVE');
+            this.ygg.move(v, currToProc, createEdgeOnMove, edgeDistance);
+            //this.inCurrentGeneration.sub(1);
+            //this.lock.lock(v.header);
+            this.log.debug('Attempting to create another node', hstring=v.header);
+            var nextNode = this.ygg.nextNode(currToProc, hstring=v.header);
+            this.log.debug('Node added; attempting to increase count for nextGeneration', hstring=v.header);
+            this.nextGeneration.add(nextNode);
+            this.inCurrentGeneration.sub(1);
+            //this.lock.unlock(v.header);
+            //if this.inCurrentGeneration.read() == 0 {
+            //  break;
+            //}
           }
-          currMin =  Math.INFINITY;
+          this.log.debug('Removing node from list to process', currToProc, hstring=v.header);
+          toProcess.remove(currToProc);
           currToProc = '';
         }
         //this.valkyriesDone.sub(1);
