@@ -8,6 +8,7 @@ use Math;
 use VisualDebug;
 use ygglog;
 use spinlock;
+use Time;
 
 config const mSize = 20;
 config var maxPerGeneration = 400;
@@ -34,6 +35,7 @@ record valkyrie {
 
   var currentTask: int;
   var nMoves: int;
+  var nProcessed: int;
   proc moveToRoot() {
     // Zero out the matrix, return the root id.
     this.matrixValues = 0;
@@ -69,6 +71,8 @@ class Propagator {
   var lock: shared spinlock.SpinLock;
   var valkyriesDone: [1..generations] sync int = maxValkyries;
   var moveOn: [1..generations] single bool;
+  var valkyriesProcessed: string;
+  var generationTime: real;
 
   proc init() {
     this.ygg = new shared network.GeneNetwork();
@@ -124,15 +128,21 @@ class Propagator {
         var currNode: int;
         var dSorted: [0] real;
         var toProcess: domain(string);
+        var path: network.pathHistory;
         //var pathSet: network.pathHistory;
         this.log.debug('Determining who needs processing', hstring=v.header);
         // first, calculate the distance from the current node to all others.
+        this.lock.rl(v.header);
+        if this.generationTime == 0 : real {
+          this.generationTime = Time.getCurrentTime();
+        }
         for id in this.nodesToProcess {
-          if !this.processedArray[id].read() {
+          //if !this.processedArray[id].read() {
             // If we have yet to process it, sort it out.
             toProcess.add(id);
-          }
+          //}
         }
+        this.lock.url(v.header);
         this.log.debug('Beginning processing', hstring=v.header);
         //pathSet += this.ygg.calculatePathArray(v.currentNode, toProcess, v.header);
         // try it now!
@@ -143,7 +153,7 @@ class Propagator {
         //this.log.debug(pathDomain.isEmpty() : string, hstring=v.header);
         while !toProcess.isEmpty() {
           // This will just return the closest one, and is really all we need.
-          currToProc = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header);
+          (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header);
           this.log.debug('Attempting to unlock node', currToProc, hstring=v.header);
           // Sometimes
           if !this.processedArray[currToProc].testAndSet() {
@@ -160,13 +170,16 @@ class Propagator {
             //this.log.debug(v.matrixValues : string, i);
 
             //this.log.debug('STARTING TO MOVE');
-            this.ygg.move(v, currToProc, createEdgeOnMove, edgeDistance);
+            this.ygg.move(v, currToProc, path, createEdgeOnMove, edgeDistance);
             //this.inCurrentGeneration.sub(1);
             //this.lock.lock(v.header);
             this.log.debug('Attempting to create another node', hstring=v.header);
             var nextNode = this.ygg.nextNode(currToProc, hstring=v.header);
             this.log.debug('Node added; attempting to increase count for nextGeneration', hstring=v.header);
+            v.nProcessed += 1;
+            this.lock.wl(v.header);
             this.nextGeneration.add(nextNode);
+            this.lock.uwl(v.header);
             this.inCurrentGeneration.sub(1);
             //this.lock.unlock(v.header);
             //if this.inCurrentGeneration.read() == 0 {
@@ -184,19 +197,28 @@ class Propagator {
           this.valkyriesDone[gen] = vd - 1;
           this.moveOn[gen];
           this.log.debug('MOVING ON in gen', gen : string, v.header);
+          this.lock.wl(v.header);
+          this.valkyriesProcessed = ' '.join(this.valkyriesProcessed, 'V ', v.currentTask : string, ': ', v.nProcessed : string, ' ');
+          v.nProcessed = 0;
+          this.lock.uwl(v.header);
         } else {
           // time to move the fuck on.
           this.moveOn[gen] = true;
           //this.valkyriesDone[gen] = maxValkyries;
-          //this.lock.lock(v.header);
+          this.lock.wl(v.header);
           // reset that shit, yo.
+          //this.valkyriesProcessed = 'V ', v.currentTask : string, ': ', v.nProcessed : string, ' ';
+          this.valkyriesProcessed = ' '.join(this.valkyriesProcessed, 'V ', v.currentTask : string, ': ', v.nProcessed : string, ' ');
+          v.nProcessed = 0;
           this.log.debug('Switching generations', v.header);
           this.nodesToProcess = this.nextGeneration;
           this.nextGeneration.clear();
           this.inCurrentGeneration.write(this.nodesToProcess.size);
           this.processedArray.write(false);
-          //this.lock.unlock(v.header);
-          this.log.log('GEN', (gen + 1) : string, this.inCurrentGeneration.read() : string, "to process", hstring='NormalRuntime');
+          this.log.log('GEN', gen : string, 'processed in', (Time.getCurrentTime() - this.generationTime) : string, 'VALKYRIES:', this.valkyriesProcessed : string, hstring='NormalRuntime');
+          this.generationTime = 0 : real;
+          this.valkyriesProcessed = '';
+          this.lock.uwl(v.header);
         }
         // now, switch over the list.
         //this.log.log('VALKYRIE DONE in gen ', gen : string, v.header);

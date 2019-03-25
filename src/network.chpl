@@ -503,7 +503,7 @@ class GeneNetwork {
       }
     }
     //writeln(nodes, paths);
-    return currentNode;
+    return (currentNode, paths[currentNode]);
 
   }
 
@@ -525,6 +525,55 @@ class GeneNetwork {
     }
     v.move(d, id);
     this.log.debug('move successful', hstring=hstring);
+  }
+
+  proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) {
+    // Bit clonky, but for now.
+    var vstring = ' '.join(v.header, 'move');
+    this.log.debug('attempting to move', hstring=vstring);
+    //this.lock.(vstring);
+    //this.lock.unlock(vstring);
+    // Cool, we have a path.  Now we need to get all the edges and
+    // aggregate the coefficients.
+    var d = new genes.deltaRecord();
+    var pl: int;
+    // Get rid of the current node.
+    var currentNode = id;
+    //path.remove(id);
+    this.log.debug('PATH', path : string, hstring=vstring);
+    for (i, pt) in path {
+      this.lock.rl(vstring);
+      if currentNode != id {
+        var edge = this.nodes[currentNode].edges[pt : string];
+        for (s, c) in edge.delta {
+          //delta.seeds.add(seed);
+          //delta.delta[seed] += (c*-1) : real;
+          d += (s, c);
+        }
+      }
+      this.lock.url(vstring);
+      currentNode = pt;
+      pl += 1;
+    }
+    for (s, c) in d {
+      if c == 0 {
+        // Get rid of the seed is the coefficient is 0.  We don't need that stuff.
+        d.remove(s);
+      }
+    }
+    v.nMoves += 1;
+    if createEdgeOnMove {
+      if pl > edgeDistance {
+        // If our edge distance is particularly long, create a shortcut.
+        this.lock.wl(vstring);
+        this.nodes[v.currentNode].join(this.nodes[id], d, ' '.join(v.header, 'move'));
+        this.edges[id].add(v.currentNode);
+        this.edges[v.currentNode].add(id);
+        this.lock.uwl(vstring);
+      }
+    }
+    v.move(d, id);
+    this.log.debug('move successful', hstring=vstring);
   }
 
   proc moveToNode(id_A: string, id_B: string) {
