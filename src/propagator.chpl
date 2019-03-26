@@ -16,7 +16,7 @@ config var mutationRate = 0.03;
 config var maxValkyries = 1;
 config var startingSeeds = 10;
 config var createEdgeOnMove = true;
-config var edgeDistance = 2;
+config var edgeDistance = 10;
 config var debug = -1;
 config var generations = 100;
 
@@ -32,6 +32,7 @@ record valkyrie {
   //var matrixValues: int;
   var currentNode: string;
   // Is there anything else I need?  Who knows!
+  var priorityNodes: domain(string);
 
   var currentTask: int;
   var nMoves: int;
@@ -161,15 +162,23 @@ class Propagator {
               // If we have yet to process it, sort it out.
               if !this.processedArray[id].read() {
             //    writeln(id);
+            // Make sure we use the priority nodes first.
                 toProcess.add(id);
               }
             //}
+          }
+          if !v.priorityNodes.isEmpty() {
+            // If this isn't an empty set, then prioritize the nodes here.
+            toProcess = toProcess & v.priorityNodes;
           }
           //this.lock.url(v.header);
           //writeln(toProcess);
           // This will just return the closest one, and is really all we need.
           if !toProcess.isEmpty() {
             (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header);
+            if v.priorityNodes.contains(currToProc) {
+              v.priorityNodes.remove(currToProc);
+            }
             // Sometimes, it's not returning the correct one.
             this.log.debug(this.nodesToProcess : string, '//', toProcess : string, ':', v.currentNode : string, 'TO', currToProc : string, hstring=v.header);
             //if gen == 2 {
@@ -198,7 +207,9 @@ class Propagator {
               var nextNode = this.ygg.nextNode(currToProc, hstring=v.header);
               this.log.debug('Node added; attempting to increase count for nextGeneration', hstring=v.header);
               v.nProcessed += 1;
+              v.moved = true;
               this.lock.wl(v.header);
+              v.priorityNodes.add(nextNode);
               this.nextGeneration.add(nextNode);
               this.lock.uwl(v.header);
               this.inCurrentGeneration.sub(1);
@@ -214,10 +225,19 @@ class Propagator {
           //toProcess.clear();
           //currToProc = '';
         }
+        // if we haven't moved, we should move our valkyrie to something in the current generation.  It makes searching substantially easier.
+        if !v.moved {
+          if currToProc != '' {
+            this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
+            // now, don't do anything, mind you.  Just move it up.
+          }
+        }
         //this.valkyriesDone.sub(1);
         //var vd = this.valkyriesDone[gen];
         if this.valkyriesDone[gen].fetchAdd(1) < (maxValkyries-1) {
           //this.valkyriesDone[gen] = vd - 1;
+          v.priorityNodes.clear();
+          v.moved = false;
           this.log.debug('Waiting in gen', gen : string, v.header);
           this.valkyriesProcessed[i].write(v.nProcessed);
           this.moveOn[gen];
@@ -232,6 +252,8 @@ class Propagator {
           //this.lock.uwl(v.header);
         } else {
           //this.valkyriesDone[gen] = maxValkyries;
+          v.priorityNodes.clear();
+          v.moved = false;
           this.lock.wl(v.header);
           // reset that shit, yo.
           //this.valkyriesProcessed = 'V ', v.currentTask : string, ': ', v.nProcessed : string, ' ';
