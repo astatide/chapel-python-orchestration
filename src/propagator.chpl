@@ -9,6 +9,10 @@ use VisualDebug;
 use ygglog;
 use spinlock;
 use Time;
+use IO.FormattedIO;
+
+var UUID = new owned uuid.UUID();
+UUID.UUID4();
 
 config const mSize = 20;
 config var maxPerGeneration = 400;
@@ -28,8 +32,6 @@ record valkyrie {
   var takeAnyPath: bool = false;
   var moved: bool = false;
   var canMove: bool = false;
-  //var matrixValues: [0..20] real;
-  //var matrixValues: int;
   var currentNode: string;
   // Is there anything else I need?  Who knows!
   var priorityNodes: domain(string);
@@ -39,6 +41,9 @@ record valkyrie {
   var nMoves: int;
   var nProcessed: int;
   var gen: int;
+
+  var id = UUID.UUID4();
+
   proc moveToRoot() {
     // Zero out the matrix, return the root id.
     this.matrixValues = 0;
@@ -51,21 +56,23 @@ record valkyrie {
     this.currentNode = id;
   }
 
+  proc sendToFile {
+    return 'EVOCAP----' + this.id + '----' + this.currentTask : string + '----';
+  }
+
   proc header {
-    return ' '.join('V', this.currentTask : string, 'M', this.nMoves : string, 'G', this.gen : string);
+    //return ' '.join('V', this.currentTask : string, 'M', this.nMoves : string, 'G', this.gen : string);
+    return ' '.join(this.sendToFile, 'V', '%05i'.format(this.currentTask) : string, 'M', '%05i'.format(this.nMoves), 'G', '%05i'.format(this.gen));
   }
 }
 
 class Propagator {
   // this is going to actually hold all the logic for running EvoCap.
   var generation: int;
-  //var maxValkyries: int;
 
   // now a few globals.
-  //var processedArray: [1..maxPerGeneration] atomic bool;
   var nodesToProcess: domain(string);
   var processedArray: [nodesToProcess] atomic bool;
-  //var nodesToProcess: [1..maxPerGeneration] string;
   var inCurrentGeneration: atomic int;
   var nextGeneration: domain(string);
 
@@ -79,31 +86,26 @@ class Propagator {
   var generationTime: real;
 
   proc init() {
+    // We initialize the network, creating the GeneNetwork object, logging
+    // infrastructure
     this.ygg = new shared network.GeneNetwork();
     this.log = new shared ygglog.YggdrasilLogging();
     this.log.currentDebugLevel = debug;
     this.ygg.log = this.log;
     this.ygg.lock.log = this.log;
     this.ygg.initializeNetwork(n_seeds=startingSeeds);
-    //this.processedArray.write(true);
     var ids = this.ygg.ids;
-    //ids.remove('root');
-    //this.inCurrentGeneration.add(1);
     for i in this.ygg.ids {
-      //this.nodesToProcess[this.inCurrentGeneration.read()+1] = i;
       if i != 'root' {
         this.nodesToProcess.add(i);
         this.processedArray[i].write(false);
         this.inCurrentGeneration.add(1);
       }
     }
-    //writeln(this.ygg.nodes);
     this.log.debug('INITIALIZED', this.inCurrentGeneration.read() : string, 'seeds.', hstring='Ragnarok');
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'Ragnarok';
     this.lock.log = this.log;
-    //this.valkyriesDone = maxValkyries;
-    //this.valkyriesDone.reset();
   }
 
   proc run() {
@@ -126,7 +128,7 @@ class Propagator {
       for gen in 1..generations {
         //this.moveOn = false;
         v.gen = gen;
-        this.log.debug('Starting GEN', gen : string, hstring=v.header);
+        this.log.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
         var calculatedDistance: bool = false;
         var currToProc: string;
         var currMin: real = Math.INFINITY : real;
@@ -174,6 +176,8 @@ class Propagator {
             // If this isn't an empty set, then prioritize the nodes here.
             // Note that this always means that if the nodes aren't in the current
             // generation, we ignore them.
+            this.log.debug('Using the joint of toProcess and priorityNodes:', (v.priorityNodes & toProcess) : string, hstring=v.header);
+            this.log.debug('Current toProcess:', toProcess : string, 'current priorityNodes:', v.priorityNodes : string, hstring=v.header);
             toProcess = toProcess & v.priorityNodes;
           }
           //this.lock.url(v.header);
@@ -243,7 +247,10 @@ class Propagator {
           // Just try clearing the whole damn domain.
           //toProcess.clear();
           //currToProc = '';
-          this.log.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'NODES:', this.nodesToProcess : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+          this.log.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'NODES:', this.nodesToProcess : string, 'priorityNodes:', v.priorityNodes : string, 'toProcess:', toProcess : string, hstring=v.header);
+          for z in this.nodesToProcess {
+            this.log.debug('HAVE ALL BEEN PROCESSED?', z: string, this.processedArray[z].read() : string, hstring=v.header);
+          }
         }
         // if we haven't moved, we should move our valkyrie to something in the current generation.  It makes searching substantially easier.
         if !v.moved {
@@ -314,7 +321,7 @@ class Propagator {
           eff /= maxValkyries;
           std = (1 - (sqrt(std)/avg));
           processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
-          this.log.log('GEN', gen : string, 'processed in', (Time.getCurrentTime() - this.generationTime) : string, processedString : string, hstring='NormalRuntime');
+          this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, processedString : string, hstring='NormalRuntime');
           //this.log.log(this.nodesToProcess : string);
           this.generationTime = 0 : real;
           this.lock.uwl(v.header);

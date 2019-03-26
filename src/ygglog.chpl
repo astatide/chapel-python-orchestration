@@ -1,11 +1,15 @@
 
 use spinlock;
 use IO;
+use Time;
+
+record pChannel {
+  var c: channel(true,iokind.dynamic,true);
+}
 
 class YggdrasilLogging {
   // This is a class to let us handle all input and output.
   var currentDebugLevel: int;
-  var lastDebugHeader = '';
   var DEVEL = -1;
   var DEBUG = 0;
   var WARNING = 1;
@@ -17,6 +21,19 @@ class YggdrasilLogging {
   var l = new shared spinlock.SpinLock();
   var tId: int;
   //var wc: channel;
+  var filesOpened: domain(string);
+  var channelsOpened: [filesOpened] channel(true,iokind.dynamic,true);
+  var channelDebugHeader: [filesOpened] string;
+  var lastDebugHeader = '';
+  var time = Time.getCurrentTime();
+  //var l: [filesOpened] spinlock.SpinLock;
+
+  proc init() {
+    //this.filesOpened = new domain(string);
+    //this.channelsOpened = [filesOpened] channel(true,iokind.dynamic,true);
+    //this.filesOpened.add('stdout');
+    //this.channelsOpened['stdout'] = stdout;
+  }
 
   proc formatHeader(mstring: string, mtype: string) {
     // Formats a header for us to print out to stdout.
@@ -27,31 +44,93 @@ class YggdrasilLogging {
   }
 
   proc printToConsole(msg, debugLevel: string, hstring: string) {
-    l.lock();
-    var tm: int;
-    if debugLevel != this.lastDebugHeader {
-      writeln(this.formatHeader(hstring, debugLevel));
-      this.lastDebugHeader = debugLevel;
+    // check whether we're going to stdout or not.
+    if this.lastDebugHeader == '' {
+      if !this.filesOpened.contains('stdout') {
+        this.filesOpened.add('stdout');
+        this.channelsOpened['stdout'] = open('EVOCAP.log', iomode.cw).writer();
+      }
     }
-    if hstring != '' {
-        write(' '*(this.indent+1), hstring, ' : ');
-        tm = (' '*(this.indent+1) + hstring + ' : ').size;
+    var wc = stdout;
+    var useStdout: bool = true;
+    var s = hstring.split('----');
+    //var s2 = hstring.split('--');
+    var vstring = hstring;
+    var lf: file;
+    var lastDebugHeader: string;
+    l.lock();
+    var id: string;
+    if s[1] == 'EVOCAP' {
+      id = s[2];
+      // First, check to see whether we've created the file.
+      if this.filesOpened.contains(id) {
+        wc = this.channelsOpened[id];
+      } else {
+        lf = open('logs/V-' + s[3] + '.log' : string, iomode.cw);
+        this.filesOpened.add(id);
+        this.channelsOpened[id] = lf.writer();
+        wc = this.channelsOpened[id];
+        wc.writeln('VALKYRIE TASK: ' + s[3] : string + ' ID: ' + s[2] : string);
+        wc.writeln('');
+      }
+      vstring = s[4];
+      useStdout = false;
+      //lastDebugHeader = this.channelDebugHeader[s[2]];
     } else {
-        write(' '*(this.indent+1), 'YGGDSL : ');
+      id = 'stdout';
+    }
+    vstring = '%010.2dr'.format(Time.getCurrentTime() - this.time) + ' -- ' + vstring;
+    var tm: int;
+    if debugLevel != this.channelDebugHeader[id] {
+      wc.writeln(this.formatHeader(vstring, debugLevel));
+      if useStdout {
+        this.channelsOpened[id].writeln(this.formatHeader(vstring, debugLevel));
+      }
+      this.channelDebugHeader[id] = debugLevel;
+    }
+    if vstring != '' {
+        wc.write(' '*(this.indent+1), vstring, ' : ');
+        if useStdout {
+          this.channelsOpened[id].write(' '*(this.indent+1), vstring, ' : ');
+        }
+        tm = (' '*(this.indent+1) + vstring + ' : ').size;
+    } else {
+        wc.write(' '*(this.indent+1), 'YGGDSL : ');
+        if useStdout {
+          this.channelsOpened[id].write(' '*(this.indent+1), 'YGGDSL : ');
+        }
         tm = (' '*(this.indent+1) + 'YGGDSL : ').size;
     }
     for im in msg {
       for m in im.split(maxsplit = -1) {
         if tm + m.size > this.maxCharacters {
-          writeln('');
-          write(' '*this.indent*3);
+          wc.writeln('');
+          wc.write(' '*this.indent*3);
+          if useStdout {
+            this.channelsOpened[id].writeln('');
+            this.channelsOpened[id].write(' '*this.indent*3);
+
+          }
           tm = this.indent*3;
         }
         tm += m.size+1;
-        write(m : string, ' ');
+        wc.write(m : string, ' ');
+        if useStdout {
+          this.channelsOpened[id].write(m : string, ' ');
+        }
       }
     }
-    writeln('');
+    wc.writeln('');
+    if useStdout {
+      this.channelsOpened[id].writeln('');
+    }
+    if s[1] == 'EVOCAP' {
+      //writeln(wc.type : string);
+        //lf.fsync();
+        //wc.commit();
+        //wc.close();
+        //lf.close();
+    }
     l.unlock();
   }
 
