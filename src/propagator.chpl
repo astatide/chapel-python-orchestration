@@ -191,7 +191,7 @@ class Propagator {
               //this.log.debug(v.matrixValues : string, i);
 
               //this.log.debug('STARTING TO MOVE');
-              this.ygg.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
+              this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
               //this.inCurrentGeneration.sub(1);
               //this.lock.lock(v.header);
               this.log.debug('Attempting to create another node', currToProc, hstring=v.header);
@@ -238,19 +238,19 @@ class Propagator {
           //this.valkyriesProcessed = ' '.join(this.valkyriesProcessed, 'V ', v.currentTask : string, ': ', v.nProcessed : string, ' ');
           v.nProcessed = 0;
           this.log.debug('Switching generations', v.header);
-          //this.nodesToProcess.clear();
+          this.nodesToProcess.clear();
           //this.processedArray: [nodesToProcess] atomic bool;
-          for node in this.nodesToProcess {
-            this.nodesToProcess.remove(node);
+          //for node in this.nodesToProcess {
+          //  this.nodesToProcess.remove(node);
             //this.processedArray[node].write(true);
-          }
+          //}
           for node in this.nextGeneration {
             //this.nodesToProcess = this.nextGeneration;
             this.nodesToProcess.add(node);
-            this.nextGeneration.remove(node);
+            //this.nextGeneration.remove(node);
             this.processedArray[node].write(false);
           }
-          //this.nextGeneration.clear();
+          this.nextGeneration.clear();
           //this.log.debug(this.processedArray.read() : string, hstring=v.header);
           this.inCurrentGeneration.write(this.nodesToProcess.size);
           //this.processedArray.write(false);
