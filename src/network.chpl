@@ -9,16 +9,22 @@ use Sort;
 use propagator;
 use ygglog;
 use spinlock;
+use SysError;
+
+class NodeNotInEdgesError : Error {
+  proc init() { }
+}
 
 record pathHistory {
   var n: domain(int);
   var node: [n] string;
 
-  iter these() {
+  inline iter these() {
     // This works.  Grand!
     //if this.n.size > 0 {
     for i in 0..this.n.size-1 do {
       yield (i, this.node[i]);
+      //yield this.node[i];
     }
     //}
     //yield node;
@@ -112,16 +118,17 @@ class GeneNetwork {
       vstring = ' '.join(hstring, '__addNode__');
     }
     this.lock.wl(vstring);
+    this.log.debug('Adding node', node.id : string, 'to GeneNetwork', hstring=vstring);
     this.ids.add(node.id);
     this.nodes[node.id] = node;
     for edge in node.nodes {
       this.edges[node.id].add(edge);
-      if !this.ids.member(edge) {
-        this.ids.add(edge);
-      }
-      if !this.edges[edge].member(node.id) {
-        this.edges[edge].add(node.id);
-      }
+      //if !this.ids.contains(edge) {
+      //  this.ids.add(edge);
+      //}
+      //if !this.edges[edge].contains(node.id) {
+      //  this.edges[edge].add(node.id);
+      //}
     }
     this.lock.uwl(vstring);
   }
@@ -413,7 +420,7 @@ class GeneNetwork {
     var completed: [id_B] bool = false;
     var vstring: string;
     if hstring != '' {
-      vstring = ' '.join(hstring, 'calculatePath');
+      vstring = ' '.join(hstring, 'returnNearestUnprocessed');
     }
     //writeln(this.edges);
     // Build up the potential node list
@@ -430,8 +437,13 @@ class GeneNetwork {
     dist[id_A] = 0;
     //paths[id_A].add((0.0, id_A));
     //paths[id_A].add(0);
+    paths[id_A].n.add(0);
     paths[id_A].node[0] = id_A;
     //writeln(this.ids);
+    // catch an empty id_B!
+    if id_B.isEmpty() {
+      return (id_A, paths[id_A]);
+    }
     while true {
       i += 1;
       //writeln(paths, ' : ', unvisited);
@@ -439,8 +451,8 @@ class GeneNetwork {
       this.lock.rl(vstring);
       this.log.debug('Attempting to pass through', currentNode, 'edges', this.ids.contains(currentNode) : string, vstring);
       for edge in this.edges[currentNode] do {
-      this.log.debug(currentNode, edge, vstring);
-        if !nodes.member(edge) {
+        //this.log.debug(currentNode, edge, vstring);
+        if !nodes.contains(edge) {
             nodes.add(edge);
             visited[edge] = false;
             dist[edge] = Math.INFINITY;
@@ -455,10 +467,14 @@ class GeneNetwork {
           if d == dist[currentNode]+1 {
             paths[edge].n.clear();
             //i = 0;
+            //paths[edge].n.add(0);
+            //paths[edge].node[0] = currentNode;
+            var z: int;
             for (j, e) in paths[currentNode] {
               //writeln(e);
               paths[edge].n.add(j : int);
               paths[edge].node[j : int] = e;
+              z += 1;
             }
             //paths[edge] = paths[currentNode] + edge;
             // We're doing this as a tuple to help sorting later.
@@ -473,15 +489,13 @@ class GeneNetwork {
       //this.lock.unlock();
       this.lock.url(vstring);
       visited[currentNode] = true;
-      if id_B.member(currentNode) {
+      if id_B.contains(currentNode) {
+        //writeln('LIAR!');
+        break;
         completed[currentNode] = true;
       }
-
-      if + reduce completed == 1 {
-        break;
-      }
       if unvisited.isEmpty() {
-        break;
+        //break;
       } else {
         // get the current minimum from here.
         //var next_node_id = unvisited_d.find(unvisited_d.low)[1];
@@ -500,9 +514,12 @@ class GeneNetwork {
         currentNode = currMinNode;
         unvisited_d.remove(currMinDist);
         unvisited.remove(currMinNode);
+        //this.log.log('CONTINUE', currentNode : string, this.edges[currentNode] : string, this.nodes[currentNode].nodes : string, 'id_B:', id_B : string, vstring);
       }
     }
     //writeln(nodes, paths);
+    //writeln(currentNode, paths[currentNode], id_B, ' ', id_A);
+    this.log.debug('id_B:', id_B : string, 'currentNode:', currentNode, 'id_A:', id_A, hstring=vstring);
     return (currentNode, paths[currentNode]);
 
   }
@@ -527,7 +544,7 @@ class GeneNetwork {
     this.log.debug('move successful', hstring=hstring);
   }
 
-  proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) {
+  proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
     // Bit clonky, but for now.
     var vstring = ' '.join(v.header, 'move');
     this.log.debug('attempting to move', hstring=vstring);
@@ -543,8 +560,22 @@ class GeneNetwork {
     this.log.debug('PATH', path : string, hstring=vstring);
     for (i, pt) in path {
       this.lock.rl(vstring);
+      var edge: genes.GeneEdge;
       if currentNode != id {
-        var edge = this.nodes[currentNode].edges[pt : string];
+        if this.nodes[currentNode].nodes.contains(pt : string) {
+          edge = this.nodes[currentNode].edges[pt : string];
+        } else {
+          // Error throwing doesn't work, so request a lock and don't let it go.
+          // this is because Chapel can't throw errors from a non inlined iterator.
+          this.lock.url(vstring);
+          // FOR NOW, just lock it up.
+          this.lock.wl(vstring);
+          this.log.critical('CRITICAL FAILURE: Node', pt : string, 'not in edge list for node', currentNode : string, hstring=vstring);
+          this.log.critical(path : string, hstring=vstring);
+          //this.log.critical(this.nodes[currentNode].edges : string, this.nodes[pt : string].edges : string);
+          this.log.critical(currentNode : string, '-', this.nodes[currentNode].nodes : string, ',', pt: string, '-', this.nodes[pt : string].nodes : string, hstring=vstring);
+          throw new owned NodeNotInEdgesError();
+        }
         for (s, c) in edge.delta {
           //delta.seeds.add(seed);
           //delta.delta[seed] += (c*-1) : real;
@@ -721,7 +752,8 @@ class GeneNetwork {
       vstring = ' '.join(hstring, '__nextNode__');
     }
     this.log.debug('Adding a seed on to ID', id : string, hstring);
-    this.lock.rl(hstring);
+    // MIGHT NOT NEED TO BE A THING
+    this.lock.wl(hstring);
     var seed = this.nodes[id].debugOrderOfCreation;
     var node = this.nodes[id].new_node(1, 1, (seed+1) : string, vstring);
     node.debugOrderOfCreation = seed+1;
@@ -729,9 +761,11 @@ class GeneNetwork {
     //node.generation = this.nodes[id].generation + 1;
     node.log = this.log;
     node.l.log = this.log;
-    this.lock.url(hstring);
+    // Add to current node!  I can't believe you forgot this.
+    this.edges[id].add(node.id);
+    this.lock.uwl(hstring);
     this.add_node(node, vstring);
-    this.log.debug('Successfully added', seed : string, 'to ID', id : string, 'to create ID', node.id : string, hstring=hstring);
+    this.log.debug('Successfully added', (seed+1) : string, 'to ID', id : string, 'to create ID', node.id : string, hstring=hstring);
     return node.id;
   }
 

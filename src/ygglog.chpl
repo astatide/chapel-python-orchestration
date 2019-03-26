@@ -1,5 +1,6 @@
 
 use spinlock;
+use IO;
 
 class YggdrasilLogging {
   // This is a class to let us handle all input and output.
@@ -15,6 +16,7 @@ class YggdrasilLogging {
   var indent = 5;
   var l = new shared spinlock.SpinLock();
   var tId: int;
+  //var wc: channel;
 
   proc formatHeader(mstring: string, mtype: string) {
     // Formats a header for us to print out to stdout.

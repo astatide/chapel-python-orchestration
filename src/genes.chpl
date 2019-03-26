@@ -60,7 +60,7 @@ record deltaRecord {
 
   proc add(s, c) {
     // try to add it.
-    if !this.seeds.member(s) {
+    if !this.seeds.contains(s) {
       this.seeds.add(s);
     }
     this.delta[s] += c;
@@ -238,9 +238,9 @@ class GeneNode {
   // some validation functions
   proc node_in_edges(id: string) {
     // Well, okay, that turned out to be easy but whatever.
-    this.l.lock();
+    this.l.rl();
     var ie = this.nodes.member(id);
-    this.l.unlock();
+    this.l.url();
     return ie;
     //this.l.unlock();
   }
@@ -262,16 +262,16 @@ class GeneNode {
     if hstring != '' {
       vstring = ' '.join(hstring, '__join__');
     }
-    this.l.lock(vstring);
-    node.l.lock(vstring);
+    this.l.wl(vstring);
+    node.l.wl(vstring);
     var d = (this.id, node.id);
     this.edges[node.id] = new shared GeneEdge(delta, d);
     // Now, reverse the delta.  Which we can do by multiplying it by
     // -1.
     d = (node.id, this.id);
     node.edges[this.id] = new shared GeneEdge(delta*-1, d);
-    node.l.unlock(vstring);
-    this.l.unlock(vstring);
+    node.l.uwl(vstring);
+    this.l.uwl(vstring);
   }
 
   proc return_edge(id:string) {
@@ -287,12 +287,12 @@ class GeneNode {
     if hstring != '' {
       vstring = ' '.join(hstring, '__returnEdge__');
     }
-    this.l.lock(vstring);
+    this.l.rl(vstring);
     var d: deltaRecord;
     if this.node_in_edges(id) {
       d = this.edges[id];
     }
-    this.l.unlock(vstring);
+    this.l.url(vstring);
     return d;
   }
 
