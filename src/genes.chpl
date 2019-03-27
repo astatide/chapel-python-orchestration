@@ -79,18 +79,9 @@ record deltaRecord {
   proc express(ref matrix) {
     var m: [matrix.domain] real;
     for (s, c) in zip(this.seeds, this.delta) do {
-      //matrix += noiseFunctions.noise(s, c, matrix);
-      //writeln(s, ' ', c);
-      //writeln(s.type : string);
-      // What the hell is going on here?
-      // error: unresolved access of 'int(64)' by '(int(64))'
-      // Seriously?  What?
-      //newrng.seed(int);
-      // I'm sure something better exists, but for now.
-      //udevrandom.returnSpecificRNG(s).fillRandom(arr=m);
+      // This is the debug mode.
       m = s;
       matrix += (m*c);
-      //matrix += c;
     }
   }
 

@@ -506,25 +506,29 @@ class GeneNetwork {
 
   proc move(ref v: propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) {
     // Bit clonky, but for now.
-    var hstring = ' '.join(v.header, 'move');
-    this.log.debug('attempting to move', hstring=hstring);
-    var (d, pl) = this.moveToNode(v.currentNode, id, hstring=v.header);
+    var vstring = ' '.join(v.header, 'move');
+    this.log.debug('attempting to move', hstring=vstring);
+    var (d, pl) = this.moveToNode(v.currentNode, id, hstring=vstring);
     v.nMoves += 1;
     if createEdgeOnMove {
       if pl > edgeDistance {
         // If our edge distance is particularly long, create a shortcut.
-        this.lock.wl(hstring);
-        this.nodes[v.currentNode].join(this.nodes[id], d, ' '.join(v.header, 'move'));
+        this.lock.wl(vstring);
+        this.nodes[v.currentNode].join(this.nodes[id], d, vstring);
         this.edges[id].add(v.currentNode);
         this.edges[v.currentNode].add(id);
-        this.lock.uwl(hstring);
+        this.lock.uwl(vstring);
       }
+    }
+    if propagator.unitTestMode {
+      this.log.debug('Delta to move to is:', d : string, hstring=vstring);
     }
     var success = v.move(d, id);
     if success == 0 {
-      this.log.debug('move successful', hstring=hstring);
+      this.log.debug('move successful', hstring=vstring);
     } else if success == 1 {
-      this.log.critical('CRITICAL FAILURE: Valkyrie did not move correctly!', hstring=hstring);
+      this.log.critical('CRITICAL FAILURE: Valkyrie did not move correctly!', hstring=vstring);
+      this.log.critical('Matrix should be:', id : string, 'but is:', v.matrixValues : string, hstring=vstring);
     }
   }
 
@@ -536,7 +540,7 @@ class GeneNetwork {
     var currentNode = id;
     this.log.debug('PATH', path : string, hstring=vstring);
     // Now we just process the path into a delta, and confirm that it is valid.
-    var d = this.deltaFromPath(path, id);
+    var d = this.deltaFromPath(path, id, hstring=vstring);
     var pl = path.distance();
     v.nMoves += 1;
     if createEdgeOnMove {
@@ -544,11 +548,14 @@ class GeneNetwork {
         // If our edge distance is particularly long, create a shortcut.
         // This can greatly improve
         this.lock.wl(vstring);
-        this.nodes[v.currentNode].join(this.nodes[id], d, ' '.join(v.header, 'move'));
+        this.nodes[v.currentNode].join(this.nodes[id], d, vstring);
         this.edges[id].add(v.currentNode);
         this.edges[v.currentNode].add(id);
         this.lock.uwl(vstring);
       }
+    }
+    if propagator.unitTestMode {
+      this.log.debug('Delta to move to is:', d : string, hstring=vstring);
     }
     var success = v.move(d, id);
     // for now, hardcode the errors.
@@ -556,25 +563,29 @@ class GeneNetwork {
       this.log.debug('move successful', hstring=vstring);
     } else if success == 1 {
       this.log.critical('CRITICAL FAILURE: Valkyrie did not move correctly!', hstring=vstring);
+      this.log.critical('Matrix should be:', id : string, 'but is:', v.matrixValues : string, hstring=vstring);
     }
   }
 
-  proc deltaFromPath(path: network.pathHistory, id: string) {
+  proc deltaFromPath(path: network.pathHistory, id: string, hstring: string) {
     // This is an attempt to automatically create a deltaRecord from
     // a path.
+    var vstring = hstring + ' deltaFromPath';
     var d = new genes.deltaRecord();
     var edge: genes.GeneEdge;
     var currentNode = id;
     var pl: int;
     for (i, pt) in path {
       if currentNode != id {
+        this.lock.rl(vstring);
         edge = this.nodes[currentNode].edges[pt : string];
+        this.lock.url(vstring);
         for (s, c) in edge.delta {
           d += (s, c);
         }
-        currentNode = pt;
-        pl += 1;
       }
+      currentNode = pt;
+      pl += 1;
       for (s, c) in d {
         if c == 0 {
           // Get rid of the seed is the coefficient is 0.  We don't need that stuff.
