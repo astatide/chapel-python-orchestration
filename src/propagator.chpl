@@ -120,6 +120,7 @@ class Propagator {
   var version: real = 0.1;
   // I guess this is protected or important in Chapel, in some way?
   //var release: string; // alpha
+  var shutdown: bool = false;
 
   proc logo() {
     return '';
@@ -199,9 +200,21 @@ class Propagator {
     this.lock.log = this.log;
   }
 
+  proc exitRoutine() throws {
+    // command the logger to shut down, then exit.
+    this.log.critical('SHUTDOWN INITIATED');
+    this.log.exitRoutine();
+    throw new owned Error();
+  }
+
+  proc setShutdown() {
+    this.shutdown = true;
+  }
+
   proc run() {
     // Print out the header, yo.
     this.header();
+    // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
     var nnodes: atomic int;
     coforall i in 1..maxValkyries {
@@ -377,6 +390,7 @@ class Propagator {
           std = (1 - (sqrt(std)/avg));
           processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
           this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, processedString : string, hstring='NormalRuntime');
+          //this.log.log(stdin.read(string));
           this.generationTime = 0 : real;
           this.lock.uwl(v.header);
           this.valkyriesProcessed.write(0);
@@ -385,6 +399,11 @@ class Propagator {
           v.nProcessed = 0;
           // time to move the fuck on.
           this.moveOn[gen] = true;
+        }
+        // Here we check if an error condition happened.  We can shut down if that's
+        // the case.
+        if this.shutdown {
+          this.exitRoutine();
         }
       }
     }

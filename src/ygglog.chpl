@@ -32,6 +32,20 @@ class YggdrasilLogging {
     //this.channelsOpened['stdout'] = stdout;
   }
 
+  proc exitRoutine() throws {
+    for id in this.filesOpened {
+      //this.channelsOpened[id].commit();
+      //writeln(this.fileHandles[id] : string);
+      try {
+        this.channelsOpened[id].writeln('EXCEPTION CAUGHT');
+        this.channelsOpened[id].close();
+        this.fileHandles[id].fsync();
+      } catch {
+        // And then do nothing.
+      }
+    }
+  }
+
   proc formatHeader(mstring: string, mtype: string) {
     // Formats a header for us to print out to stdout.
     var header = ' '.join(this.headerStarter*5, mtype, this.headerStarter);
@@ -42,12 +56,6 @@ class YggdrasilLogging {
 
   proc printToConsole(msg, debugLevel: string, hstring: string) {
     // check whether we're going to stdout or not.
-    if this.lastDebugHeader == '' {
-      if !this.filesOpened.contains('stdout') {
-        this.filesOpened.add('stdout');
-        this.channelsOpened['stdout'] = open('EVOCAP.log', iomode.cw).writer();
-      }
-    }
     var wc = stdout;
     var useStdout: bool = true;
     var s = hstring.split('----');
@@ -57,6 +65,16 @@ class YggdrasilLogging {
     var lastDebugHeader: string;
     l.lock();
     var id: string;
+
+    if this.lastDebugHeader == '' {
+      if !this.filesOpened.contains('stdout') {
+        this.filesOpened.add('stdout');
+        var lf = open('EVOCAP.log', iomode.cw);
+        this.fileHandles['stdout'] = lf;
+        this.channelsOpened['stdout'] = lf.writer();
+      }
+    }
+
     if s[1] == 'EVOCAP' {
       id = s[2];
       // First, check to see whether we've created the file.
