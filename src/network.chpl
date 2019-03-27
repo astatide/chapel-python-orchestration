@@ -16,18 +16,17 @@ class NodeNotInEdgesError : Error {
 }
 
 record pathHistory {
+  // This is basically an ordered dictionary.
+  // Chapel doesn't yet have something so this like,
+  // so it's up to me (up to ME!) to implement it here.
   var n: domain(int);
   var node: [n] string;
 
   inline iter these() {
     // This works.  Grand!
-    //if this.n.size > 0 {
     for i in 0..this.n.size-1 do {
       yield (i, this.node[i]);
-      //yield this.node[i];
     }
-    //}
-    //yield node;
   }
 
   proc key(i) {
@@ -40,18 +39,12 @@ record pathHistory {
 
   // There HAS to be a better way to do this.
   proc remove(a) {
-    //if this.node.member(a) {
     // search through and find the index to remove.
     var n_remove = 0;
     var new_n: domain(int);
     var new_node: [new_n] string;
     for i in 0..this.n.size-1 do {
-      //if this.node[i] == a {
-      //  this.n.remove(i);
-      //  n_remove = i+1;
-      //}
       // Oddly enough I do think this is working, although it's awful.
-      //writeln(this.node[i], ' : ', a, ' ', i-n_remove);
       if this.node[i] == a {
         n_remove = i+1;
       } else {
@@ -62,8 +55,6 @@ record pathHistory {
     }
     this.n = new_n;
     this.node = new_node;
-    //}
-    //this.n.add('0');
   }
 
   proc distance() {
@@ -71,8 +62,6 @@ record pathHistory {
   }
 
 }
-
-//var reverseHistoryTuple: ReverseComparator(Comparator);
 
 class GeneNetwork {
   // Hash table for our nodes and edges.  Basically, it's a dictionary of lists;
@@ -85,18 +74,12 @@ class GeneNetwork {
   // Yep, we don't have to be careful because this is Chapel and holy fuck.
   // aaahahahaha, suck it languages built not for HPC!
   var nodes: [ids] shared genes.GeneNode;
-  var nodes$: sync bool = false;
   var lock: shared spinlock.SpinLock;
 
   var irng = new owned rng.UDevRandomHandler();
 
-  //var rootNode = new shared genes.GeneNode(id='  root');
   var rootNode: shared genes.GeneNode;
   var log: shared ygglog.YggdrasilLogging;
-
-  // Kind of wondering whether this is the appropriate place to handle locales?
-  // Despite the name, this is simply an array which stores where each locale
-  // currently is.
 
   proc add_node(in node: shared genes.GeneNode) {
     this.__addNode__(node, hstring='');
@@ -111,8 +94,6 @@ class GeneNetwork {
     // We are working with the actual node objects, here.
     // Add to our domain!
     // We need to block until such time as we're ready;
-    //var n = nodes$;
-    //nodes$.writeEF(true);
     var vstring: string;
     if hstring != '' {
       vstring = ' '.join(hstring, '__addNode__');
@@ -123,12 +104,6 @@ class GeneNetwork {
     this.nodes[node.id] = node;
     for edge in node.nodes {
       this.edges[node.id].add(edge);
-      //if !this.ids.contains(edge) {
-      //  this.ids.add(edge);
-      //}
-      //if !this.edges[edge].contains(node.id) {
-      //  this.edges[edge].add(node.id);
-      //}
     }
     this.lock.uwl(vstring);
   }
@@ -137,7 +112,6 @@ class GeneNetwork {
     // Generates a new seed for use with deltas, etc.
     // we're returning a long.
     return this.irng.getrandbits(64);
-    //return 0;
   }
 
   proc init() {
@@ -148,22 +122,30 @@ class GeneNetwork {
 
   proc initializeNetwork(n_seeds=10: int, gen_seeds=true: bool) {
     var seed: int;
-    //var node: unmanaged genes.GeneNode;
+    var id: string;
     var delta: genes.deltaRecord;
-    //const alpha = ['A', 'B', 'C'];
-    //this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
-    // Initialize the lock
-    //this.lock = new shared spinlock.SpinLock();
+    // We send each gene a logger; it's useful for debugging, but likely not
+    // production.
     this.rootNode.log = this.log;
     this.rootNode.l.log = this.log;
     for n in 1..n_seeds {
-      //seed = this.newSeed();
-      seed = n*1000;
-      var node = new shared genes.GeneNode(id=(n*1000) : string, ctype='seed', parentSeedNode='', parent='root');
+      if propagator.unitTestMode {
+        seed = n*1000;
+        id = (n*1000) : string;
+      } else {
+        seed = this.newSeed();
+        // With a blank ID, the gene will assign itself a UUID.
+        id = '';
+      }
+      var node = new shared genes.GeneNode(id=id, ctype='seed', parentSeedNode='', parent='root');
       node.log = this.log;
       node.l.log = this.log;
       //writeln(this.log : string, node.log : string, node.l.log : string);
-      node.debugOrderOfCreation = n*1000;
+      if propagator.unitTestMode {
+        node.debugOrderOfCreation = n*1000;
+      } else {
+        node.debugOrderOfCreation = n;
+      }
       delta = new genes.deltaRecord();
       delta.seeds.add(seed);
       delta.delta[seed] = 1;
@@ -171,8 +153,6 @@ class GeneNetwork {
       this.add_node(node, 'initializeNetwork');
     }
     this.add_node(this.rootNode, 'initializeNetwork');
-    // send in the logging infrastructure.
-    //this.lock.log = this.log;
   }
 
   proc initializeSeedGenes(seeds: domain(int)) {
@@ -567,6 +547,7 @@ class GeneNetwork {
         } else {
           // Error throwing doesn't work, so request a lock and don't let it go.
           // this is because Chapel can't throw errors from a non inlined iterator.
+          // Note that it DOES work when working in serial mode.
           this.lock.url(vstring);
           // FOR NOW, just lock it up.
           this.lock.wl(vstring);
@@ -618,9 +599,7 @@ class GeneNetwork {
   proc __moveToNode__(id_A: string, id_B: string, hstring: string) {
     // We do have a lock here.
     var vstring = ' '.join(hstring, '__moveToNode__');
-    //this.lock.(vstring);
     var path = this.calculatePath(id_A, id_B, hstring);
-    //this.lock.unlock(vstring);
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.
     var delta = new genes.deltaRecord();
@@ -633,8 +612,6 @@ class GeneNetwork {
       var edge = this.nodes[currentNode].edges[pt : string];
       this.lock.url(vstring);
       for (s, c) in edge.delta {
-        //delta.seeds.add(seed);
-        //delta.delta[seed] += (c*-1) : real;
         delta += (s, c);
       }
       currentNode = pt;
@@ -642,7 +619,8 @@ class GeneNetwork {
     }
     for (s, c) in delta {
       if c == 0 {
-        // Get rid of the seed is the coefficient is 0.  We don't need that stuff.
+        // Get rid of the seed if the coefficient is 0.  We don't need that stuff.
+        // GET OUTTA HERE!  YOU'RE NOT WANTED!
         delta.remove(s);
       }
     }
@@ -652,42 +630,27 @@ class GeneNetwork {
   proc calculateHistory(id: string, hstring: string) {
     // Since all nodes carry their ancestor,
     // simply calculate the path back to the seed node.
-    //this.lock.lock();
     var vstring: string;
     if hstring != '' {
       vstring = ' '.join(hstring, 'calculateHistory');
     }
     var path = this.calculatePath(id, this.nodes[id].parentSeedNode, hstring);
-    //this.lock.unlock();
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.
     var delta = new genes.deltaRecord();
-    // Get rid of the current node.
-    //path.remove(path[path.size]);
-    //sort(path, comparator=reverseHistoryTuple);
     var currentNode = id;
-    //writeln(path);
     path.remove(id);
-  //  writeln(path);
-    // This does need to be sorted in order to get the actual edges.
-    // OH YEAH IT'S DONE NOW AWWWWW YIS.
+    // path is essentially an ordered dictionary, so this works in that
+    // path order is preserved.
     for (i, pt) in path {
       // get the node itself.
-      //writeln(pt);
-      //writeln(pt[2]);
-      //writeln(this.nodes[currentNode].edges);
-      //writeln(this.nodes[currentNode].edges[pt].delta);
-      //writeln(this.nodes[currentNode].edges[pt[2]]);
       this.lock.rl(vstring);
       var edge = this.nodes[currentNode].edges[pt : string];
       this.lock.url(vstring);
-      //for (seed, c) in edge.delta {
-      //writeln(edge);
       for (seed, c) in zip(edge.delta.seeds, edge.delta.delta) {
         // If it doesn't exist...
-        //if delta.seeds.member(seed) == true {
+        // actually, do I still need to explicitly add it?  Don't remember.
         delta.seeds.add(seed);
-        //}
         delta.delta[seed] += (c*-1) : real;
       }
       currentNode = pt;
@@ -695,6 +658,7 @@ class GeneNetwork {
     for (seed, c) in zip(delta.seeds, delta.delta) {
       if c == 0 {
         // Get rid of the seed is the coefficient is 0.
+        // LIKE I SAID, NO ONE WANTS YOU HERE.
         delta.seeds.remove(seed);
       }
     }
@@ -718,23 +682,19 @@ class GeneNetwork {
     }
     var deltaA = this.calculateHistory(id_A, vstring);
     var deltaB = this.calculateHistory(id_B, vstring);
-    //var ndeltaA = new genes.deltaRecord;
-    //var ndeltaB = new genes.deltaRecord;
     var node = new shared genes.GeneNode(ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
-    // s, c = seed, coefficient
-    //writeln(deltaA);
-    // Why is it in the reverse, you ask?  Because the calculateHistory method
-    // returns the information necessary to go BACK to the seed node from the id given.
+    // Remember that we're sending in logging capabilities for debug purposes.
     node.log = this.log;
     node.l.log = this.log;
+    // Why is it in the reverse, you ask?  Because the calculateHistory method
+    // returns the information necessary to go BACK to the seed node from the id given.
+    // So this delta allows us to go from node A to the new node.
     var delta = ((deltaA*-1) + deltaB)/2;
     node.join(this.nodes[id_A], delta*-1, vstring);
+    // Now, reverse the delta to join B.  I love the records in Chapel.
     node.join(this.nodes[id_B], delta, vstring);
     this.add_node(node, vstring);
-    //var delta = (deltaA + deltaB);
-    //delta /= 2;
-    //delta = delta * 2;
-    //writeln(delta/2);
+    // Return the id, as that's all we need.
     return node.id;
   }
 
@@ -753,12 +713,22 @@ class GeneNetwork {
     }
     this.log.debug('Adding a seed on to ID', id : string, hstring);
     // MIGHT NOT NEED TO BE A THING
+    var seed: int;
+    var nId: string;
+    var node: shared genes.GeneNode;
     this.lock.wl(hstring);
-    var seed = this.nodes[id].debugOrderOfCreation;
-    var node = this.nodes[id].new_node(1, 1, (seed+1) : string, vstring);
-    node.debugOrderOfCreation = seed+1;
-    // why in the world does this make it fail?  Attempt to compute modulus by 0?
-    //node.generation = this.nodes[id].generation + 1;
+    if propagator.unitTestMode {
+      nId = (this.nodes[id].debugOrderOfCreation+1) : string;
+      seed = 1;
+    } else {
+      nId = '';
+      seed = this.newSeed();
+    }
+    node = this.nodes[id].new_node(seed=seed, coefficient=1, id=nId, hstring=vstring);
+    if propagator.unitTestMode {
+      node.debugOrderOfCreation = this.nodes[id].debugOrderOfCreation+1;
+    }
+    // Again, send the logger to both the lock and the node.
     node.log = this.log;
     node.l.log = this.log;
     // Add to current node!  I can't believe you forgot this.

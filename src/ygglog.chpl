@@ -3,10 +3,6 @@ use spinlock;
 use IO;
 use Time;
 
-record pChannel {
-  var c: channel(true,iokind.dynamic,true);
-}
-
 class YggdrasilLogging {
   // This is a class to let us handle all input and output.
   var currentDebugLevel: int;

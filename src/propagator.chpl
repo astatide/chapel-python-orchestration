@@ -23,6 +23,7 @@ config var createEdgeOnMove = true;
 config var edgeDistance = 10;
 config var debug = -1;
 config var generations = 100;
+config var unitTestMode = false;
 
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
@@ -110,8 +111,14 @@ class Propagator {
     //this.release = 'A';
     about[0] = 'An implementation of EvoCap';
     about[1] = 'By: ';
+    var z: int = 1;
     for i in this.authors {
-      about[1] += i + ', ';
+      if z != this.authors.size {
+          about[1] += i + ', ';
+      } else {
+          about[1] += i;
+      }
+      z += 1;
     }
     about[2] = 'Version: %.2dr%s'.format(this.version, 'A');
     about[3] = 'Copyright Cray, probably; DO NOT DISTRIBUTE';
