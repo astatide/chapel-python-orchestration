@@ -59,7 +59,7 @@ record valkyrie {
     delta.express(this.matrixValues);
     this.currentNode = id;
     if unitTestMode {
-      if this.matrixValues[0] != this.currentNode : int {
+      if this.matrixValues[0] != this.currentNode : real {
         // in unit test mode, we set up our IDs and matrix values such that
         // every value of the matrix should be equal to ID.
         // in that event, return a failure code.
@@ -167,9 +167,12 @@ class Propagator {
     var ids = this.ygg.ids;
     for i in this.ygg.ids {
       if i != 'root' {
-        this.nodesToProcess.add(i);
-        this.processedArray[i].write(false);
-        this.inCurrentGeneration.add(1);
+        if i != this.ygg.testNodeId {
+          // Adding special nodes is a pain.
+          this.nodesToProcess.add(i);
+          this.processedArray[i].write(false);
+          this.inCurrentGeneration.add(1);
+        }
       }
     }
     this.log.debug('INITIALIZED', this.inCurrentGeneration.read() : string, 'seeds.', hstring='Ragnarok');
@@ -249,10 +252,11 @@ class Propagator {
               v.moved = true;
               // test it!
               if unitTestMode {
-                this.log.debug('Attempting to merge ID', currToProc, 'with', this.ygg.testNodeId, hstring=v.header);
-                var mergeTest = this.ygg.mergeNodes(currToProc, this.ygg.testNodeId, hstring=v.header);
-                this.log.debug('Node', mergeTest : string, 'added', hstring=v.header);
-
+                if currToProc != this.ygg.testNodeId {
+                  this.log.debug('Attempting to merge ID', currToProc, 'with', this.ygg.testNodeId, hstring=v.header);
+                  mergeTest = this.ygg.mergeNodes(currToProc, this.ygg.testNodeId, hstring=v.header);
+                  this.log.debug('Node', mergeTest : string, 'added', hstring=v.header);
+                }
               }
               this.lock.wl(v.header);
               // We only want to add to an empty domain here such that we only
@@ -262,8 +266,10 @@ class Propagator {
               v.priorityNodes.add(nextNode);
               this.nextGeneration.add(nextNode);
               if unitTestMode {
-                v.priorityNodes.add(mergeTest);
-                this.nextGeneration.add(mergeTest);
+                if currToProc != this.ygg.testNodeId {
+                  v.priorityNodes.add(mergeTest);
+                  this.nextGeneration.add(mergeTest);
+                }
               }
               this.lock.uwl(v.header);
               this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
