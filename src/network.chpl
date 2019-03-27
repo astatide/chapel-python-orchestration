@@ -520,8 +520,12 @@ class GeneNetwork {
         this.lock.uwl(hstring);
       }
     }
-    v.move(d, id);
-    this.log.debug('move successful', hstring=hstring);
+    var success = v.move(d, id);
+    if success == 0 {
+      this.log.debug('move successful', hstring=hstring);
+    } else if success == 1 {
+      this.log.critical('CRITICAL FAILURE: Valkyrie did not move correctly!', hstring=hstring);
+    }
   }
 
   proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
@@ -529,44 +533,11 @@ class GeneNetwork {
     // The other move function is for if we DON'T have a path.
     var vstring = ' '.join(v.header, 'move');
     this.log.debug('attempting to move', hstring=vstring);
-    var d = new genes.deltaRecord();
-    var pl: int;
     var currentNode = id;
     this.log.debug('PATH', path : string, hstring=vstring);
     // Now we just process the path into a delta, and confirm that it is valid.
-    for (i, pt) in path {
-      this.lock.rl(vstring);
-      var edge: genes.GeneEdge;
-      if currentNode != id {
-        if this.nodes[currentNode].nodes.contains(pt : string) {
-          edge = this.nodes[currentNode].edges[pt : string];
-        } else {
-          // Error throwing doesn't work, so request a lock and don't let it go.
-          // this is because Chapel can't throw errors from a non inlined iterator.
-          // Note that it DOES work when working in serial mode.
-          this.lock.url(vstring);
-          // FOR NOW, just lock it up.
-          this.lock.wl(vstring);
-          this.log.critical('CRITICAL FAILURE: Node', pt : string, 'not in edge list for node', currentNode : string, hstring=vstring);
-          this.log.critical(path : string, hstring=vstring);
-          this.log.critical(currentNode : string, '-', this.nodes[currentNode].nodes : string, ',', pt: string, '-', this.nodes[pt : string].nodes : string, hstring=vstring);
-          throw new owned NodeNotInEdgesError();
-        }
-        for (s, c) in edge.delta {
-          d += (s, c);
-        }
-      }
-      this.lock.url(vstring);
-      currentNode = pt;
-      pl += 1;
-    }
-    for (s, c) in d {
-      if c == 0 {
-        // Get rid of the seed is the coefficient is 0.  We don't need that stuff.
-        // YOU HEAR THAT?  NOT WANTED HERE.
-        d.remove(s);
-      }
-    }
+    var d = this.deltaFromPath(path, id);
+    var pl = path.distance();
     v.nMoves += 1;
     if createEdgeOnMove {
       if pl > edgeDistance {
@@ -579,8 +550,40 @@ class GeneNetwork {
         this.lock.uwl(vstring);
       }
     }
-    v.move(d, id);
-    this.log.debug('move successful', hstring=vstring);
+    var success = v.move(d, id);
+    // for now, hardcode the errors.
+    if success == 0 {
+      this.log.debug('move successful', hstring=vstring);
+    } else if success == 1 {
+      this.log.critical('CRITICAL FAILURE: Valkyrie did not move correctly!', hstring=vstring);
+    }
+  }
+
+  proc deltaFromPath(path: network.pathHistory, id: string) {
+    // This is an attempt to automatically create a deltaRecord from
+    // a path.
+    var d = new genes.deltaRecord();
+    var edge: genes.GeneEdge;
+    var currentNode = id;
+    var pl: int;
+    for (i, pt) in path {
+      if currentNode != id {
+        edge = this.nodes[currentNode].edges[pt : string];
+        for (s, c) in edge.delta {
+          d += (s, c);
+        }
+        currentNode = pt;
+        pl += 1;
+      }
+      for (s, c) in d {
+        if c == 0 {
+          // Get rid of the seed is the coefficient is 0.  We don't need that stuff.
+          // YOU HEAR THAT?  NOT WANTED HERE.
+          d.remove(s);
+        }
+      }
+    }
+    return d;
   }
 
   proc moveToNode(id_A: string, id_B: string) {
@@ -597,28 +600,9 @@ class GeneNetwork {
     var path = this.calculatePath(id_A, id_B, hstring);
     // Cool, we have a path.  Now we need to get all the edges and
     // aggregate the coefficients.
-    var delta = new genes.deltaRecord();
-    var pathLength: int;
-    // Get rid of the current node.
-    var currentNode = id_A;
-    path.remove(id_A);
-    for (i, pt) in path {
-      this.lock.rl(vstring);
-      var edge = this.nodes[currentNode].edges[pt : string];
-      this.lock.url(vstring);
-      for (s, c) in edge.delta {
-        delta += (s, c);
-      }
-      currentNode = pt;
-      pathLength += 1;
-    }
-    for (s, c) in delta {
-      if c == 0 {
-        // Get rid of the seed if the coefficient is 0.  We don't need that stuff.
-        // GET OUTTA HERE!  YOU'RE NOT WANTED!
-        delta.remove(s);
-      }
-    }
+    // Just use our function for this!;
+    var delta = this.deltaFromPath(id_A, path);
+    var pathLength = path.distance();
     return (delta, pathLength);
   }
 

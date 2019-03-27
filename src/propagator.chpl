@@ -37,6 +37,8 @@ record valkyrie {
   // Is there anything else I need?  Who knows!
   var priorityNodes: domain(string);
   var nPriorityNodesProcessed: int;
+  var moveSuccessful: int = 0;
+  var moveFailed: int = 1;
 
   var currentTask: int;
   var nMoves: int;
@@ -55,6 +57,17 @@ record valkyrie {
   proc move(delta: deltaRecord, id: string) {
     delta.express(this.matrixValues);
     this.currentNode = id;
+    if unitTestMode {
+      if this.matrixValues[0] != this.currentNode : int {
+        // in unit test mode, we set up our IDs and matrix values such that
+        // every value of the matrix should be equal to ID.
+        // in that event, return a failure code.
+        return this.moveFailed;
+      } else {
+        return this.moveSuccessful;
+      }
+    }
+    return this.moveSuccessful;
   }
 
   proc sendToFile {
@@ -114,7 +127,15 @@ class Propagator {
     var z: int = 1;
     for i in this.authors {
       if z != this.authors.size {
+        if z == this.authors.size-1 {
+          if this.authors.size > 2 {
+            about[1] += i + ', and ';
+          } else {
+            about[1] += i + ' and ';
+          }
+        } else {
           about[1] += i + ', ';
+        }
       } else {
           about[1] += i;
       }
