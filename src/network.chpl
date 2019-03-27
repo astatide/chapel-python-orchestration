@@ -525,19 +525,15 @@ class GeneNetwork {
   }
 
   proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
-    // Bit clonky, but for now.
+    // This is a overloaded move function if we already have a path.
+    // The other move function is for if we DON'T have a path.
     var vstring = ' '.join(v.header, 'move');
     this.log.debug('attempting to move', hstring=vstring);
-    //this.lock.(vstring);
-    //this.lock.unlock(vstring);
-    // Cool, we have a path.  Now we need to get all the edges and
-    // aggregate the coefficients.
     var d = new genes.deltaRecord();
     var pl: int;
-    // Get rid of the current node.
     var currentNode = id;
-    //path.remove(id);
     this.log.debug('PATH', path : string, hstring=vstring);
+    // Now we just process the path into a delta, and confirm that it is valid.
     for (i, pt) in path {
       this.lock.rl(vstring);
       var edge: genes.GeneEdge;
@@ -553,13 +549,10 @@ class GeneNetwork {
           this.lock.wl(vstring);
           this.log.critical('CRITICAL FAILURE: Node', pt : string, 'not in edge list for node', currentNode : string, hstring=vstring);
           this.log.critical(path : string, hstring=vstring);
-          //this.log.critical(this.nodes[currentNode].edges : string, this.nodes[pt : string].edges : string);
           this.log.critical(currentNode : string, '-', this.nodes[currentNode].nodes : string, ',', pt: string, '-', this.nodes[pt : string].nodes : string, hstring=vstring);
           throw new owned NodeNotInEdgesError();
         }
         for (s, c) in edge.delta {
-          //delta.seeds.add(seed);
-          //delta.delta[seed] += (c*-1) : real;
           d += (s, c);
         }
       }
@@ -570,6 +563,7 @@ class GeneNetwork {
     for (s, c) in d {
       if c == 0 {
         // Get rid of the seed is the coefficient is 0.  We don't need that stuff.
+        // YOU HEAR THAT?  NOT WANTED HERE.
         d.remove(s);
       }
     }
@@ -577,6 +571,7 @@ class GeneNetwork {
     if createEdgeOnMove {
       if pl > edgeDistance {
         // If our edge distance is particularly long, create a shortcut.
+        // This can greatly improve
         this.lock.wl(vstring);
         this.nodes[v.currentNode].join(this.nodes[id], d, ' '.join(v.header, 'move'));
         this.edges[id].add(v.currentNode);

@@ -54,6 +54,33 @@ record deltaRecord {
     }
   }
 
+  proc init() {}
+
+  proc init(path: network.pathHistory, id: string) {
+    // This is an attempt to automatically create a deltaRecord from
+    // a path.
+    var edge: genes.GeneEdge;
+    var currentNode = id;
+    var pl: int;
+    for (i, pt) in path {
+      if currentNode != id {
+        edge = this.nodes[currentNode].edges[pt : string];
+        for (s, c) in edge.delta {
+          this += (s, c);
+        }
+        currentNode = pt;
+        pl += 1;
+      }
+      for (s, c) in d {
+        if c == 0 {
+          // Get rid of the seed is the coefficient is 0.  We don't need that stuff.
+          // YOU HEAR THAT?  NOT WANTED HERE.
+          this.remove(s);
+        }
+      }
+    }
+  }
+
   proc this(a) ref {
     return this.delta[a];
   }
