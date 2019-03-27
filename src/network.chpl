@@ -579,26 +579,6 @@ class GeneNetwork {
     return d;
   }
 
-  proc moveToNode(id_A: string, id_B: string) {
-    return this.__moveToNode__(id_A, id_B, hstring='');
-  }
-
-  proc moveToNode(id_A: string, id_B: string, hstring: string) {
-    return this.__moveToNode__(id_A, id_B, hstring);
-  }
-
-  proc __moveToNode__(id_A: string, id_B: string, hstring: string) {
-    // We do have a lock here.
-    var vstring = ' '.join(hstring, '__moveToNode__');
-    var path = this.calculatePath(id_A, id_B, hstring);
-    // Cool, we have a path.  Now we need to get all the edges and
-    // aggregate the coefficients.
-    // Just use our function for this!;
-    var delta = this.deltaFromPath(id_A, path);
-    var pathLength = path.distance();
-    return (delta, pathLength);
-  }
-
   proc calculateHistory(id: string, hstring: string) {
     // Since all nodes carry their ancestor,
     // simply calculate the path back to the seed node.
@@ -606,34 +586,8 @@ class GeneNetwork {
     if hstring != '' {
       vstring = ' '.join(hstring, 'calculateHistory');
     }
-    var path = this.calculatePath(id, this.nodes[id].parentSeedNode, hstring);
-    // Cool, we have a path.  Now we need to get all the edges and
-    // aggregate the coefficients.
-    var delta = new genes.deltaRecord();
-    var currentNode = id;
-    path.remove(id);
-    // path is essentially an ordered dictionary, so this works in that
-    // path order is preserved.
-    for (i, pt) in path {
-      // get the node itself.
-      this.lock.rl(vstring);
-      var edge = this.nodes[currentNode].edges[pt : string];
-      this.lock.url(vstring);
-      for (seed, c) in zip(edge.delta.seeds, edge.delta.delta) {
-        // If it doesn't exist...
-        // actually, do I still need to explicitly add it?  Don't remember.
-        delta.seeds.add(seed);
-        delta.delta[seed] += (c*-1) : real;
-      }
-      currentNode = pt;
-    }
-    for (seed, c) in zip(delta.seeds, delta.delta) {
-      if c == 0 {
-        // Get rid of the seed is the coefficient is 0.
-        // LIKE I SAID, NO ONE WANTS YOU HERE.
-        delta.seeds.remove(seed);
-      }
-    }
+    var path = this.calculatePath(id, this.nodes[id].parentSeedNode, hstring=vstring);
+    var delta = this.deltaFromPath(path, id, hstring=vstring);
     return delta;
   }
 
@@ -654,7 +608,11 @@ class GeneNetwork {
     }
     var deltaA = this.calculateHistory(id_A, vstring);
     var deltaB = this.calculateHistory(id_B, vstring);
-    var node = new shared genes.GeneNode(ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
+    var nId: string;
+    if propagator.unitTestMode {
+      nId = (id_A : int + id_B : int) : string;
+    }
+    var node = new shared genes.GeneNode(id=nId, ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
     // Remember that we're sending in logging capabilities for debug purposes.
     node.log = this.log;
     node.l.log = this.log;
@@ -709,60 +667,6 @@ class GeneNetwork {
     this.add_node(node, vstring);
     this.log.debug('Successfully added', (seed+1) : string, 'to ID', id : string, 'to create ID', node.id : string, hstring=hstring);
     return node.id;
-  }
-
-  // Set of testing functions.
-
-  proc testAllTests() {
-
-  }
-
-  proc __test_create_network__() {
-    var seed: int;
-    //var node: unmanaged genes.GeneNode;
-    var delta: genes.deltaRecord;
-    const alpha = ['A', 'B', 'C'];
-    this.rootNode.ctype = 'root';
-    for n in 1..3 {
-      seed = this.newSeed();
-      var node = new shared genes.GeneNode(id=alpha[n], ctype='seed', parentSeedNode='', parent='root');
-      delta = new genes.deltaRecord();
-      delta.seeds.add(seed);
-      delta.delta[seed] = 1;
-      this.rootNode.join(node, delta);
-      this.add_node(node);
-    }
-    this.add_node(this.rootNode);
-  }
-
-  proc testInitializeNetwork() {
-
-  }
-
-  proc testCalculatePath() {
-    this.__test_create_network__();
-    var i = 'A';
-    //var node: unmanaged genes.GeneNode;
-    for j in 1..7 {
-      var node = this.nodes[i].new_node(this.newSeed(), 1, j : string);
-      this.add_node(node);
-      this.edges[i].add(node.id);
-      i = j : string;
-    }
-  }
-
-  proc testMergeNodes() {
-    this.__test_create_network__();
-    var i = 'A';
-    //var node: unmanaged genes.GeneNode;
-    for j in 1..7 {
-      var node = this.nodes[i].new_node(this.newSeed(), 1, j : string);
-      this.add_node(node);
-      this.edges[i].add(node.id);
-      i = j : string;
-    }
-    //this.mergeNodes('A', '7');
-    this.moveToNode('A', '7');
   }
 
 }
