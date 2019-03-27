@@ -78,6 +78,24 @@ record valkyrie {
   proc header {
     return ' '.join(this.sendToFile, 'V', '%05i'.format(this.currentTask) : string, 'M', '%05i'.format(this.nMoves), 'G', '%05i'.format(this.gen));
   }
+
+  iter logo {
+    var lorder: domain(int);
+    var logo: [lorder] string;
+    logo[0] = ' ▄█    █▄     ▄████████  ▄█          ▄█   ▄█▄ ▄██   ▄      ▄████████  ▄█     ▄████████ ';
+    logo[1] = '███    ███   ███    ███ ███         ███ ▄███▀ ███   ██▄   ███    ███ ███    ███    ███ ';
+    logo[2] = '███    ███   ███    ███ ███         ███▐██▀   ███▄▄▄███   ███    ███ ███▌   ███    █▀  ';
+    logo[3] = '███    ███   ███    ███ ███        ▄█████▀    ▀▀▀▀▀▀███  ▄███▄▄▄▄██▀ ███▌  ▄███▄▄▄     ';
+    logo[4] = '███    ███ ▀███████████ ███       ▀▀█████▄    ▄██   ███ ▀▀███▀▀▀▀▀   ███▌ ▀▀███▀▀▀     ';
+    logo[5] = '███    ███   ███    ███ ███         ███▐██▄   ███   ███ ▀███████████ ███    ███    █▄  ';
+    logo[6] = '███    ███   ███    ███ ███▌    ▄   ███ ▀███▄ ███   ███   ███    ███ ███    ███    ███ ';
+    logo[7] = '▀██████▀    ███    █▀  █████▄▄██   ███   ▀█▀  ▀█████▀    ███    ███ █▀     ██████████ ';
+    logo[8] = '                       ▀           ▀                     ███    ███                   ';
+    logo[9] = 'VALKYRIE %s on locale %i, running task %i'.format(this.id, 0, this.currentTask);
+    for i in 0..9 {
+      yield logo[i];
+    }
+  }
 }
 
 class Propagator {
@@ -143,7 +161,7 @@ class Propagator {
       z += 1;
     }
     about[2] = 'Version: %.2dr%s'.format(this.version, 'A');
-    about[3] = 'Copyright Cray, probably; DO NOT DISTRIBUTE';
+    about[3] = 'Copyright Cray (2019), probably; DO NOT DISTRIBUTE';
     for i in 0..8 {
         this.log.header(logo[i]);
     }
@@ -168,7 +186,7 @@ class Propagator {
     for i in this.ygg.ids {
       if i != 'root' {
         if i != this.ygg.testNodeId {
-          // Adding special nodes is a pain.
+          // Adding special nodes is a pain.  I should probably set a processing flag.
           this.nodesToProcess.add(i);
           this.processedArray[i].write(false);
           this.inCurrentGeneration.add(1);
@@ -189,6 +207,9 @@ class Propagator {
     coforall i in 1..maxValkyries {
       var v = new valkyrie();
       v.currentTask = i;
+      for iL in v.logo {
+        this.log.header(iL, hstring=v.header);
+      }
       v.moveToRoot();
       for gen in 1..generations {
         v.gen = gen;

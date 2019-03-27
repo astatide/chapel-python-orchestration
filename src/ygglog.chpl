@@ -80,6 +80,7 @@ class YggdrasilLogging {
         if propagator.stdoutOnly {
           wc = stdout;
         }
+        // First Valkyrie!
         wc.writeln('VALKYRIE TASK: ' + s[3] : string + ' ID: ' + s[2] : string);
         wc.writeln('');
       }
@@ -277,6 +278,9 @@ class YggdrasilLogging {
 
   proc header(msg...?n) {
     this.noSpecialPrinting(msg, 'RUNTIME', hstring='');
+  }
+  proc header(msg...?n, hstring: string = '') {
+    this.noSpecialPrinting(msg, 'RUNTIME', hstring=hstring);
   }
 
 }
