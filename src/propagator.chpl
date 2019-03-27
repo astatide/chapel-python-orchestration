@@ -24,6 +24,7 @@ config var edgeDistance = 10;
 config var debug = -1;
 config var generations = 100;
 config var unitTestMode = false;
+config var stdoutOnly = false;
 
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
@@ -242,16 +243,28 @@ class Propagator {
               this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
               this.log.debug('Attempting to move ID', currToProc, 'into the next generation.', hstring=v.header);
               var nextNode = this.ygg.nextNode(currToProc, hstring=v.header);
-              this.log.debug('Node added; attempting to increase count for nextGeneration', hstring=v.header);
+              var mergeTest: string;
+              this.log.debug('Node', nextNode : string, 'added', hstring=v.header);
               v.nProcessed += 1;
               v.moved = true;
+              // test it!
+              if unitTestMode {
+                this.log.debug('Attempting to merge ID', currToProc, 'with', this.ygg.testNodeId, hstring=v.header);
+                var mergeTest = this.ygg.mergeNodes(currToProc, this.ygg.testNodeId, hstring=v.header);
+                this.log.debug('Node', mergeTest : string, 'added', hstring=v.header);
+
+              }
               this.lock.wl(v.header);
               // We only want to add to an empty domain here such that we only
               // prioritize nodes which are close to the current node.
               // Eventually, if we mutate, we'll add that in, too.
-              v.priorityNodes.clear();
+              //v.priorityNodes.clear();
               v.priorityNodes.add(nextNode);
               this.nextGeneration.add(nextNode);
+              if unitTestMode {
+                v.priorityNodes.add(mergeTest);
+                this.nextGeneration.add(mergeTest);
+              }
               this.lock.uwl(v.header);
               this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
               this.inCurrentGeneration.sub(1);

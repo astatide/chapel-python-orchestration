@@ -81,6 +81,8 @@ class GeneNetwork {
   var rootNode: shared genes.GeneNode;
   var log: shared ygglog.YggdrasilLogging;
 
+  var testNodeId: string;
+
   proc add_node(in node: shared genes.GeneNode) {
     this.__addNode__(node, hstring='');
   }
@@ -146,6 +148,19 @@ class GeneNetwork {
       } else {
         node.debugOrderOfCreation = n;
       }
+      delta = new genes.deltaRecord();
+      delta.seeds.add(seed);
+      delta.delta[seed] = 1;
+      this.rootNode.join(node, delta, 'initializeNetwork');
+      this.add_node(node, 'initializeNetwork');
+    }
+    if propagator.unitTestMode {
+      seed = ((n_seeds+1)*1000)+10000;
+      this.testNodeId = seed : string;
+      var node = new shared genes.GeneNode(id=seed : string, ctype='seed', parentSeedNode='', parent='root');
+      node.log = this.log;
+      node.l.log = this.log;
+      node.debugOrderOfCreation = seed;
       delta = new genes.deltaRecord();
       delta.seeds.add(seed);
       delta.delta[seed] = 1;
@@ -514,7 +529,7 @@ class GeneNetwork {
     this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
   }
 
-  proc __move__(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
+  proc __move__(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) {
     // This is a overloaded move function if we already have a path.
     // The other move function is for if we DON'T have a path.
     var vstring = ' '.join(v.header, '__move__');
@@ -549,7 +564,7 @@ class GeneNetwork {
     }
   }
 
-  proc deltaFromPath(path: network.pathHistory, id: string, hstring: string) {
+  proc deltaFromPath(path: network.pathHistory, id: string, hstring: string) throws {
     // This is an attempt to automatically create a deltaRecord from
     // a path.
     var vstring = hstring + ' deltaFromPath';
@@ -560,7 +575,12 @@ class GeneNetwork {
     for (i, pt) in path {
       if currentNode != id {
         this.lock.rl(vstring);
-        edge = this.nodes[currentNode].edges[pt : string];
+        if this.nodes[currentNode].nodes.contains(pt) {
+          edge = this.nodes[currentNode].edges[pt : string];
+        } else {
+          this.log.critical('EDGE', pt : string, 'NOT IN EDGE LIST FOR', currentNode, hstring=vstring);
+          throw new owned NodeNotInEdgesError();
+        }
         this.lock.url(vstring);
         for (s, c) in edge.delta {
           d += (s, c);
@@ -587,7 +607,7 @@ class GeneNetwork {
       vstring = ' '.join(hstring, 'calculateHistory');
     }
     var path = this.calculatePath(id, this.nodes[id].parentSeedNode, hstring=vstring);
-    var delta = this.deltaFromPath(path, id, hstring=vstring);
+    var delta = this.deltaFromPath(path, this.nodes[id].parentSeedNode, hstring=vstring);
     return delta;
   }
 
@@ -598,7 +618,7 @@ class GeneNetwork {
   }
 
   proc mergeNodes(id_A: string, id_B: string, hstring: string) {
-    return this.__mergeNodes__(id_A, id_B, hstring='');
+    return this.__mergeNodes__(id_A, id_B, hstring=hstring);
   }
 
   proc __mergeNodes__(id_A: string, id_B: string, hstring: string) {
@@ -608,6 +628,7 @@ class GeneNetwork {
     }
     var deltaA = this.calculateHistory(id_A, vstring);
     var deltaB = this.calculateHistory(id_B, vstring);
+    this.log.debug('deltaA:', deltaA : string, 'deltaB:', deltaB : string, hstring=vstring);
     var nId: string;
     if propagator.unitTestMode {
       nId = (id_A : int + id_B : int) : string;
@@ -624,6 +645,11 @@ class GeneNetwork {
     // Now, reverse the delta to join B.  I love the records in Chapel.
     node.join(this.nodes[id_B], delta, vstring);
     this.add_node(node, vstring);
+    // Now, don't forget to connect it to the existing nodes.
+    this.lock.wl(vstring);
+    this.edges[id_A].add(node.id);
+    this.edges[id_B].add(node.id);
+    this.lock.uwl(vstring);
     // Return the id, as that's all we need.
     return node.id;
   }

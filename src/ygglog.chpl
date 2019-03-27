@@ -20,6 +20,7 @@ class YggdrasilLogging {
   var filesOpened: domain(string);
   var channelsOpened: [filesOpened] channel(true,iokind.dynamic,true);
   var channelDebugHeader: [filesOpened] string;
+  var fileHandles: [filesOpened] file;
   var lastDebugHeader = '';
   var time = Time.getCurrentTime();
   //var l: [filesOpened] spinlock.SpinLock;
@@ -60,12 +61,25 @@ class YggdrasilLogging {
       id = s[2];
       // First, check to see whether we've created the file.
       if this.filesOpened.contains(id) {
+        if propagator.unitTestMode {
+          // if we're in debug mode, we close the channels.
+          // Otherwise, we leave them open.  It's for exception handling.
+          var fileSize = this.fileHandles[id].length();
+          this.channelsOpened[id] = this.fileHandles[id].writer(start=fileSize);
+        }
         wc = this.channelsOpened[id];
+        if propagator.stdoutOnly {
+          wc = stdout;
+        }
       } else {
         lf = open('logs/V-' + s[3] + '.log' : string, iomode.cw);
         this.filesOpened.add(id);
         this.channelsOpened[id] = lf.writer();
+        this.fileHandles[id] = lf;
         wc = this.channelsOpened[id];
+        if propagator.stdoutOnly {
+          wc = stdout;
+        }
         wc.writeln('VALKYRIE TASK: ' + s[3] : string + ' ID: ' + s[2] : string);
         wc.writeln('');
       }
@@ -120,9 +134,17 @@ class YggdrasilLogging {
     if useStdout {
       this.channelsOpened[id].writeln('');
     }
-    if s[1] == 'EVOCAP' {
+    if id != 'stdout' {
       //writeln(wc.type : string);
-        //lf.fsync();
+      if propagator.unitTestMode {
+        // If we're in debug mode, sync the file every time.
+        // This ensures that if/when we fail out, our logs are complete.
+        if !propagator.stdoutOnly {
+          // We can also just bail on the logging and only use stdout.
+          wc.close();
+        }
+        this.fileHandles[id].fsync();
+      }
         //wc.commit();
         //wc.close();
         //lf.close();
