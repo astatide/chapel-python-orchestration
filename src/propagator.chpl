@@ -61,7 +61,6 @@ record valkyrie {
   }
 
   proc header {
-    //return ' '.join('V', this.currentTask : string, 'M', this.nMoves : string, 'G', this.gen : string);
     return ' '.join(this.sendToFile, 'V', '%05i'.format(this.currentTask) : string, 'M', '%05i'.format(this.nMoves), 'G', '%05i'.format(this.gen));
   }
 }
@@ -84,10 +83,52 @@ class Propagator {
   var valkyriesProcessed: [1..maxValkyries] atomic int;
   var priorityValkyriesProcessed: [1..maxValkyries] atomic real;
   var generationTime: real;
+  var authors: domain(string) = ['Audrey Pratt', 'Benjamin Robbins'];
+  var version: real = 0.1;
+  // I guess this is protected or important in Chapel, in some way?
+  //var release: string; // alpha
+
+  proc logo() {
+    return '';
+  }
+
+  proc header() {
+    var lorder: domain(int);
+    var logo: [lorder] string;
+    var order: domain(int);
+    var about: [order] string;
+    logo[0] = '▄██   ▄      ▄██████▄     ▄██████▄  ████████▄     ▄████████    ▄████████    ▄████████  ▄█   ▄█       ';
+    logo[1] = '███   ██▄   ███    ███   ███    ███ ███   ▀███   ███    ███   ███    ███   ███    ███ ███  ███       ';
+    logo[2] = '███▄▄▄███   ███    █▀    ███    █▀  ███    ███   ███    ███   ███    ███   ███    █▀  ███▌ ███       ';
+    logo[3] = '▀▀▀▀▀▀███  ▄███         ▄███        ███    ███  ▄███▄▄▄▄██▀   ███    ███   ███        ███▌ ███       ';
+    logo[4] = '▄██   ███ ▀▀███ ████▄  ▀▀███ ████▄  ███    ███ ▀▀███▀▀▀▀▀   ▀███████████ ▀███████████ ███▌ ███       ';
+    logo[5] = '███   ███   ███    ███   ███    ███ ███    ███ ▀███████████   ███    ███          ███ ███  ███       ';
+    logo[6] = '███   ███   ███    ███   ███    ███ ███   ▄███   ███    ███   ███    ███    ▄█    ███ ███  ███▌    ▄ ';
+    logo[7] = ' ▀█████▀    ████████▀    ████████▀  ████████▀    ███    ███   ███    █▀   ▄████████▀  █▀   █████▄▄██ ';
+    logo[8] = '                                                 ███    ███                                ▀         ';
+    // Taken from: http://patorjk.com/software/taag/#p=display&f=Delta%20Corps%20Priest%201&t=YGGDRASIL
+    //this.release = 'A';
+    about[0] = 'An implementation of EvoCap';
+    about[1] = 'By: ';
+    for i in this.authors {
+      about[1] += i + ', ';
+    }
+    about[2] = 'Version: %.2dr%s'.format(this.version, 'A');
+    about[3] = 'Copyright Cray, probably; DO NOT DISTRIBUTE';
+    for i in 0..8 {
+        this.log.header(logo[i]);
+    }
+    for i in 0..3 {
+      this.log.header(about[i]);
+    }
+  }
 
   proc init() {
     // We initialize the network, creating the GeneNetwork object, logging
     // infrastructure
+    // We could actually create different loggers, if we wanted; the classes
+    // and infrastructure support that.  Might be faster, dunno.
+    // Typically, we probably won't have that much output, though, so.
     this.ygg = new shared network.GeneNetwork();
     this.log = new shared ygglog.YggdrasilLogging();
     this.log.currentDebugLevel = debug;
@@ -109,112 +150,69 @@ class Propagator {
   }
 
   proc run() {
+    // Print out the header, yo.
+    this.header();
     // start up the main procedure by creating some valkyries.
-    //var v: new valkyrieRecord;
-    // declaring this variable seems to just kill it.  Entirely.  WHY.
-    //for i in 1..maxValkyries {
-    //  for j in this.ygg.ids {
-    //    writeln(j);
-    //  }
-    //forall i in 1..maxValkyries with ( var v: valkyrie ) {
-    startVdebug("E2");
-    //this.log.debug('STARTING YGGDRASIL');
     var nnodes: atomic int;
     coforall i in 1..maxValkyries {
-      //writeln(v.matrixValues);
       var v = new valkyrie();
       v.currentTask = i;
       v.moveToRoot();
       for gen in 1..generations {
-        //this.moveOn = false;
         v.gen = gen;
         this.log.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
-        var calculatedDistance: bool = false;
         var currToProc: string;
-        var currMin: real = Math.INFINITY : real;
-        var pathDomain: domain(string);
-        var pathSet: [pathDomain] network.pathHistory;
-        var distance: [pathDomain] real;
-        var currNode: int;
-        var dSorted: [0] real;
         var toProcess: domain(string);
         var path: network.pathHistory;
+        // Likely not necessary.
         toProcess.clear();
-        this.lock.rl(v.header);
+        this.lock.wl(v.header);
         if this.generationTime == 0 : real {
           this.generationTime = Time.getCurrentTime();
         }
-        this.lock.url(v.header);
+        this.lock.uwl(v.header);
         this.log.debug('Beginning processing', hstring=v.header);
         this.log.debug(this.nodesToProcess : string, hstring=v.header);
         var prioritySize = v.priorityNodes.size;
-        //pathSet += this.ygg.calculatePathArray(v.currentNode, toProcess, v.header);
-        // try it now!
-        // look, I know this will break it.
-        //writeln(this.processedArray[currToProc].testAndSet());
-        // If we can't get anything, that means we're just waiting for things to have finished processing.
-        // we just want the sorted bit.
-        //this.log.debug(pathDomain.isEmpty() : string, hstring=v.header);
-        //while !toProcess.isEmpty() {
         while this.inCurrentGeneration.read() > 0 {
-          // Yeah, this is WAY fucking faster.
-          //writeln(toProcess);
+          // We clear this out because it is faster to just re-enumerate the
+          // nodes that need processing, rather than explicitly calculating
+          // the path towards every node.  Particularly as that results in tasks
+          // performing a lot of unnecessary computations once a lot of nodes
+          // have been processed.
           currToProc = '';
           toProcess.clear();
-          //this.lock.rl(v.header);
           for id in this.nodesToProcess {
-            //if !this.processedArray[id].read() {
-              // If we have yet to process it, sort it out.
+              // As this is an atomic variable, we don't need to lock.
               if !this.processedArray[id].read() {
-            //    writeln(id);
-            // Make sure we use the priority nodes first.
                 toProcess.add(id);
               }
-            //}
           }
           if !(v.priorityNodes & toProcess).isEmpty() {
             // If this isn't an empty set, then prioritize the nodes here.
             // Note that this always means that if the nodes aren't in the current
             // generation, we ignore them.
+            // This is probably _not_ the way we'll want to do this, ultimately, but.
             this.log.debug('Using the joint of toProcess and priorityNodes:', (v.priorityNodes & toProcess) : string, hstring=v.header);
             this.log.debug('Current toProcess:', toProcess : string, 'current priorityNodes:', v.priorityNodes : string, hstring=v.header);
             toProcess = toProcess & v.priorityNodes;
           }
-          //this.lock.url(v.header);
-          //writeln(toProcess);
-          // This will just return the closest one, and is really all we need.
+          // Assuming we have some things to process, do it!
           if !toProcess.isEmpty() {
             (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header);
-            // Sometimes, it's not returning the correct one.
+            // Still some weird edge cases; this just helps me sort out what things are doing.
             this.log.debug(this.nodesToProcess : string, '//', toProcess : string, ':', v.currentNode : string, 'TO', currToProc : string, hstring=v.header);
-            //if gen == 2 {
-            //  this.lock.wl(v.header);
-            //}
-            this.log.debug('Attempting to unlock node', currToProc, 'nodes', this.nodesToProcess : string, hstring=v.header);
-            // Sometimes
-            //if !this.processedArray[currToProc].exchange(true) {
+            this.log.debug('Attempting to unlock node:', currToProc, 'nodesToProcess', this.nodesToProcess : string, hstring=v.header);
             if !this.processedArray[currToProc].testAndSet() {
-              //this.lock.lock(v.header);
-              //this.nodesToProcess.remove(currToProc);
-              //this.lock.unlock(v.header);
-              //pathDomain.remove(currToProc);
-              //writeln('TASK ', i, ', SEED # ', this.ygg.nodes[currToProc].debugOrderOfCreation, ' : ', v.matrixValues);
-              //this.log.log(' '.join('TASK', i : string, 'SEED #', currToProc : string, ':', v.matrixValues : string), i);
-              //this.log.tId = i;
-              //this.log.debug('SEED #', currToProc : string, hstring=' '.join('TASK', i : string));
+              // If this node is one of the ones in our priority queue, remove it
+              // as we clearly processing it now.
               if v.priorityNodes.contains(currToProc) {
                 v.priorityNodes.remove(currToProc);
                 v.nPriorityNodesProcessed += 1;
               }
-              this.log.debug('SEED #', currToProc : string, hstring=v.header);
-              //this.log.devel('Hey, so, this is like, a test, you know what I mean?  I want a lot of things here.  Lots and lots of big things.  Things that will definitely test out the logging infrastructure.  Look, I know that you are tired.  I know that you are scared.  Hell, I am, too.  We are all scared.  We are all tired.  But we have to keep fighting.  We have to keep testing this.  It really is the only way to debug this.  So buck up.  Chin up.  Pull your little kitten arms up.');
-              //this.log.debug(v.matrixValues : string, i);
-
-              //this.log.debug('STARTING TO MOVE');
+              this.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
               this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
-              //this.inCurrentGeneration.sub(1);
-              //this.lock.lock(v.header);
-              this.log.debug('Attempting to create another node', currToProc, hstring=v.header);
+              this.log.debug('Attempting to move ID', currToProc, 'into the next generation.', hstring=v.header);
               var nextNode = this.ygg.nextNode(currToProc, hstring=v.header);
               this.log.debug('Node added; attempting to increase count for nextGeneration', hstring=v.header);
               v.nProcessed += 1;
@@ -230,10 +228,6 @@ class Propagator {
               this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
               this.inCurrentGeneration.sub(1);
               this.log.debug('inCurrentGeneration successfully reduced', hstring=v.header);
-              //this.lock.unlock(v.header);
-              //if this.inCurrentGeneration.read() == 0 {
-              //  break;
-              //}
             }
             // While it seems odd we might try this twice, this helps us keep
             // track of algorithm efficiency by determining whether we're processing
@@ -242,69 +236,62 @@ class Propagator {
               v.priorityNodes.remove(currToProc);
             }
           }
-          //this.log.debug('Removing node from list to process', currToProc, hstring=v.header);
-          //toProcess.remove(currToProc);
-          // Just try clearing the whole damn domain.
-          //toProcess.clear();
-          //currToProc = '';
           this.log.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'NODES:', this.nodesToProcess : string, 'priorityNodes:', v.priorityNodes : string, 'toProcess:', toProcess : string, hstring=v.header);
           for z in this.nodesToProcess {
-            this.log.debug('HAVE ALL BEEN PROCESSED?', z: string, this.processedArray[z].read() : string, hstring=v.header);
+            this.log.debug('Has the node been processed?  Node: ', z: string, '-', this.processedArray[z].read() : string, hstring=v.header);
           }
         }
         // if we haven't moved, we should move our valkyrie to something in the current generation.  It makes searching substantially easier.
         if !v.moved {
           if currToProc != '' {
             this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
-            // now, don't do anything, mind you.  Just move it up.
+            // Get rid of the priority nodes; we've moved, after all.
+            v.priorityNodes.clear();
+            // We just need to make the current priorityNodes the intersection
+            // of the current node's edges and what we're processing in the next
+            // generation.
+            this.lock.rl(v.header);
+            v.priorityNodes.add((this.ygg.edges[currToProc] & this.nextGeneration));
+            this.lock.url(v.header);
+            // We're not doing any processing; just moving.
           }
         }
-        //this.valkyriesDone.sub(1);
-        //var vd = this.valkyriesDone[gen];
         if this.valkyriesDone[gen].fetchAdd(1) < (maxValkyries-1) {
-          //this.valkyriesDone[gen] = vd - 1;
-          //v.priorityNodes.clear();
+          // Reset a lot of the variables for the Valkyrie while we're idle.
+          // Then wait until all the other Valkyries have finished.
+          // In addition, add to some global variables so that we can compute
+          // some statistics of how well we're running.
+          // Then wait on the sync variable.
           v.moved = false;
           this.log.debug('Waiting in gen', gen : string, v.header);
           this.valkyriesProcessed[i].write(v.nProcessed);
           this.priorityValkyriesProcessed[i].write(v.nPriorityNodesProcessed : real / prioritySize : real);
+          v.nProcessed = 0;
+          v.nPriorityNodesProcessed = 0;
+          // moveOn is an array of sync variables.  We're blocked from reading
+          // until that's set to true.
           this.moveOn[gen];
-          //this.log.debug('MOVING ON in gen', gen : string, v.header);
           this.lock.rl(v.header);
           this.log.debug('MOVING ON in gen', gen : string, this.nodesToProcess : string, v.header);
           this.lock.url(v.header);
-          //this.lock.wl(v.header);
-          //this.valkyriesProcessed = ' '.join(this.valkyriesProcessed, 'V ', v.currentTask : string, ': ', v.nProcessed : string, ' ');
-          v.nProcessed = 0;
-          v.nPriorityNodesProcessed = 0;
-          //toProcess.clear();
-          //this.lock.uwl(v.header);
         } else {
-          //this.valkyriesDone[gen] = maxValkyries;
-          //v.priorityNodes.clear();
+          // Same stuff here, but as this is the last Valkyrie, we also
+          // do global cleanup to ensure the global arrays are ready.
           v.moved = false;
           this.lock.wl(v.header);
-          // reset that shit, yo.
-          //this.valkyriesProcessed = 'V ', v.currentTask : string, ': ', v.nProcessed : string, ' ';
-          //this.valkyriesProcessed = ' '.join(this.valkyriesProcessed, 'V ', v.currentTask : string, ': ', v.nProcessed : string, ' ');
           this.log.debug('Switching generations', v.header);
+          // Clear out the current nodesToProcess domain, and swap it for the
+          // ones we've set to process for the next generation.
           this.nodesToProcess.clear();
-          //this.processedArray: [nodesToProcess] atomic bool;
-          //for node in this.nodesToProcess {
-          //  this.nodesToProcess.remove(node);
-            //this.processedArray[node].write(true);
-          //}
           for node in this.nextGeneration {
-            //this.nodesToProcess = this.nextGeneration;
             this.nodesToProcess.add(node);
-            //this.nextGeneration.remove(node);
             this.processedArray[node].write(false);
           }
           this.nextGeneration.clear();
-          //this.log.debug(this.processedArray.read() : string, hstring=v.header);
+          // Set the count variable.
           this.inCurrentGeneration.write(this.nodesToProcess.size);
-          //this.processedArray.write(false);
           this.valkyriesProcessed[i].write(v.nProcessed);
+          // Compute some rough stats.  Buggy.
           this.priorityValkyriesProcessed[i].write(v.nPriorityNodesProcessed : real / prioritySize : real);
           var processedString: string;
           for y in 1..maxValkyries {
@@ -322,7 +309,6 @@ class Propagator {
           std = (1 - (sqrt(std)/avg));
           processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
           this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, processedString : string, hstring='NormalRuntime');
-          //this.log.log(this.nodesToProcess : string);
           this.generationTime = 0 : real;
           this.lock.uwl(v.header);
           this.valkyriesProcessed.write(0);
@@ -331,23 +317,8 @@ class Propagator {
           v.nProcessed = 0;
           // time to move the fuck on.
           this.moveOn[gen] = true;
-          //toProcess.clear();
         }
-        // now, switch over the list.
-        //this.log.log('VALKYRIE DONE in gen ', gen : string, v.header);
-        //var vd = this.valkyriesDone; // should block until we're done.
-        // nice dream, if I say so myself.
-        //while this.valkyriesDone.read() != 0 do {
-        //  this.log.log('VALKYRIE Sleeping in gen ', gen : string, maxValkyries : string, this.valkyriesDone.read() : string, v.header);
-        //  chpl_task_yield();
-        //}
-        //pathDomain.clear();
-         // otherwise, we assume we already did it.  Because we did.
-        //this.log.debug();
       }
-      //writeln(nnodes.read());
     }
-    stopVdebug();
   }
-
 }

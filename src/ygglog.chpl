@@ -134,6 +134,65 @@ class YggdrasilLogging {
     l.unlock();
   }
 
+  proc noSpecialPrinting(msg, debugLevel: string, hstring: string) {
+    // check whether we're going to stdout or not.
+    if this.lastDebugHeader == '' {
+      if !this.filesOpened.contains('stdout') {
+        this.filesOpened.add('stdout');
+        this.channelsOpened['stdout'] = open('EVOCAP.log', iomode.cw).writer();
+      }
+    }
+    var wc = stdout;
+    var useStdout: bool = true;
+    var s = hstring.split('----');
+    var vstring: string;
+    var lf: file;
+    var lastDebugHeader: string;
+    l.lock();
+    var id: string;
+    if s[1] == 'EVOCAP' {
+      id = s[2];
+      // First, check to see whether we've created the file.
+      if this.filesOpened.contains(id) {
+        wc = this.channelsOpened[id];
+      } else {
+        lf = open('logs/V-' + s[3] + '.log' : string, iomode.cw);
+        this.filesOpened.add(id);
+        this.channelsOpened[id] = lf.writer();
+        wc = this.channelsOpened[id];
+        wc.writeln('VALKYRIE TASK: ' + s[3] : string + ' ID: ' + s[2] : string);
+        wc.writeln('');
+      }
+      vstring = s[4];
+      useStdout = false;
+    } else {
+      id = 'stdout';
+    }
+    var tm: int;
+    if debugLevel != this.channelDebugHeader[id] {
+      wc.writeln(this.formatHeader(vstring, debugLevel));
+      if useStdout {
+        this.channelsOpened[id].writeln(this.formatHeader(vstring, debugLevel));
+      }
+      this.channelDebugHeader[id] = debugLevel;
+    }
+    // We're not splitting; just printing.
+    for m in msg {
+    //  wc.writeln('');
+      wc.write(' '*(this.indent+1));
+      if useStdout {
+        //this.channelsOpened[id].writeln('');
+        this.channelsOpened[id].write(' '*(this.indent+1));
+      }
+      wc.writeln(m : string, ' ');
+      if useStdout {
+        this.channelsOpened[id].writeln(m : string, ' ');
+      }
+    }
+    l.unlock();
+  }
+
+
   proc genericMessage(msg, mtype: int, debugLevel: string, gt: bool) {
     if gt {
       if this.currentDebugLevel <= mtype {
@@ -196,6 +255,10 @@ class YggdrasilLogging {
 
   proc critical(msg...?n) {
     this.genericMessage(msg, this.currentDebugLevel, 'CRITICAL FAILURE', hstring='', gt=true);
+  }
+
+  proc header(msg...?n) {
+    this.noSpecialPrinting(msg, 'RUNTIME', hstring='');
   }
 
 }
