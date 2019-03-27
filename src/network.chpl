@@ -505,37 +505,19 @@ class GeneNetwork {
   }
 
   proc move(ref v: propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) {
-    // Bit clonky, but for now.
-    var vstring = ' '.join(v.header, 'move');
-    this.log.debug('attempting to move', hstring=vstring);
-    var (d, pl) = this.moveToNode(v.currentNode, id, hstring=vstring);
-    v.nMoves += 1;
-    if createEdgeOnMove {
-      if pl > edgeDistance {
-        // If our edge distance is particularly long, create a shortcut.
-        this.lock.wl(vstring);
-        this.nodes[v.currentNode].join(this.nodes[id], d, vstring);
-        this.edges[id].add(v.currentNode);
-        this.edges[v.currentNode].add(id);
-        this.lock.uwl(vstring);
-      }
-    }
-    if propagator.unitTestMode {
-      this.log.debug('Delta to move to is:', d : string, hstring=vstring);
-    }
-    var success = v.move(d, id);
-    if success == 0 {
-      this.log.debug('move successful', hstring=vstring);
-    } else if success == 1 {
-      this.log.critical('CRITICAL FAILURE: Valkyrie did not move correctly!', hstring=vstring);
-      this.log.critical('Matrix should be:', id : string, 'but is:', v.matrixValues : string, hstring=vstring);
-    }
+    // This is the pathless one.  We just need the path, then we're good.
+    var path = this.calculatePath(v.currentNode, id, hstring=v.header);
+    this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
   }
 
-  proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
+  proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) {
+    this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
+  }
+
+  proc __move__(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
     // This is a overloaded move function if we already have a path.
     // The other move function is for if we DON'T have a path.
-    var vstring = ' '.join(v.header, 'move');
+    var vstring = ' '.join(v.header, '__move__');
     this.log.debug('attempting to move', hstring=vstring);
     var currentNode = id;
     this.log.debug('PATH', path : string, hstring=vstring);
