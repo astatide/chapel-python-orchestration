@@ -30,6 +30,7 @@ config var stdoutOnly = false;
 // a terrible noise; an unending screech which ends the world.
 // (okay, they're just super verbose)
 config var lockLog = false;
+config var flushToLog = false;
 
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
@@ -405,20 +406,22 @@ class Propagator {
           this.valkyriesProcessed[i].write(v.nProcessed);
           // Compute some rough stats.  Buggy.
           this.priorityValkyriesProcessed[i].write(v.nPriorityNodesProcessed : real / prioritySize : real);
+          this.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
           var processedString: string;
-          for y in 1..maxValkyries {
-            processedString += ' '.join('// VP', y : string, '-', this.valkyriesProcessed[y].read() : string, '// ');
-          }
+          // this is really an IDEAL average.
           var avg = startingSeeds : real / maxValkyries : real ;
           var std: real;
           var eff: real;
           for y in 1..maxValkyries {
-            std += (this.valkyriesProcessed[y].read() - avg)**2;
-            eff += this.priorityValkyriesProcessed[y].read();
+            var diff = this.valkyriesProcessed[y].read() - avg;
+            std += diff**2;
+            if this.valkyriesProcessed[y].read() != 0 {
+              eff += this.priorityValkyriesProcessed[y].read() : real;
+            }
           }
-          std /= maxValkyries;
-          eff /= maxValkyries;
-          std = (1 - (sqrt(std)/avg));
+          std = abs(avg - sqrt(std/maxValkyries))/avg;
+          //eff /= maxValkyries;
+          //std = 1 - (sqrt(std)/avg);
           processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
           this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, processedString : string, hstring=this.yh);
           this.yh.printedHeader = true;

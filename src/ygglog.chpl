@@ -19,10 +19,12 @@ record yggHeader {
   var header: string;
   var time: string;
   var printedHeader: bool = false;
+  var useTime: bool = true;
 
   proc writeThis(wc) {
     // this is function to allow this to be written directly.
     //
+    var spaces: int;
     if !printedHeader {
       wc.writeln('');
       wc.write(' '*6);
@@ -37,11 +39,22 @@ record yggHeader {
         }
       }
       wc.writeln('');
-      wc.write(' '*15);
-      wc.write(this.time, ' - ');
+      if this.useTime {
+        spaces = 15;
+      } else {
+        spaces = 6;
+      }
       this.printedHeader = true;
+      //wc.write(this.time, ' - ');
     } else {
-      wc.write(' '*9);
+      if this.useTime {
+        spaces = 9;
+      } else {
+        spaces = 6;
+      }
+    }
+    wc.write(' '*spaces);
+    if this.useTime {
       wc.write(this.time, ' - ');
     }
   }
@@ -172,7 +185,7 @@ class YggdrasilLogging {
     return header;
   }
 
-  proc printToConsole(msg, debugLevel: string, hstring: yggHeader) {
+  proc printToConsole(msg, debugLevel: string, hstring: yggHeader, header: bool) throws {
     // check whether we're going to stdout or not.
     var wc = stdout;
     var useStdout: bool = true;
@@ -195,11 +208,15 @@ class YggdrasilLogging {
       id = hstring.id;
       // First, check to see whether we've created the file.
       if this.filesOpened.contains(id) {
-        if propagator.unitTestMode {
+        if (propagator.unitTestMode | propagator.flushToLog) {
           // if we're in debug mode, we close the channels.
           // Otherwise, we leave them open.  It's for exception handling.
-          var fileSize = this.fileHandles[id].length();
-          this.channelsOpened[id] = this.fileHandles[id].writer(start=fileSize);
+          try {
+            // yay segfault?
+            lf = this.fileHandles[id];
+            var fileSize = lf.length();
+            this.channelsOpened[id] = this.fileHandles[id].writer(start=fileSize);
+          }
         }
         wc = this.channelsOpened[id];
         if propagator.stdoutOnly {
@@ -238,45 +255,59 @@ class YggdrasilLogging {
       }
       this.channelDebugHeader[id] = debugLevel;
     }
-
-      wc.write(' '*(this.indent+1), vstring);
-      if useStdout {
-        this.channelsOpened[id].write(' '*(this.indent+1), vstring);
-      }
-      tm = (' '*(this.indent*3)).size;
     //wc.write(' '*(this.indent*3));
-    for im in msg {
-      for m in im.split(maxsplit = -1) {
-        if tm + m.size > this.maxCharacters {
-          wc.writeln('');
-          wc.write(' '*((this.indent*3)+13));
-          if useStdout {
-            this.channelsOpened[id].writeln('');
-            this.channelsOpened[id].write(' '*this.indent*3);
-
-          }
-          tm = this.indent*3;
-        }
+    if header {
+      wc.write(vstring);
+      for m in msg {
         tm += m.size+1;
         wc.write(m : string, ' ');
         if useStdout {
           this.channelsOpened[id].write(m : string, ' ');
         }
       }
-    }
-    wc.writeln('');
-    if useStdout {
-      this.channelsOpened[id].writeln('');
+      wc.writeln('');
+      if useStdout {
+        this.channelsOpened[id].writeln('');
+      }
+    } else {
+      wc.write(' '*(this.indent+1), vstring);
+      if useStdout {
+        this.channelsOpened[id].write(' '*(this.indent+1), vstring);
+      }
+      tm = (' '*(this.indent*3)).size;
+      for im in msg {
+        for m in im.split(' ',maxsplit = -1) {
+          if tm + m.size > this.maxCharacters {
+            wc.writeln('');
+            wc.write(' '*((this.indent*3)+13));
+            if useStdout {
+              this.channelsOpened[id].writeln('');
+              this.channelsOpened[id].write(' '*this.indent*3);
+
+            }
+            tm = this.indent*3;
+          }
+          tm += m.size+1;
+          wc.write(m : string, ' ');
+          if useStdout {
+            this.channelsOpened[id].write(m : string, ' ');
+          }
+        }
+      }
+      wc.writeln('');
+      if useStdout {
+        this.channelsOpened[id].writeln('');
+      }
     }
     if id != 'stdout' {
       //writeln(wc.type : string);
-      if propagator.unitTestMode {
+      if propagator.unitTestMode | propagator.flushToLog {
         // If we're in debug mode, sync the file every time.
         // This ensures that if/when we fail out, our logs are complete.
-        if !propagator.stdoutOnly {
+        //if !propagator.stdoutOnly {
           // We can also just bail on the logging and only use stdout.
-          wc.close();
-        }
+        wc.close();
+        //}
         this.fileHandles[id].fsync();
       }
         //wc.commit();
@@ -285,65 +316,6 @@ class YggdrasilLogging {
     }
     l.unlock();
   }
-
-  proc noSpecialPrinting(msg, debugLevel: string, hstring: yggHeader) {
-    // check whether we're going to stdout or not.
-    if this.lastDebugHeader == '' {
-      if !this.filesOpened.contains('stdout') {
-        this.filesOpened.add('stdout');
-        this.channelsOpened['stdout'] = open('EVOCAP.log', iomode.cw).writer();
-      }
-    }
-    var wc = stdout;
-    var useStdout: bool = true;
-    //var s = hstring.split('----');
-    var vstring = hstring;
-    var lf: file;
-    var lastDebugHeader: string;
-    l.lock();
-    var id: string;
-    if hstring.header == 'VALKYRIE' {
-      id = hstring.id;
-      // First, check to see whether we've created the file.
-      if this.filesOpened.contains(id) {
-        wc = this.channelsOpened[id];
-      } else {
-        lf = open('logs/V-' + hstring.currentTask + '.log' : string, iomode.cw);
-        this.filesOpened.add(id);
-        this.channelsOpened[id] = lf.writer();
-        wc = this.channelsOpened[id];
-        wc.writeln('VALKYRIE TASK: ' + hstring.currentTask: string + ' ID: ' + id: string);
-        wc.writeln('');
-      }
-      //vstring = s[4];
-      useStdout = false;
-    } else {
-      id = 'stdout';
-    }
-    var tm: int;
-    if debugLevel != this.channelDebugHeader[id] {
-      wc.writeln(this.formatHeader(debugLevel));
-      if useStdout {
-        this.channelsOpened[id].writeln(this.formatHeader(debugLevel));
-      }
-      this.channelDebugHeader[id] = debugLevel;
-    }
-    // We're not splitting; just printing.
-    for m in msg {
-    //  wc.writeln('');
-      wc.write(' '*(this.indent+1));
-      if useStdout {
-        //this.channelsOpened[id].writeln('');
-        this.channelsOpened[id].write(' '*(this.indent+1));
-      }
-      wc.writeln(m : string, ' ');
-      if useStdout {
-        this.channelsOpened[id].writeln(m : string, ' ');
-      }
-    }
-    l.unlock();
-  }
-
 
   proc genericMessage(msg, mtype: int, debugLevel: string, gt: bool) {
     if gt {
@@ -360,11 +332,23 @@ class YggdrasilLogging {
   proc genericMessage(msg, mtype: int, debugLevel: string, hstring: yggHeader, gt: bool) {
     if gt {
       if this.currentDebugLevel <= mtype {
-        this.printToConsole(msg, debugLevel, hstring);
+        this.printToConsole(msg, debugLevel, hstring, header=false);
       }
     } else {
       if this.currentDebugLevel == mtype {
-        this.printToConsole(msg, debugLevel, hstring);
+        this.printToConsole(msg, debugLevel, hstring, header=false);
+      }
+    }
+  }
+
+  proc genericMessage(msg, mtype: int, debugLevel: string, hstring: yggHeader, gt: bool, header: bool) {
+    if gt {
+      if this.currentDebugLevel <= mtype {
+        this.printToConsole(msg, debugLevel, hstring, header);
+      }
+    } else {
+      if this.currentDebugLevel == mtype {
+        this.printToConsole(msg, debugLevel, hstring, header);
       }
     }
   }
@@ -410,10 +394,17 @@ class YggdrasilLogging {
   }
 
   proc header(msg...?n) {
-    this.noSpecialPrinting(msg, 'RUNTIME', hstring=new yggHeader());
+    var yh = new yggHeader();
+    yh.printedHeader = true;
+    yh.useTime = false;
+    this.genericMessage((msg), this.RUNTIME, 'RUNTIME', hstring=yh, gt=true, header=true);
   }
-  proc header(msg...?n, hstring: yggHeader) {
-    this.noSpecialPrinting(msg, 'RUNTIME', hstring=hstring);
+
+  proc header(msg...?n, in hstring: yggHeader) {
+    //var yh = new yggHeader();
+    hstring.printedHeader = true;
+    hstring.useTime = false;
+    this.genericMessage((msg), this.RUNTIME, 'RUNTIME', hstring=hstring, gt=true, header=true);
   }
 
 }

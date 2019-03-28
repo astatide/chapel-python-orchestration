@@ -224,6 +224,8 @@ class GeneNetwork {
       i += 1;
       // Seems sometimes this locks, but doesn't unlock.
       // Is this from thread switching, I wonder?
+      // AH!  I think it was from thread switching at the OS level, maybe.
+      // I should apparently speak with Elliot about this, if I'm curious.
       this.lock.rl(vstring);
       this.log.debug('Attempting to pass through node', currentNode, 'does it exist?', this.ids.contains(currentNode) : string, vstring);
       //try {
@@ -287,17 +289,17 @@ class GeneNetwork {
 
   }
 
-  proc move(ref v: propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) {
+  proc move(ref v: propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) throws {
     // This is the pathless one.  We just need the path, then we're good.
     var path = this.calculatePath(v.currentNode, id, hstring=v.header);
     this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
   }
 
-  proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) {
+  proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
     this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
   }
 
-  proc __move__(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) {
+  proc __move__(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
     // This is a overloaded move function if we already have a path.
     // The other move function is for if we DON'T have a path.
     var vstring = v.header + '__move__';
@@ -436,7 +438,7 @@ class GeneNetwork {
     return this.__nextNode__(id, hstring);
   }
 
-  proc __nextNode__(id: string, hstring: ygglog.yggHeader) {
+  proc __nextNode__(id: string, hstring: ygglog.yggHeader) throws {
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__nextNode__';
     this.log.debug('Adding a seed on to ID', id : string, hstring);
