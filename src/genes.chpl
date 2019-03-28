@@ -228,19 +228,23 @@ class GeneNode {
     this.l = new shared spinlock.SpinLock();
     this.l.t = ' '.join('GENE', this.id);
   }
+
+  proc writeThis(wc) {
+    wc.writeln(this.id);
+    wc.writeln('nodes: ', this.nodes : string);
+    wc.writeln('edges: ', this.edges : string);
+  }
+  
   // some validation functions
-  proc node_in_edges(id: string) {
+  proc nodeInEdges(id: string, hstring: ygglog.yggHeader) {
     // Well, okay, that turned out to be easy but whatever.
-    this.l.rl();
-    var ie = this.nodes.member(id);
-    this.l.url();
+    this.l.rl(hstring);
+    var ie = this.nodes.contains(id);
+    this.l.url(hstring);
     return ie;
-    //this.l.unlock();
   }
 
   // Now, the functions to handle the nodes!
-  //   proc join(node: GeneNode, delta: [?dom]) {
-
   proc join(node: shared GeneNode, delta: deltaRecord) {
     this.__join__(node, delta, hstring='');
   }
@@ -256,6 +260,8 @@ class GeneNode {
     this.l.wl(vstring);
     node.l.wl(vstring);
     var d = (this.id, node.id);
+    node.nodes.add(this.id);
+    this.nodes.add(node.id);
     this.edges[node.id] = new shared GeneEdge(delta, d);
     // Now, reverse the delta.  Which we can do by multiplying it by
     // -1.

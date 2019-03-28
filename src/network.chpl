@@ -83,15 +83,15 @@ class GeneNetwork {
 
   var testNodeId: string;
 
-  proc add_node(in node: shared genes.GeneNode) {
+  proc add_node(ref node: shared genes.GeneNode) {
     this.__addNode__(node, hstring='');
   }
 
-  proc add_node(in node: shared genes.GeneNode, hstring: ygglog.yggHeader) {
+  proc add_node(ref node: shared genes.GeneNode, hstring: ygglog.yggHeader) {
     this.__addNode__(node, hstring);
   }
 
-  proc __addNode__(in node: shared genes.GeneNode, hstring: ygglog.yggHeader) : void {
+  proc __addNode__(ref node: shared genes.GeneNode, hstring: ygglog.yggHeader) : void {
     //writeln(nodes);
     // We are working with the actual node objects, here.
     // Add to our domain!
@@ -228,9 +228,11 @@ class GeneNetwork {
       // I should apparently speak with Elliot about this, if I'm curious.
       this.lock.rl(vstring);
       this.log.debug('Attempting to pass through node', currentNode, 'does it exist?', this.ids.contains(currentNode) : string, vstring);
-      //try {
-      assert(this.ids.contains(currentNode));
-      //}
+      if this.ids.contains(currentNode) {
+        //assert(this.ids.contains(currentNode));
+      } else {
+        this.log.critical('NODE', currentNode : string, 'NOT IN LIST.  WHAT.  Existing nodes:', this.ids : string, hstring=vstring);
+      }
       for edge in this.edges[currentNode] do {
         if !nodes.contains(edge) {
             nodes.add(edge);
@@ -347,14 +349,21 @@ class GeneNetwork {
     for (i, pt) in path {
       this.log.debug(i: string, pt: string, hstring=vstring);
       this.lock.rl(vstring);
+      // LOCK THE NODES.
+      this.nodes[currentNode].l.rl(vstring);
       if this.nodes[currentNode].nodes.contains(pt) {
         edge = this.nodes[currentNode].edges[pt : string];
         this.log.debug('EDGE:', edge : string, hstring=vstring);
       } else {
         this.log.critical('EDGE', pt : string, 'NOT IN EDGE LIST FOR', currentNode, hstring=vstring);
+        this.log.critical('EDGELIST for 1st:', this.nodes[pt : string].nodes : string, hstring=vstring);
+        this.log.critical('EDGELIST for 2nd:', this.nodes[currentNode].nodes : string, hstring=vstring);
+        this.log.critical('PATH WAS:', path : string, hstring=vstring);
+        this.nodes[currentNode].l.url(vstring);
         this.lock.url(vstring);
-        throw new owned NodeNotInEdgesError();
+        //throw new owned NodeNotInEdgesError();
       }
+      this.nodes[currentNode].l.url(vstring);
       this.lock.url(vstring);
       for (s, c) in edge.delta {
         d += (s, c);
@@ -445,7 +454,7 @@ class GeneNetwork {
     // MIGHT NOT NEED TO BE A THING
     var seed: int;
     var nId: string;
-    var node: shared genes.GeneNode;
+    //var node = new shared genes.GeneNode(id='');
     if propagator.unitTestMode {
       //nId = (this.nodes[id].debugOrderOfCreation+1) : string;
       nId = (id : real + 1) : string;
@@ -455,7 +464,7 @@ class GeneNetwork {
       seed = this.newSeed();
     }
     // DEBUG ME
-    node = this.nodes[id].new_node(seed=seed, coefficient=1, id=nId, hstring=vstring);
+    var node = this.nodes[id].new_node(seed=seed, coefficient=1, id=nId, hstring=vstring);
     if propagator.unitTestMode {
       node.debugOrderOfCreation = this.nodes[id].debugOrderOfCreation+1;
     }
@@ -466,7 +475,19 @@ class GeneNetwork {
     this.lock.wl(hstring);
     this.edges[id].add(node.id);
     this.lock.uwl(hstring);
+    if this.ids.contains(node.id) {
+      writeln('WHAT THE FUCK');
+    }
     this.add_node(node, vstring);
+    // Make sure it happened properly.
+    assert(node.nodeInEdges(id, vstring));
+    assert(this.nodes[id].nodeInEdges(node.id, vstring));
+    if !this.nodes[node.id].nodeInEdges(id, vstring) {
+      writeln(id, ' ', node.id);
+      writeln(this.nodes[node.id]);
+      writeln(node);
+    }
+    assert(this.nodes[node.id].nodeInEdges(id, vstring));
     this.log.debug('Successfully added', (seed+1) : string, 'to ID', id : string, 'to create ID', node.id : string, hstring=hstring);
     return node.id;
   }

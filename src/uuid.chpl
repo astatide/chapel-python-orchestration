@@ -3,6 +3,7 @@
 // Load up the random module.  We need randomness!
 use Random;
 use rng;
+use spinlock;
 
 class UUID {
   // This is a generic class which will be able to output a UUID4 compliant ID
@@ -12,6 +13,11 @@ class UUID {
   var remainder: [0..#2] string;
   // We want an array to store stuff into.
   var uuid_int_rep: [1..16] uint(8);
+  var lock: shared spinlock.SpinLock;
+
+  proc init() {
+      this.lock = new shared spinlock.SpinLock();
+  }
 
   proc pull_random_data() {
     forall i in 1..16 do {
@@ -47,7 +53,10 @@ class UUID {
     // I'm sure there's a more elegant solution for this, but this is just
     // proof of concept.
     var r_uuid: string;
+    // Jesus CHRIST.  I think I'm pulling from the same entropy bit.
+    this.lock.lock();
     this.pull_random_data();
+    this.lock.unlock();
     this.convert_to_uuid4();
     r_uuid = '';
     for i in 1..16 do {

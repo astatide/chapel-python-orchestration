@@ -221,6 +221,7 @@ class Propagator {
     // NEVER LET GO.
     this.log.critical('SHUTDOWN INITIATED');
     this.log.exitRoutine();
+    this.lock.uwl(this.yh);
     throw new owned Error();
   }
 
@@ -270,26 +271,38 @@ class Propagator {
           toProcess.clear();
           for id in this.nodesToProcess {
               // As this is an atomic variable, we don't need to lock.
-              if !this.processedArray[id].read() {
+              // It's probably best to remove it, if necessary.
+              //if !this.processedArray[id].read() {
                 toProcess.add(id);
-              }
+              //}
           }
           if !(v.priorityNodes & toProcess).isEmpty() {
             // If this isn't an empty set, then prioritize the nodes here.
             // Note that this always means that if the nodes aren't in the current
             // generation, we ignore them.
             // This is probably _not_ the way we'll want to do this, ultimately, but.
-            this.log.debug('Using the joint of toProcess and priorityNodes:', (v.priorityNodes & toProcess) : string, hstring=v.header);
-            this.log.debug('Current toProcess:', toProcess : string, 'current priorityNodes:', v.priorityNodes : string, hstring=v.header);
+            //this.log.debug('Using the joint of toProcess and priorityNodes:', (v.priorityNodes & toProcess) : string, hstring=v.header);
+            //this.log.debug('Current toProcess:', toProcess : string, 'current priorityNodes:', v.priorityNodes : string, hstring=v.header);
             toProcess = toProcess & v.priorityNodes;
           }
           // Assuming we have some things to process, do it!
           if !toProcess.isEmpty() {
             (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header);
             // Still some weird edge cases; this just helps me sort out what things are doing.
-            this.log.debug(this.nodesToProcess : string, '//', toProcess : string, ':', v.currentNode : string, 'TO', currToProc : string, hstring=v.header);
-            this.log.debug('Attempting to unlock node:', currToProc, 'nodesToProcess', this.nodesToProcess : string, hstring=v.header);
-            if !this.processedArray[currToProc].testAndSet() {
+            //this.log.debug(this.nodesToProcess : string, '//', toProcess : string, ':', v.currentNode : string, 'TO', currToProc : string, hstring=v.header);
+            this.log.debug('Attempting to unlock node:', currToProc, hstring=v.header);
+            // We can remove nodes from the domain processedArray is built on, which means we need to catch and process.
+            var existsInDomainAndCanProcess: bool = false;
+
+            try {
+              // returns true if it exists and can be processed.
+              existsInDomainAndCanProcess = this.processedArray[currToProc].testAndSet();
+              // When this is done, it means this is OURS.
+            } catch {
+              // just move on.  Who cares?
+            }
+
+            if existsInDomainAndCanProcess {
               // If this node is one of the ones in our priority queue, remove it
               // as we clearly processing it now.
               if v.priorityNodes.contains(currToProc) {
@@ -300,6 +313,9 @@ class Propagator {
               this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
               this.log.debug('Attempting to move ID', currToProc, 'into the next generation.', hstring=v.header);
               var nextNode = this.ygg.nextNode(currToProc, hstring=v.header);
+              // They should really know about each other, I mean, come on.
+              assert(this.ygg.nodes[currToProc].nodeInEdges(nextNode, v.header));
+              assert(this.ygg.nodes[nextNode].nodeInEdges(currToProc, v.header));
               var mergeTest: string;
               this.log.debug('Node', nextNode : string, 'added', hstring=v.header);
               v.nProcessed += 1;
@@ -313,6 +329,8 @@ class Propagator {
                 }
               }
               this.lock.wl(v.header);
+              // We're testing to see if we can do this.
+              this.nodesToProcess.remove(currToProc);
               // We only want to add to an empty domain here such that we only
               // prioritize nodes which are close to the current node.
               // Eventually, if we mutate, we'll add that in, too.
@@ -325,6 +343,7 @@ class Propagator {
                   this.nextGeneration.add(mergeTest);
                 }
               }
+
               this.lock.uwl(v.header);
               this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
               this.inCurrentGeneration.sub(1);
@@ -339,14 +358,14 @@ class Propagator {
           } else {
             // Rest now, my child. Rest, and know your work is done.
             //this.log.debug('And now, I rest.')
-            this.log.debug('And now, I rest.  Remaining in generation:', this.inCurrentGeneration.read() : string, 'NODES:', this.nodesToProcess : string, 'priorityNodes:', v.priorityNodes : string, 'toProcess:', toProcess : string, hstring=v.header);
+            this.log.debug('And now, I rest.  Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
             while this.inCurrentGeneration.read() != 0 do chpl_task_yield();
             this.log.debug('Waking up!', hstring=v.header);
           }
-          this.log.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'NODES:', this.nodesToProcess : string, 'priorityNodes:', v.priorityNodes : string, 'toProcess:', toProcess : string, hstring=v.header);
-          for z in this.nodesToProcess {
-            this.log.debug('Has the node been processed?  Node: ', z: string, '-', this.processedArray[z].read() : string, hstring=v.header);
-          }
+          this.log.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+          //for z in this.nodesToProcess {
+          //  this.log.debug('Has the node been processed?  Node: ', z: string, '-', this.processedArray[z].read() : string, hstring=v.header);
+          //}
           // Here we check if an error condition happened.  We can shut down if that's
           // the case.
           if this.shutdown {
