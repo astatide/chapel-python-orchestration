@@ -216,6 +216,8 @@ class Propagator {
 
   proc exitRoutine() throws {
     // command the logger to shut down, then exit.
+    this.lock.wl(this.yh);
+    // NEVER LET GO.
     this.log.critical('SHUTDOWN INITIATED');
     this.log.exitRoutine();
     throw new owned Error();
@@ -369,6 +371,7 @@ class Propagator {
           this.log.debug('Waiting in gen', gen : string, v.header);
           this.valkyriesProcessed[i].write(v.nProcessed);
           this.priorityValkyriesProcessed[i].write(v.nPriorityNodesProcessed : real / prioritySize : real);
+          this.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
           v.nProcessed = 0;
           v.nPriorityNodesProcessed = 0;
           // moveOn is an array of sync variables.  We're blocked from reading

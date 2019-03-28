@@ -24,7 +24,10 @@ record yggHeader {
     // this is function to allow this to be written directly.
     //
     if !printedHeader {
+      wc.writeln('');
+      wc.write(' '*6);
       if this.m.size > this.levels {
+        wc.write('..', this.sep);
         for i in this.m.size-levels+1..this.m.size {
           wc.write(this.msg[i], this.sep);
         }
@@ -246,7 +249,7 @@ class YggdrasilLogging {
       for m in im.split(maxsplit = -1) {
         if tm + m.size > this.maxCharacters {
           wc.writeln('');
-          wc.write(' '*this.indent*3);
+          wc.write(' '*((this.indent*3)+13));
           if useStdout {
             this.channelsOpened[id].writeln('');
             this.channelsOpened[id].write(' '*this.indent*3);

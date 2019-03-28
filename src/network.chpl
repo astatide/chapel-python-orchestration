@@ -333,7 +333,7 @@ class GeneNetwork {
     // This is an attempt to automatically create a deltaRecord from
     // a path.  We pass in a copy as we want to remove the id from it.
     // Not sure how that'll affect performance, but worth keeping an eye on.
-    var vstring = hstring + ' deltaFromPath';
+    var vstring = hstring + 'deltaFromPath';
     var d = new genes.deltaRecord();
     var edge: genes.GeneEdge;
     var currentNode = id;
@@ -449,6 +449,7 @@ class GeneNetwork {
       nId = '';
       seed = this.newSeed();
     }
+    // DEBUG ME
     node = this.nodes[id].new_node(seed=seed, coefficient=1, id=nId, hstring=vstring);
     if propagator.unitTestMode {
       node.debugOrderOfCreation = this.nodes[id].debugOrderOfCreation+1;
