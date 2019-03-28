@@ -25,6 +25,11 @@ config var debug = -1;
 config var generations = 100;
 config var unitTestMode = false;
 config var stdoutOnly = false;
+// The locks are noisy, but we do need to debug them sometimes.
+// This shuts them up unless you really want them to sing.  Their song is
+// a terrible noise; an unending screech which ends the world.
+// (okay, they're just super verbose)
+config var lockLog = false;
 
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
@@ -76,7 +81,8 @@ record valkyrie {
   }
 
   proc header {
-    return ' '.join(this.sendToFile, 'V', '%05i'.format(this.currentTask) : string, 'M', '%05i'.format(this.nMoves), 'G', '%05i'.format(this.gen));
+    //return ' '.join(this.sendToFile, 'V', '%05i'.format(this.currentTask) : string, 'M', '%05i'.format(this.nMoves), 'G', '%05i'.format(this.gen));
+    return this.sendToFile;
   }
 
   iter logo {
@@ -321,6 +327,11 @@ class Propagator {
           for z in this.nodesToProcess {
             this.log.debug('Has the node been processed?  Node: ', z: string, '-', this.processedArray[z].read() : string, hstring=v.header);
           }
+          // Here we check if an error condition happened.  We can shut down if that's
+          // the case.
+          if this.shutdown {
+            this.exitRoutine();
+          }
         }
         // if we haven't moved, we should move our valkyrie to something in the current generation.  It makes searching substantially easier.
         if !v.moved {
@@ -399,11 +410,6 @@ class Propagator {
           v.nProcessed = 0;
           // time to move the fuck on.
           this.moveOn[gen] = true;
-        }
-        // Here we check if an error condition happened.  We can shut down if that's
-        // the case.
-        if this.shutdown {
-          this.exitRoutine();
         }
       }
     }

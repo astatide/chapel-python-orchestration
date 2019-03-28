@@ -226,8 +226,10 @@ class GeneNetwork {
     }
     while true {
       i += 1;
+      // Seems sometimes this locks, but doesn't unlock.
+      // Is this from thread switching, I wonder?
       this.lock.rl(vstring);
-      this.log.debug('Attempting to pass through', currentNode, 'edges', this.ids.contains(currentNode) : string, vstring);
+      this.log.debug('Attempting to pass through node', currentNode, 'does it exist?', this.ids.contains(currentNode) : string, vstring);
       for edge in this.edges[currentNode] do {
         if !nodes.contains(edge) {
             nodes.add(edge);
@@ -349,6 +351,7 @@ class GeneNetwork {
         this.log.debug('EDGE:', edge : string, hstring=vstring);
       } else {
         this.log.critical('EDGE', pt : string, 'NOT IN EDGE LIST FOR', currentNode, hstring=vstring);
+        this.lock.url(vstring);
         throw new owned NodeNotInEdgesError();
       }
       this.lock.url(vstring);
@@ -448,7 +451,6 @@ class GeneNetwork {
     var seed: int;
     var nId: string;
     var node: shared genes.GeneNode;
-    this.lock.wl(hstring);
     if propagator.unitTestMode {
       //nId = (this.nodes[id].debugOrderOfCreation+1) : string;
       nId = (id : real + 1) : string;
@@ -465,6 +467,7 @@ class GeneNetwork {
     node.log = this.log;
     node.l.log = this.log;
     // Add to current node!  I can't believe you forgot this.
+    this.lock.wl(hstring);
     this.edges[id].add(node.id);
     this.lock.uwl(hstring);
     this.add_node(node, vstring);
