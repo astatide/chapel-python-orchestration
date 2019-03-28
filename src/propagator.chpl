@@ -335,6 +335,12 @@ class Propagator {
             if v.priorityNodes.contains(currToProc) {
               v.priorityNodes.remove(currToProc);
             }
+          } else {
+            // Rest now, my child. Rest, and know your work is done.
+            //this.log.debug('And now, I rest.')
+            this.log.debug('And now, I rest.  Remaining in generation:', this.inCurrentGeneration.read() : string, 'NODES:', this.nodesToProcess : string, 'priorityNodes:', v.priorityNodes : string, 'toProcess:', toProcess : string, hstring=v.header);
+            while this.inCurrentGeneration.read() != 0 do chpl_task_yield();
+            this.log.debug('Waking up!', hstring=v.header);
           }
           this.log.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'NODES:', this.nodesToProcess : string, 'priorityNodes:', v.priorityNodes : string, 'toProcess:', toProcess : string, hstring=v.header);
           for z in this.nodesToProcess {

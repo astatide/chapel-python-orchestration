@@ -195,7 +195,7 @@ class GeneNetwork {
     return path;
   }
 
-  proc __calculatePath__(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader) {
+  proc __calculatePath__(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader) throws {
     // This is an implementation of djikstra's algorithm.
     var nodes: domain(string);
     var visited: [nodes] bool;
@@ -226,6 +226,9 @@ class GeneNetwork {
       // Is this from thread switching, I wonder?
       this.lock.rl(vstring);
       this.log.debug('Attempting to pass through node', currentNode, 'does it exist?', this.ids.contains(currentNode) : string, vstring);
+      //try {
+      assert(this.ids.contains(currentNode));
+      //}
       for edge in this.edges[currentNode] do {
         if !nodes.contains(edge) {
             nodes.add(edge);
