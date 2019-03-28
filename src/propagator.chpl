@@ -53,6 +53,8 @@ record valkyrie {
 
   var id = UUID.UUID4();
 
+  var yh = new ygglog.yggHeader();
+
   proc moveToRoot() {
     // Zero out the matrix, return the root id.
     this.matrixValues = 0;
@@ -82,7 +84,10 @@ record valkyrie {
 
   proc header {
     //return ' '.join(this.sendToFile, 'V', '%05i'.format(this.currentTask) : string, 'M', '%05i'.format(this.nMoves), 'G', '%05i'.format(this.gen));
-    return this.sendToFile;
+    this.yh.header = 'VALKYRIE';
+    this.yh.id = this.id;
+    this.yh.currentTask = this.currentTask;
+    return this.yh;
   }
 
   iter logo {
@@ -115,6 +120,7 @@ class Propagator {
   var nextGeneration: domain(string);
 
   var ygg: shared network.GeneNetwork();
+  var yh = new ygglog.yggHeader();
   var log: shared ygglog.YggdrasilLogging();
   var lock: shared spinlock.SpinLock;
   var valkyriesDone: [1..generations] atomic int;
@@ -184,6 +190,8 @@ class Propagator {
     // and infrastructure support that.  Might be faster, dunno.
     // Typically, we probably won't have that much output, though, so.
     this.ygg = new shared network.GeneNetwork();
+    this.yh = new ygglog.yggHeader();
+    this.yh += 'Ragnarok';
     this.log = new shared ygglog.YggdrasilLogging();
     this.log.currentDebugLevel = debug;
     this.ygg.log = this.log;
@@ -200,7 +208,7 @@ class Propagator {
         }
       }
     }
-    this.log.debug('INITIALIZED', this.inCurrentGeneration.read() : string, 'seeds.', hstring='Ragnarok');
+    this.log.debug('INITIALIZED', this.inCurrentGeneration.read() : string, 'seeds.', this.yh);
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'Ragnarok';
     this.lock.log = this.log;
@@ -220,12 +228,15 @@ class Propagator {
   proc run() {
     // Print out the header, yo.
     this.header();
+    this.yh.header = 'NormalRuntime';
+    this.yh += 'run';
     // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
     var nnodes: atomic int;
     coforall i in 1..maxValkyries {
       var v = new valkyrie();
       v.currentTask = i;
+      v.yh += 'run';
       for iL in v.logo {
         this.log.header(iL, hstring=v.header);
       }
@@ -400,7 +411,8 @@ class Propagator {
           eff /= maxValkyries;
           std = (1 - (sqrt(std)/avg));
           processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
-          this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, processedString : string, hstring='NormalRuntime');
+          this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, processedString : string, hstring=this.yh);
+          this.yh.printedHeader = true;
           //this.log.log(stdin.read(string));
           this.generationTime = 0 : real;
           this.lock.uwl(v.header);

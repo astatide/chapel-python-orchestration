@@ -87,19 +87,17 @@ class GeneNetwork {
     this.__addNode__(node, hstring='');
   }
 
-  proc add_node(in node: shared genes.GeneNode, hstring: string) {
+  proc add_node(in node: shared genes.GeneNode, hstring: ygglog.yggHeader) {
     this.__addNode__(node, hstring);
   }
 
-  proc __addNode__(in node: shared genes.GeneNode, hstring: string) : void {
+  proc __addNode__(in node: shared genes.GeneNode, hstring: ygglog.yggHeader) : void {
     //writeln(nodes);
     // We are working with the actual node objects, here.
     // Add to our domain!
     // We need to block until such time as we're ready;
-    var vstring: string;
-    if hstring != '' {
-      vstring = ' '.join(hstring, '__addNode__');
-    }
+    var vstring: ygglog.yggHeader;
+    vstring = hstring + '__addNode__';
     this.lock.wl(vstring);
     this.log.debug('Adding node', node.id : string, 'to GeneNetwork', hstring=vstring);
     this.ids.add(node.id);
@@ -151,8 +149,8 @@ class GeneNetwork {
       delta = new genes.deltaRecord();
       delta.seeds.add(seed);
       delta.delta[seed] = 1;
-      this.rootNode.join(node, delta, 'initializeNetwork');
-      this.add_node(node, 'initializeNetwork');
+      this.rootNode.join(node, delta, new ygglog.yggHeader() + 'initializeNetwork');
+      this.add_node(node, new ygglog.yggHeader() + 'initializeNetwork');
     }
     if propagator.unitTestMode {
       seed = ((n_seeds+1)*1000)+10000;
@@ -164,11 +162,11 @@ class GeneNetwork {
       delta = new genes.deltaRecord();
       delta.seeds.add(seed);
       delta.delta[seed] = 1;
-      this.log.debug('Adding testMergeNode, delta:', delta : string, hstring='initializeNetwork');
-      this.rootNode.join(node, delta, 'initializeNetwork');
-      this.add_node(node, 'initializeNetwork');
+      this.log.debug('Adding testMergeNode, delta:', delta : string, hstring=new ygglog.yggHeader() + 'initializeNetwork');
+      this.rootNode.join(node, delta, new ygglog.yggHeader() + 'initializeNetwork');
+      this.add_node(node, new ygglog.yggHeader() + 'initializeNetwork');
     }
-    this.add_node(this.rootNode, 'initializeNetwork');
+    this.add_node(this.rootNode, new ygglog.yggHeader() + 'initializeNetwork');
   }
 
   proc initializeSeedGenes(seeds: domain(int)) {
@@ -181,14 +179,14 @@ class GeneNetwork {
     }
   }
 
-  proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: string) {
-    var vstring = ' '.join(hstring, 'returnNearestUnprocessed');
+  proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader) {
+    var vstring = hstring + 'returnNearestUnprocessed';
     return this.__calculatePath__(id_A, id_B, hstring=vstring);
   }
 
-  proc calculatePath(id_A: string, id_B: string, hstring: string) {
+  proc calculatePath(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
     // This allows us to search for a specific one with the same logic.
-    var vstring = ' '.join(hstring, 'calculatePath');
+    var vstring = hstring + 'calculatePath';
     var b_dom: domain(string);
     var b: string;
     var path: pathHistory;
@@ -197,7 +195,7 @@ class GeneNetwork {
     return path;
   }
 
-  proc __calculatePath__(id_A: string, id_B: domain(string), hstring: string) {
+  proc __calculatePath__(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader) {
     // This is an implementation of djikstra's algorithm.
     var nodes: domain(string);
     var visited: [nodes] bool;
@@ -211,10 +209,8 @@ class GeneNetwork {
     var currMinNodeIndex = 0;
     var i: int;
     var completed: [id_B] bool = false;
-    var vstring: string;
-    if hstring != '' {
-      vstring = ' '.join(hstring, '__calculatePath__');
-    }
+    var vstring: ygglog.yggHeader;
+    vstring = hstring + '__calculatePath__';
     nodes.add[id_A];
     dist[id_A] = 0;
     paths[id_A].n.add(0);
@@ -301,7 +297,7 @@ class GeneNetwork {
   proc __move__(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) {
     // This is a overloaded move function if we already have a path.
     // The other move function is for if we DON'T have a path.
-    var vstring = ' '.join(v.header, '__move__');
+    var vstring = v.header + '__move__';
     this.log.debug('Attempting to move from', path.key(0), 'to', id : string, hstring=vstring);
     this.log.debug('PATH', path : string, hstring=vstring);
     // Now we just process the path into a delta, and confirm that it is valid.
@@ -333,7 +329,7 @@ class GeneNetwork {
     }
   }
 
-  proc deltaFromPath(in path: network.pathHistory, id: string, hstring: string) throws {
+  proc deltaFromPath(in path: network.pathHistory, id: string, hstring: ygglog.yggHeader) throws {
     // This is an attempt to automatically create a deltaRecord from
     // a path.  We pass in a copy as we want to remove the id from it.
     // Not sure how that'll affect performance, but worth keeping an eye on.
@@ -371,13 +367,11 @@ class GeneNetwork {
     return d;
   }
 
-  proc calculateHistory(id: string, hstring: string) {
+  proc calculateHistory(id: string, hstring: ygglog.yggHeader) {
     // Since all nodes carry their ancestor,
     // simply calculate the path back to the seed node.
-    var vstring: string;
-    if hstring != '' {
-      vstring = ' '.join(hstring, 'calculateHistory');
-    }
+    var vstring: ygglog.yggHeader;
+    vstring = hstring + 'calculateHistory';
     //var path = this.calculatePath(id, this.nodes[id].parentSeedNode, hstring=vstring);
     //var delta = this.deltaFromPath(path, this.nodes[id].parentSeedNode, hstring=vstring);
     // Actually, can we just do back to root?
@@ -394,15 +388,13 @@ class GeneNetwork {
     return this.__mergeNodes__(id_A, id_B, hstring='');
   }
 
-  proc mergeNodes(id_A: string, id_B: string, hstring: string) {
+  proc mergeNodes(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
     return this.__mergeNodes__(id_A, id_B, hstring=hstring);
   }
 
-  proc __mergeNodes__(id_A: string, id_B: string, hstring: string) {
-    var vstring: string;
-    if hstring != '' {
-        vstring = ' '.join(hstring, '__mergeNodes__');
-    }
+  proc __mergeNodes__(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
+    var vstring: ygglog.yggHeader;
+    vstring = hstring + '__mergeNodes__';
     var deltaA = this.calculateHistory(id_A, vstring);
     var deltaB = this.calculateHistory(id_B, vstring);
     this.log.debug('deltaA:', deltaA : string, 'deltaB:', deltaB : string, hstring=vstring);
@@ -437,15 +429,13 @@ class GeneNetwork {
     return this.__nextNode__(id, hstring='');
   }
 
-  proc nextNode(id: string, hstring: string) {
+  proc nextNode(id: string, hstring: ygglog.yggHeader) {
     return this.__nextNode__(id, hstring);
   }
 
-  proc __nextNode__(id: string, hstring: string) {
-    var vstring: string;
-    if hstring != '' {
-      vstring = ' '.join(hstring, '__nextNode__');
-    }
+  proc __nextNode__(id: string, hstring: ygglog.yggHeader) {
+    var vstring: ygglog.yggHeader;
+    vstring = hstring + '__nextNode__';
     this.log.debug('Adding a seed on to ID', id : string, hstring);
     // MIGHT NOT NEED TO BE A THING
     var seed: int;

@@ -3,6 +3,120 @@ use spinlock;
 use IO;
 use Time;
 
+record yggHeader {
+  // How many levels of the stack to report?
+  var levels: int = 10;
+  // if we set it to zero, we should print FOREVER.  Not really, just the full
+  // stack.  Actually, that's really not true.  Oh well.
+  var m: domain(int);
+  var msg: [m] string;
+  var sep: string = '//';
+  // Given to us by the Valkyries above.
+  var id: string = 'stdout';
+  var sendTo: string;
+  var currentTask: int;
+  // header should actually be sendTo
+  var header: string;
+  var time: string;
+  var printedHeader: bool = false;
+
+  proc writeThis(wc) {
+    // this is function to allow this to be written directly.
+    //
+    if !printedHeader {
+      if this.m.size > this.levels {
+        for i in this.m.size-levels+1..this.m.size {
+          wc.write(this.msg[i], this.sep);
+        }
+      } else {
+        for i in 1..this.m.size {
+          wc.write(this.msg[i], this.sep);
+        }
+      }
+      wc.writeln('');
+      wc.write(' '*15);
+      wc.write(this.time, ' - ');
+      this.printedHeader = true;
+    } else {
+      wc.write(' '*9);
+      wc.write(this.time, ' - ');
+    }
+  }
+
+  proc path() {
+    // this is function to allow this to be written directly.
+    var msg: string;
+    if this.m.size > this.levels {
+      for i in this.m.size-levels+1..this.m.size {
+        msg += this.msg[i] + this.sep;
+      }
+    } else {
+      for i in 1..this.m.size {
+        msg += this.msg[i] + this.sep;
+      }
+    }
+    return msg;
+  }
+
+  proc size {
+    var tm: int;
+    tm += this.time.size+1;
+    if !printedHeader {
+      if this.m.size > this.levels {
+        for i in this.m.size-levels..this.m.size {
+          tm += this.msg[i].size + this.sep.size;
+        }
+      } else {
+        for i in 1..this.m.size {
+          tm += this.msg[i].size + this.sep.size;
+        }
+      }
+    } else {
+      tm = 15;
+    }
+    return tm+1;
+  }
+}
+
+proc +(a: yggHeader, b: string) {
+  var y = new yggHeader();
+  for i in 1..a.m.size {
+    y.m.add(i);
+    y.msg[i] = a.msg[i];
+  }
+  y.m.add(a.m.size+1);
+  y.msg[a.m.size+1] = b;
+  y.id = a.id;
+  y.header = a.header;
+  y.currentTask = a.currentTask;
+  y.levels = a.levels;
+  y.sep = a.sep;
+  y.printedHeader = a.printedHeader;
+  return y;
+}
+
+proc +(b: string, a: yggHeader) {
+  var y = new yggHeader();
+  for i in 1..a.m.size {
+    y.m.add(i);
+    y.msg[i] = a.msg[i];
+  }
+  y.m.add(a.m.size+1);
+  y.msg[a.m.size+1] = b;
+  y.id = a.id;
+  y.header = a.header;
+  y.currentTask = a.currentTask;
+  y.levels = a.levels;
+  y.sep = a.sep;
+  y.printedHeader = a.printedHeader;
+  return y;
+}
+
+proc +=(ref a: yggHeader, b: string) {
+  a.m.add(a.m.size+1);
+  a.msg[a.m.size+1] = b;
+}
+
 class YggdrasilLogging {
   // This is a class to let us handle all input and output.
   var currentDebugLevel: int;
@@ -20,6 +134,7 @@ class YggdrasilLogging {
   var filesOpened: domain(string);
   var channelsOpened: [filesOpened] channel(true,iokind.dynamic,true);
   var channelDebugHeader: [filesOpened] string;
+  var channelDebugPath: [filesOpened] string;
   var fileHandles: [filesOpened] file;
   var lastDebugHeader = '';
   var time = Time.getCurrentTime();
@@ -46,7 +161,7 @@ class YggdrasilLogging {
     }
   }
 
-  proc formatHeader(mstring: string, mtype: string) {
+  proc formatHeader(mtype: string) {
     // Formats a header for us to print out to stdout.
     var header = ' '.join(this.headerStarter*5, mtype, this.headerStarter);
     var nToEnd = this.maxCharacters - header.size;
@@ -54,12 +169,10 @@ class YggdrasilLogging {
     return header;
   }
 
-  proc printToConsole(msg, debugLevel: string, hstring: string) {
+  proc printToConsole(msg, debugLevel: string, hstring: yggHeader) {
     // check whether we're going to stdout or not.
     var wc = stdout;
     var useStdout: bool = true;
-    var s = hstring.split('----');
-    //var s2 = hstring.split('--');
     var vstring = hstring;
     var lf: file;
     var lastDebugHeader: string;
@@ -75,8 +188,8 @@ class YggdrasilLogging {
       }
     }
 
-    if s[1] == 'EVOCAP' {
-      id = s[2];
+    if hstring.header == 'VALKYRIE' {
+      id = hstring.id;
       // First, check to see whether we've created the file.
       if this.filesOpened.contains(id) {
         if propagator.unitTestMode {
@@ -90,7 +203,7 @@ class YggdrasilLogging {
           wc = stdout;
         }
       } else {
-        lf = open('logs/V-' + s[3] + '.log' : string, iomode.cw);
+        lf = open('logs/V-' + hstring.currentTask + '.log' : string, iomode.cw);
         this.filesOpened.add(id);
         this.channelsOpened[id] = lf.writer();
         this.fileHandles[id] = lf;
@@ -99,37 +212,36 @@ class YggdrasilLogging {
           wc = stdout;
         }
         // First Valkyrie!
-        wc.writeln('VALKYRIE TASK: ' + s[3] : string + ' ID: ' + s[2] : string);
+        wc.writeln('VALKYRIE TASK: ' + hstring.currentTask : string + ' ID: ' + id : string);
         wc.writeln('');
       }
-      vstring = s[4];
       useStdout = false;
-      //lastDebugHeader = this.channelDebugHeader[s[2]];
     } else {
       id = 'stdout';
     }
-    vstring = '%010.2dr'.format(Time.getCurrentTime() - this.time) + ' -- ' + vstring;
+    if this.channelDebugPath[id] == vstring.path() {
+      vstring.printedHeader = true;
+    } else {
+      vstring.printedHeader = false;
+      this.channelDebugPath[id] = vstring.path();
+    }
+    vstring.time = '%010.2dr'.format(Time.getCurrentTime() - this.time);
+    //vstring =  + vstring.sep + vstring;
     var tm: int;
     if debugLevel != this.channelDebugHeader[id] {
-      wc.writeln(this.formatHeader(vstring, debugLevel));
+      wc.writeln(this.formatHeader(debugLevel));
       if useStdout {
-        this.channelsOpened[id].writeln(this.formatHeader(vstring, debugLevel));
+        this.channelsOpened[id].writeln(this.formatHeader(debugLevel));
       }
       this.channelDebugHeader[id] = debugLevel;
     }
-    if vstring != '' {
-        wc.write(' '*(this.indent+1), vstring, ' : ');
-        if useStdout {
-          this.channelsOpened[id].write(' '*(this.indent+1), vstring, ' : ');
-        }
-        tm = (' '*(this.indent+1) + vstring + ' : ').size;
-    } else {
-        wc.write(' '*(this.indent+1), 'YGGDSL : ');
-        if useStdout {
-          this.channelsOpened[id].write(' '*(this.indent+1), 'YGGDSL : ');
-        }
-        tm = (' '*(this.indent+1) + 'YGGDSL : ').size;
-    }
+
+      wc.write(' '*(this.indent+1), vstring);
+      if useStdout {
+        this.channelsOpened[id].write(' '*(this.indent+1), vstring);
+      }
+      tm = (' '*(this.indent*3)).size;
+    //wc.write(' '*(this.indent*3));
     for im in msg {
       for m in im.split(maxsplit = -1) {
         if tm + m.size > this.maxCharacters {
@@ -171,7 +283,7 @@ class YggdrasilLogging {
     l.unlock();
   }
 
-  proc noSpecialPrinting(msg, debugLevel: string, hstring: string) {
+  proc noSpecialPrinting(msg, debugLevel: string, hstring: yggHeader) {
     // check whether we're going to stdout or not.
     if this.lastDebugHeader == '' {
       if !this.filesOpened.contains('stdout') {
@@ -181,35 +293,35 @@ class YggdrasilLogging {
     }
     var wc = stdout;
     var useStdout: bool = true;
-    var s = hstring.split('----');
-    var vstring: string;
+    //var s = hstring.split('----');
+    var vstring = hstring;
     var lf: file;
     var lastDebugHeader: string;
     l.lock();
     var id: string;
-    if s[1] == 'EVOCAP' {
-      id = s[2];
+    if hstring.header == 'VALKYRIE' {
+      id = hstring.id;
       // First, check to see whether we've created the file.
       if this.filesOpened.contains(id) {
         wc = this.channelsOpened[id];
       } else {
-        lf = open('logs/V-' + s[3] + '.log' : string, iomode.cw);
+        lf = open('logs/V-' + hstring.currentTask + '.log' : string, iomode.cw);
         this.filesOpened.add(id);
         this.channelsOpened[id] = lf.writer();
         wc = this.channelsOpened[id];
-        wc.writeln('VALKYRIE TASK: ' + s[3] : string + ' ID: ' + s[2] : string);
+        wc.writeln('VALKYRIE TASK: ' + hstring.currentTask: string + ' ID: ' + id: string);
         wc.writeln('');
       }
-      vstring = s[4];
+      //vstring = s[4];
       useStdout = false;
     } else {
       id = 'stdout';
     }
     var tm: int;
     if debugLevel != this.channelDebugHeader[id] {
-      wc.writeln(this.formatHeader(vstring, debugLevel));
+      wc.writeln(this.formatHeader(debugLevel));
       if useStdout {
-        this.channelsOpened[id].writeln(this.formatHeader(vstring, debugLevel));
+        this.channelsOpened[id].writeln(this.formatHeader(debugLevel));
       }
       this.channelDebugHeader[id] = debugLevel;
     }
@@ -233,16 +345,16 @@ class YggdrasilLogging {
   proc genericMessage(msg, mtype: int, debugLevel: string, gt: bool) {
     if gt {
       if this.currentDebugLevel <= mtype {
-        this.printToConsole(msg, debugLevel, hstring='');
+        this.printToConsole(msg, debugLevel, hstring=new yggHeader());
       }
     } else {
       if this.currentDebugLevel == mtype {
-        this.printToConsole(msg, debugLevel, hstring='');
+        this.printToConsole(msg, debugLevel, hstring=new yggHeader());
       }
     }
   }
 
-  proc genericMessage(msg, mtype: int, debugLevel: string, hstring: string, gt: bool) {
+  proc genericMessage(msg, mtype: int, debugLevel: string, hstring: yggHeader, gt: bool) {
     if gt {
       if this.currentDebugLevel <= mtype {
         this.printToConsole(msg, debugLevel, hstring);
@@ -258,7 +370,7 @@ class YggdrasilLogging {
     this.genericMessage(msg, this.DEBUG, 'DEBUG', gt=true);
   }
 
-  proc debug(msg...?n, hstring: string = '') {
+  proc debug(msg...?n, hstring: yggHeader) {
     this.genericMessage(msg, this.DEBUG, 'DEBUG', hstring, gt=true);
   }
 
@@ -266,7 +378,7 @@ class YggdrasilLogging {
     this.genericMessage(msg, this.DEVEL, 'DEVEL', gt=false);
   }
 
-  proc devel(msg...?n, hstring: string = '') {
+  proc devel(msg...?n, hstring: yggHeader) {
     this.genericMessage(msg, this.DEVEL, 'DEVEL', hstring, gt=false);
   }
 
@@ -274,7 +386,7 @@ class YggdrasilLogging {
     this.genericMessage(msg, this.WARNING, 'WARNING', gt=true);
   }
 
-  proc warning(msg...?n, hstring: string = '') {
+  proc warning(msg...?n, hstring: yggHeader) {
     this.genericMessage(msg, this.WARNING, 'WARNING', hstring, gt=true);
   }
 
@@ -282,22 +394,22 @@ class YggdrasilLogging {
     this.genericMessage(msg, this.RUNTIME, 'RUNTIME', gt=true);
   }
 
-  proc log(msg...?n, hstring: string = '') {
+  proc log(msg...?n, hstring: yggHeader) {
     this.genericMessage(msg, this.RUNTIME, 'RUNTIME', hstring, gt=true);
   }
 
-  proc critical(msg...?n, hstring: string = '') {
+  proc critical(msg...?n, hstring: yggHeader) {
     this.genericMessage(msg, this.currentDebugLevel, 'CRITICAL FAILURE', hstring, gt=true);
   }
 
   proc critical(msg...?n) {
-    this.genericMessage(msg, this.currentDebugLevel, 'CRITICAL FAILURE', hstring='', gt=true);
+    this.genericMessage(msg, this.currentDebugLevel, 'CRITICAL FAILURE', hstring=new yggHeader(), gt=true);
   }
 
   proc header(msg...?n) {
-    this.noSpecialPrinting(msg, 'RUNTIME', hstring='');
+    this.noSpecialPrinting(msg, 'RUNTIME', hstring=new yggHeader());
   }
-  proc header(msg...?n, hstring: string = '') {
+  proc header(msg...?n, hstring: yggHeader) {
     this.noSpecialPrinting(msg, 'RUNTIME', hstring=hstring);
   }
 

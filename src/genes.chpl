@@ -244,17 +244,15 @@ class GeneNode {
   proc join(node: shared GeneNode, delta: deltaRecord) {
     this.__join__(node, delta, hstring='');
   }
-  proc join(node: shared GeneNode, delta: deltaRecord, hstring: string) {
+  proc join(node: shared GeneNode, delta: deltaRecord, hstring: ygglog.yggHeader) {
     this.__join__(node, delta, hstring);
   }
 
-  proc __join__(node: shared GeneNode, delta: deltaRecord, hstring: string) {
+  proc __join__(node: shared GeneNode, delta: deltaRecord, hstring: ygglog.yggHeader) {
     // did I call that function correctly?
     //writeln(node, delta);
-    var vstring: string;
-    if hstring != '' {
-      vstring = ' '.join(hstring, '__join__');
-    }
+    var vstring: ygglog.yggHeader;
+    vstring = hstring + '__join__';
     this.l.wl(vstring);
     node.l.wl(vstring);
     var d = (this.id, node.id);
@@ -271,15 +269,13 @@ class GeneNode {
     return this.__returnEdge__(id, hstring='');
   }
 
-  proc return_edge(id:string, hstring: string) {
+  proc return_edge(id:string, hstring: ygglog.yggHeader) {
     return this.__returnEdge__(id, hstring);
   }
 
-  proc __returnEdge__(id: string, hstring: string) {
-    var vstring: string;
-    if hstring != '' {
-      vstring = ' '.join(hstring, '__returnEdge__');
-    }
+  proc __returnEdge__(id: string, hstring: ygglog.yggHeader) {
+    var vstring: ygglog.yggHeader;
+    vstring = hstring + '__returnEdge__';
     this.l.rl(vstring);
     var d: deltaRecord;
     if this.node_in_edges(id) {
@@ -293,11 +289,11 @@ class GeneNode {
     return this.__newNode__(seed, coefficient, id, hstring='');
   }
 
-  proc new_node(seed: int, coefficient: real, id='': string, hstring: string) {
+  proc new_node(seed: int, coefficient: real, id='': string, hstring: ygglog.yggHeader) {
     return this.__newNode__(seed, coefficient, id, hstring);
   }
 
-  proc __newNode__(seed: int, coefficient: real, id='': string, hstring: string) {
+  proc __newNode__(seed: int, coefficient: real, id='': string, hstring: ygglog.yggHeader) {
     // This function is a generic call for whenever we make a modification
     // Mutations, adding a new seed, whatever.  We just create a new node
     // and join them properly.
@@ -312,10 +308,8 @@ class GeneNode {
     node.generation = this.generation + 1;
 
     delta.delta[seed] = coefficient;
-    var vstring: string;
-    if hstring != '' {
-      vstring = ' '.join(hstring, '__newNode__');
-    }
+    var vstring: ygglog.yggHeader;
+    vstring = hstring + '__newNode__';
     this.join(node, delta, vstring);
     return node;
   }
