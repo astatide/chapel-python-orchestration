@@ -333,7 +333,9 @@ class Propagator {
               }
               this.lock.wl(v.header);
               // We're testing to see if we can do this.
-              this.nodesToProcess.remove(currToProc);
+              // I want this in there ultimately, but it needs to
+              // not result in a race condition.
+              //this.nodesToProcess.remove(currToProc);
               // We only want to add to an empty domain here such that we only
               // prioritize nodes which are close to the current node.
               // Eventually, if we mutate, we'll add that in, too.
@@ -442,7 +444,7 @@ class Propagator {
             }
           }
           std = abs(avg - sqrt(std/maxValkyries))/avg;
-          //eff /= maxValkyries;
+          eff /= maxValkyries;
           //std = 1 - (sqrt(std)/avg);
           processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
           this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, processedString : string, hstring=this.yh);
