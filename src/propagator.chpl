@@ -10,6 +10,8 @@ use ygglog;
 use spinlock;
 use Time;
 use IO.FormattedIO;
+use chromosomes;
+
 
 var UUID = new owned uuid.UUID();
 UUID.UUID4();
@@ -18,7 +20,7 @@ config const mSize = 20;
 config const maxPerGeneration = 400;
 config const mutationRate = 0.03;
 config const maxValkyries = 1;
-config const startingSeeds = 10;
+config const startingSeeds = 4;
 config const createEdgeOnMove = true;
 config const edgeDistance = 10;
 config const debug = -1;
@@ -31,6 +33,9 @@ config const stdoutOnly = false;
 // (okay, they're just super verbose)
 config var lockLog = false;
 config var flushToLog = false;
+
+config var nChromosomes = 6;
+config var chromosomeSize = 36;
 
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
@@ -135,6 +140,12 @@ class Propagator {
   //var release: string; // alpha
   var shutdown: bool = false;
 
+  // Because the chromosomes are an abstraction of the gene network, and are
+  // in many respects related more to the movement rather than graph problems,
+  // the propagator is responsible for it.
+  var chromosomeDomain: domain(string);
+  var chromes: [chromosomeDomain] chromosomes.Chromosome;
+
   proc logo() {
     return '';
   }
@@ -184,7 +195,7 @@ class Propagator {
     }
   }
 
-  proc init() {
+  proc initRun() {
     // We initialize the network, creating the GeneNetwork object, logging
     // infrastructure
     // We could actually create different loggers, if we wanted; the classes
@@ -197,7 +208,9 @@ class Propagator {
     this.log.currentDebugLevel = debug;
     this.ygg.log = this.log;
     this.ygg.lock.log = this.log;
-    this.ygg.initializeNetwork(n_seeds=startingSeeds);
+    //this.ygg.initializeNetwork(n_seeds=startingSeeds);
+    this.ygg.initializeRoot();
+    this.initChromosomes();
     var ids = this.ygg.ids;
     for i in this.ygg.ids {
       if i != 'root' {
@@ -213,6 +226,33 @@ class Propagator {
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'Ragnarok';
     this.lock.log = this.log;
+  }
+
+  proc initChromosomes() {
+    for i in 1..nChromosomes {
+      // Here, we're going to be given the instructions for generating chromosomes.
+      // No reason this can't be parallel, so let's do it.
+      var nc = new chromosomes.Chromosome();
+      nc.prep(startingSeeds, chromosomeSize);
+      nc.log = this.log;
+      for (ctype, nGene, gene_A, gene_B) in nc.generateGeneInstructions() {
+        if ctype == 0 {
+          // this is a new seed, and we'll connect it to gene_A.  Which is
+          // probably root.
+          var node = this.ygg.nextNode(nc[gene_A], this.yh);
+          // We can just add the node to the chromosome like this.
+          // When we're doing things in order, this is fine.
+          nc += node;
+          this.nodesToProcess.add(node);
+        } else if ctype == 1 {
+          var node = this.ygg.mergeNodes(nc[gene_A], nc[gene_B], this.yh);
+          nc += node;
+          this.nodesToProcess.add(node);
+        }
+      }
+      this.chromosomeDomain.add(nc.id);
+      this.chromes[nc.id] = nc;
+    }
   }
 
   proc exitRoutine() throws {

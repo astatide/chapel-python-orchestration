@@ -15,6 +15,13 @@ var udevrandom = new owned rng.UDevRandomHandler();
 var newrng = udevrandom.returnRNG();
 //writeln(UUID.UUID4());
 
+record cType {
+  var ROOTNODE = -1;
+  // Used for normal, 'add a seed' types.
+  var SEED = 0;
+  var MERGE = 1;
+}
+
 record noiseFunctions {
   // This is for holding our functions.
   var which_function: int;
@@ -211,6 +218,10 @@ class GeneNode {
   var l: shared spinlock.SpinLock;
   var log: shared ygglog.YggdrasilLogging;
 
+  // We want to hold scores on the nodes.
+  var demeDomain: domain(string);
+  var scores: [demeDomain] real;
+
   proc init(id='', ctype='', parent='', parentSeedNode='') {
     this.ctype = ctype;
     this.parent = parent;
@@ -234,7 +245,7 @@ class GeneNode {
     wc.writeln('nodes: ', this.nodes : string);
     wc.writeln('edges: ', this.edges : string);
   }
-  
+
   // some validation functions
   proc nodeInEdges(id: string, hstring: ygglog.yggHeader) {
     // Well, okay, that turned out to be easy but whatever.

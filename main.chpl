@@ -11,6 +11,7 @@ use spinlock;
 extern proc signal(sigNum : c_int, handler : c_fn_ptr) : c_fn_ptr;
 
 var ragnarok = new owned propagator.Propagator();
+ragnarok.initRun();
 
 proc handler(x : int) : void {
     ragnarok.setShutdown();

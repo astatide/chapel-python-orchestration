@@ -10,6 +10,7 @@ use propagator;
 use ygglog;
 use spinlock;
 use SysError;
+use chromosomes;
 
 class NodeNotInEdgesError : Error {
   proc init() { }
@@ -61,6 +62,14 @@ record pathHistory {
     return this.n.size;
   }
 
+}
+
+record pathSet {
+  // This is so that we can re-orient sets of paths relative to a new point.
+  // The idea here is to allow us to use a cache to improve search times.
+  // As they can get quite long, really.
+  var entryPoints: domain(string);
+  var paths: [entryPoints] pathHistory;
 }
 
 class GeneNetwork {
@@ -118,6 +127,12 @@ class GeneNetwork {
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'GeneNetwork';
     this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
+  }
+
+  proc initializeRoot() {
+    this.rootNode.log = this.log;
+    this.rootNode.l.log = this.log;
+    this.add_node(this.rootNode, new ygglog.yggHeader() + 'initializeNetwork');
   }
 
   proc initializeNetwork(n_seeds=10: int, gen_seeds=true: bool) {
