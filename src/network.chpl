@@ -179,9 +179,9 @@ class GeneNetwork {
     }
   }
 
-  proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader) {
+  proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, processedArray) {
     var vstring = hstring + 'returnNearestUnprocessed';
-    return this.__calculatePath__(id_A, id_B, hstring=vstring);
+    return this.__calculatePath__(id_A, id_B, hstring=vstring, processedArray=processedArray, checkArray=true);
   }
 
   proc calculatePath(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
@@ -191,11 +191,13 @@ class GeneNetwork {
     var b: string;
     var path: pathHistory;
     b_dom.add(id_B);
-    (b, path) = this.__calculatePath__(id_A, b_dom, hstring=vstring);
+    var tmp: domain(string);
+    var processedArray: [tmp] atomic bool;
+    (b, path) = this.__calculatePath__(id_A, b_dom, hstring=vstring, processedArray=processedArray, checkArray=false);
     return path;
   }
 
-  proc __calculatePath__(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader) throws {
+  proc __calculatePath__(id_A: string, in id_B: domain(string), hstring: ygglog.yggHeader, processedArray, checkArray: bool) throws {
     // This is an implementation of djikstra's algorithm.
     var nodes: domain(string);
     var visited: [nodes] bool;
@@ -264,9 +266,33 @@ class GeneNetwork {
       }
       this.lock.url(vstring);
       visited[currentNode] = true;
+      // Doing it like this means we never have a race condition.
+      // Should help with load balancing and efficiency.
+      // Oh man, and does it ever.  Basically, we don't leave this routine
+      // untl we have one we KNOW can process, or there's nothing left to
+      // process.
       if id_B.contains(currentNode) {
-        break;
-        completed[currentNode] = true;
+        if checkArray {
+          // We should actually do the testAndSet here, although I sort of
+          // dislike having the network access the array.
+          //if processedArray[currentNode].read() {
+          if !processedArray[currentNode].testAndSet() {
+            // If it's false, we can use it!
+            break;
+          } else {
+            // This means we've actually already processed it, so
+            // we'll pretend it's not a part of id_B by removing it.
+            // This will help us in the event that we've been beaten to this node.
+            id_B.remove(currentNode);
+            if id_B.isEmpty() {
+              // If we've removed everything, then we can't process anything.
+              // Returning an empty string dodges the processing logic.
+              return ('', paths[id_A]);
+            }
+          }
+        } else {
+          break;
+        }
       }
       if unvisited.isEmpty() {
       } else {
@@ -286,7 +312,7 @@ class GeneNetwork {
         unvisited.remove(currMinNode);
       }
     }
-    this.log.debug('id_B:', id_B : string, 'currentNode:', currentNode, 'id_A:', id_A, hstring=vstring);
+    //this.log.debug('id_B:', id_B : string, 'currentNode:', currentNode, 'id_A:', id_A, hstring=vstring);
     return (currentNode, paths[currentNode]);
 
   }

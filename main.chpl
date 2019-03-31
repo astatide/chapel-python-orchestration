@@ -5,7 +5,7 @@ use network;
 use propagator;
 use spinlock;
 
-use VisualDebug;
+//use VisualDebug;
 
 // We want to capture kill signals.  @LouisJenkinsCS helped me with this.
 extern proc signal(sigNum : c_int, handler : c_fn_ptr) : c_fn_ptr;

@@ -5,7 +5,7 @@ use genes;
 use network;
 use uuid;
 use Math;
-use VisualDebug;
+//use VisualDebug;
 use ygglog;
 use spinlock;
 use Time;
@@ -15,16 +15,16 @@ var UUID = new owned uuid.UUID();
 UUID.UUID4();
 
 config const mSize = 20;
-config var maxPerGeneration = 400;
-config var mutationRate = 0.03;
-config var maxValkyries = 1;
-config var startingSeeds = 10;
-config var createEdgeOnMove = true;
-config var edgeDistance = 10;
-config var debug = -1;
-config var generations = 100;
-config var unitTestMode = false;
-config var stdoutOnly = false;
+config const maxPerGeneration = 400;
+config const mutationRate = 0.03;
+config const maxValkyries = 1;
+config const startingSeeds = 10;
+config const createEdgeOnMove = true;
+config const edgeDistance = 10;
+config const debug = -1;
+config const generations = 100;
+config const unitTestMode = false;
+config const stdoutOnly = false;
 // The locks are noisy, but we do need to debug them sometimes.
 // This shuts them up unless you really want them to sing.  Their song is
 // a terrible noise; an unending screech which ends the world.
@@ -287,22 +287,25 @@ class Propagator {
           }
           // Assuming we have some things to process, do it!
           if !toProcess.isEmpty() {
-            (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header);
-            // Still some weird edge cases; this just helps me sort out what things are doing.
-            //this.log.debug(this.nodesToProcess : string, '//', toProcess : string, ':', v.currentNode : string, 'TO', currToProc : string, hstring=v.header);
-            this.log.debug('Attempting to unlock node:', currToProc, hstring=v.header);
             // We can remove nodes from the domain processedArray is built on, which means we need to catch and process.
             var existsInDomainAndCanProcess: bool = false;
+            // This function now does the atomic test.
+            (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
+            // Still some weird edge cases; this just helps me sort out what things are doing.
+            //this.log.debug(this.nodesToProcess : string, '//', toProcess : string, ':', v.currentNode : string, 'TO', currToProc : string, hstring=v.header);
+            //this.log.debug('Attempting to unlock node:', currToProc, hstring=v.header);
 
-            try {
+            //try {
               // returns true if it exists and can be processed.
-              existsInDomainAndCanProcess = this.processedArray[currToProc].testAndSet();
+            //  existsInDomainAndCanProcess = this.processedArray[currToProc].testAndSet();
               // When this is done, it means this is OURS.
-            } catch {
+            //} catch {
               // just move on.  Who cares?
-            }
+              // This would normally mean an empty.
+            //}
 
-            if existsInDomainAndCanProcess {
+            //if existsInDomainAndCanProcess {
+            if currToProc != '' {
               // If this node is one of the ones in our priority queue, remove it
               // as we clearly processing it now.
               if v.priorityNodes.contains(currToProc) {
