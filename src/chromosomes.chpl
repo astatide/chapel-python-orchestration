@@ -67,16 +67,20 @@ record Chromosome {
   }
 
   proc add(i: int, geneId: string) {
+    this.l.wl();
     if !this.geneNumbers.contains(i) {
       this.geneNumbers.add(this.currentGenes);
     }
     this.geneNumbers[this.currentGenes] = geneId;
+    this.l.uwl();
   }
 
   proc add(geneId: string) {
+    this.l.wl();
     this.currentGenes += 1;
     this.geneNumbers.add(this.currentGenes);
     this.geneIDs[this.currentGenes] = geneId;
+    this.l.uwl();
   }
 
   proc this(a: int) {
@@ -115,6 +119,51 @@ record Chromosome {
         }
       }
     }
+  }
+  // This is similar to the above, but is for pulling out what _type_
+  // of node we are
+  proc DNA(a: int) {
+    var alreadyDone: domain(string);
+    if a <= nRootGenes {
+      return (0, a, 0, 0);
+    } else {
+      var functionOrder: int = 1;
+      var y: int = 0;
+      var z: int = this.nRootGenes;
+      var shadowZ: int = this.nRootGenes;
+      while z < this.totalGenes {
+        for i in 1..shadowZ : int {
+          if (i > this.nRootGenes || functionOrder == 1)
+           {
+            for j in i..shadowZ : int {
+              if i != j {
+                z += 1;
+                assert(z > i);
+                assert(z > j);
+                if z == a {
+                  return (1, z, i, j);
+                }
+              }
+            }
+          } else {
+            for j in y+1..shadowZ : int {
+              if i != j {
+                z += 1;
+                assert(z > i);
+                assert(z > j);
+                if z == a {
+                  return (1, z, i, j);
+                }
+              }
+            }
+          }
+        }
+        y = shadowZ;
+        shadowZ = z;
+        functionOrder += 1;
+      }
+    }
+    return (-1, 0, 0, 0);
   }
 
   proc bestGeneInDeme(deme='') {

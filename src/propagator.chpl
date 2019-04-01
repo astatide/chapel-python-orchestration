@@ -233,7 +233,7 @@ class Propagator {
       // Here, we're going to be given the instructions for generating chromosomes.
       // No reason this can't be parallel, so let's do it.
       var nc = new chromosomes.Chromosome();
-      nc.prep(startingSeeds, chromosomeSize);
+      nc.prep(startingSeeds, chromosomeSize-startingSeeds);
       nc.log = this.log;
       for (ctype, nGene, gene_A, gene_B) in nc.generateGeneInstructions() {
         if ctype == 0 {
@@ -249,6 +249,10 @@ class Propagator {
           nc += node;
           this.nodesToProcess.add(node);
         }
+      }
+      writeln(nc[0]);
+      for z in 1..chromosomeSize {
+        writeln(nc.DNA[z]);
       }
       this.chromosomeDomain.add(nc.id);
       this.chromes[nc.id] = nc;
