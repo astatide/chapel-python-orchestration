@@ -4,6 +4,7 @@ use uuid;
 use Random;
 use spinlock;
 use genes;
+use Sort;
 
 // Global UUID, with an entropy lock, guarantees unique IDs for chromosomes.
 // Keep in mind, it's possible that since we're using two UUID generators
@@ -16,11 +17,63 @@ use genes;
 var UUID = new owned uuid.UUID();
 UUID.UUID4();
 
+//var AssocDom:domain(int);
+//type AssocArrayType = [AssocDom] int;
+
+
 /*
 
   A chromosome is essentially a set of gene (nodes) that has a known order.
 
 */
+
+record array {
+  var n: domain(int);
+  var j: [0..0] int;
+
+  //proc dsiLow {
+  //  return j.domain.low;
+  //}
+
+  iter these_die() {
+    //for i in 0..this.n.size-1 {
+    //  if this.n.contains(i) {
+    //    yield (i, this.j[i]);
+    //  }
+    //}
+    var z: int;
+    //sort(this.j);
+    for i in 0..this.j.domain.size {
+      //writeln(i);
+      if this.j.domain.contains(i) {
+        yield (z, this.j[i]);
+      }
+      z += 1;
+    }
+  }
+
+}
+
+record seedSet {
+  var s: domain(int);
+  var sA: [s] int;
+
+  iter these() {
+    for i in this.s {
+      yield this.sA[i];
+    }
+  }
+
+  proc this(a: int) {
+    return this.sA[a];
+  }
+
+  proc add(a: int) {
+    this.s.add(a);
+    this.sA[a] += 1;
+  }
+
+}
 
 record Chromosome {
   // Honestly, the chromosome just needs to be a record, with maybe a few methods.
@@ -120,12 +173,215 @@ record Chromosome {
       }
     }
   }
+
+  /*
+  Generates a unique set of combinations.  Given an index, will return the gene
+  IDs that correspond to this particular combination.
+
+  Generally, don't call this.
+  */
+
+  proc DNA(a: int) {
+    var q: int;
+    // Can't be longer than that!
+    var code: [1..64] int;
+    var indexSet: domain(int);
+    // by taking the modulo with 2, we generate unique combinations
+    // (that are made non-unique when combined with other combinations)
+    var modulo: int = 2;
+    q = a;
+    var i = 1;
+    if q/modulo > 0 {
+      while q/modulo > 0 {
+        code[i] = q % modulo;
+        q = q/modulo;
+        i += 1;
+      }
+    }
+    code[i] = q % modulo;
+    for j in 1..i {
+      if code[j] > 0 {
+      indexSet.add(j);
+      }
+    }
+    return indexSet;
+  }
+
+  proc GeneOrderListFix(k: int) {
+    // This is a mapping function that, given an index, returns a set in
+    // a sensible manner.
+    var d1: domain(int);
+    var d2: domain(int);
+    var d3: domain(int);
+    //var l: [0..k,0..k,0..this.factorial(k)] int;
+    //var l: [d1,d2,d3] int;
+    var l: [0..k,0..k] array;
+    var n: int;
+
+
+    for i in 0..k {
+      for j in 0..k {
+        l[i,j].j.domain.clear();
+      }
+      //l[i,0].n.add(0);
+      l[i,0].j.push_back(0);
+    }
+
+    for i in 1..k {
+      for j in 1..i {
+        //writeln(i,j);
+        for s in l[i - 1, j - 1].j {
+          //l[i,j].n.add(z);
+          //writeln(z,s);
+          //n = l[i,j].n.size;
+          //n = l[i,j].j.domain.size;
+          //writeln(n);
+          //l[i,j].j[n] = (s * 2) + 1;
+          l[i,j].j.push_back((s * 2) + 1);
+
+        }
+        //writeln(i,j);
+        //writeln(l[i-1,j]);
+        for s in l[i - 1, j].j {
+          //l[i,j].n.add(z);
+          //writeln(z,s, i, j);
+          //n = l[i,j].n.size;
+          //n = l[i,j].j.domain.size;
+          //l[i,j].j[n] = s * 2;
+          l[i,j].j.push_back(s * 2);
+
+        }
+        //writeln('who likes bread?');
+        //writeln(i);
+      }
+    }
+    writeln('DONE');
+    return l;
+
+    }
+
+  // So the above does a lexicographical ordering, but is not what we want.
+  proc DNA_gen(a: int) {
+    var q: int;
+    // Can't be longer than that!
+    var code: [1..64] int;
+    var indexSet: domain(int);
+
+
+  }
+
+  /* An ordering function which returns all combinations of order N */
+
+  proc orderGenes(order: int) {
+    var combSet: domain(int);
+    var indices: [combSet] int;
+    var q = (2**(order))-1;
+    var seeds: int = 6;
+    //combSet.add(1);
+    //indices[1] = q;
+    var orderSize = (this.factorial(seeds)/(this.factorial(order)*this.factorial(seeds-(order))));
+    writeln(order, ' ', orderSize);
+    for i in 0..orderSize-1 {
+        combSet.add(i);
+        indices[i] = q ^ 2**(order-1) ^ 2**(i+order-1);
+        //writeln(indices[i]);
+    }
+    return indices;
+  }
+
+  proc getOrder(in a: int) {
+    // This function calculates the number of bits that are equal to 1.
+    // With the combinatorial algorithm we're using, this determines the
+    // order of the function.
+    var sum: int;
+    while a != 0 {
+      sum += 1;
+      a &= (a - 1);
+    }
+    return sum;
+  }
+
+  // taken from the primers
+  proc factorial(x: int) : int
+  {
+  if x < 0 then
+    halt("factorial -- Sorry, this is not the gamma procedure!");
+
+  return if x == 0 then 1 else x * factorial(x-1);
+  }
+
+  /*
+
+  Generates the actual root seed set that a particular combination
+  corresponds to.  Given an index, this returns which seeds, and what their
+  corresponding combinations, should be.
+
+  */
+
+  iter DNAList() {
+    var seeds: int = 6;
+    for order in 1..seeds {
+      var geneSet = this.orderGenes(order);
+      for s in 0..geneSet.domain.size-1 {
+        yield geneSet[s];
+      }
+    }
+  }
+
+  proc DNASetGenerator(a: int, first: bool) : seedSet {
+    var coefSet = new seedSet();
+    // we're doing a sort on this basically.
+    // we have n choose k for each level.
+    var order: int;
+    var p: int = 0;
+    var lp: int = 0;
+    var seeds: int = 5;
+    var diff: int;
+    var iD: int;
+    if first {
+      while a > p {
+        order += 1;
+        //if seeds < order {
+        //  break;
+        //}
+        lp = (this.factorial(seeds)/(this.factorial(order)*this.factorial(seeds-order)));
+        diff = a - p - 1;
+        p += lp;
+      }
+      if order-1 > seeds {
+        // don't do this.
+      }
+      var orderFunctions = this.orderGenes(order);
+      iD = orderFunctions[diff];
+      // Now that we know our order...
+      //var z = this.orderGenes(a);
+    } else {
+      iD = a;
+    }
+    //writeln(a, ', ', diff, ' ', order);
+    //writeln(orderFunctions, ' : ', orderFunctions.domain);
+    for i in this.DNA(iD) {
+      if i > seeds {
+        writeln(i, ' ', this.DNA(i), ' ', iD, ' ', this.DNA(iD), ' DNASetGenerator ', this.DNASetGenerator(i, false));
+        //var j_coef = this.DNASetGenerator(i, false);
+        var j_coef = this.DNASetGenerator(i, false);
+        for j in j_coef.s {
+          coefSet.add(j);
+        }
+      } else {
+        coefSet.add(i);
+      }
+    }
+  return coefSet;
+  }
+
   // This is similar to the above, but is for pulling out what _type_
   // of node we are
-  proc DNA(a: int) {
+  proc DNA_old(a: int) : 4*int {
+    var test = false;
     var alreadyDone: domain(string);
     if a <= nRootGenes {
-      return (0, a, 0, 0);
+      return (0, a, a, a);
     } else {
       var functionOrder: int = 1;
       var y: int = 0;
@@ -141,7 +397,11 @@ record Chromosome {
                 assert(z > i);
                 assert(z > j);
                 if z == a {
-                  return (1, z, i, j);
+                  if test {
+                    return (1, z, this.DNA(i)[2], this.DNA(j)[2]);
+                  } else {
+                    return (1, z, i, j);
+                  }
                 }
               }
             }
@@ -152,7 +412,11 @@ record Chromosome {
                 assert(z > i);
                 assert(z > j);
                 if z == a {
-                  return (1, z, i, j);
+                  if test {
+                    return (1, z, this.DNA(i)[2], this.DNA(j)[2]);
+                  } else {
+                    return (1, z, i, j);
+                  }
                 }
               }
             }

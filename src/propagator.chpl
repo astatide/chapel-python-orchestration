@@ -37,6 +37,16 @@ config var flushToLog = false;
 config var nChromosomes = 6;
 config var chromosomeSize = 36;
 
+// Empty record serves as comparator
+record Comparator { }
+
+// compare method defines how 2 elements are compared
+proc Comparator.compare(a, b) {
+  return abs(a) - abs(b);
+}
+
+var absComparator: Comparator;
+
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
 // (this is a record for a worker class)
@@ -250,10 +260,28 @@ class Propagator {
           this.nodesToProcess.add(node);
         }
       }
-      writeln(nc[0]);
-      for z in 1..chromosomeSize {
-        writeln(nc.DNA[z]);
+      writeln('awwww yis');
+      var yay = nc.GeneOrderListFix(8);
+      var m = yay[8,4].j;
+      sort(m);
+      writeln('donezo');
+      //for z in nc.GeneOrderListFix(12)[11,4] {
+      //for z in sort(yay.j, comparator=absComparator) {
+      for z in m {
+        writeln(z, ' ');
       }
+      writeln('m.f.ing bread crumbs');
+      writeln(nc[0]);
+      // Do a little test.
+      var k: int;
+      for z in nc.DNAList() {
+        k += 1;
+        writeln(k, ' -- ', nc.DNA(k), ' : ', z, ' -- ', nc.DNA(z));
+      }
+      //for z in 1..31 {
+        //writeln(z, ' : ', nc.DNASetGenerator[z, true]);
+
+      //}
       this.chromosomeDomain.add(nc.id);
       this.chromes[nc.id] = nc;
     }
