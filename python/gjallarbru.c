@@ -95,4 +95,102 @@ static PyObject *weights(PyObject *self, PyObject *args) {
 
   return np_arr;
   //Py_RETURN_NONE;
+
+
+}
+
+
+PyObject* runPythonFunction(char *function, PyObject *pModule) {
+  PyObject *pArgs, *pValue, *pFunc;
+  int i;
+
+  pFunc = PyObject_GetAttrString(pModule, function);
+  /* pFunc is a new reference */
+
+  if (pFunc && PyCallable_Check(pFunc)) {
+      pValue = PyObject_CallObject(pFunc, NULL);
+      if (pValue != NULL) {
+        //printf("Result of call: %ld\n", PyInt_AsLong(pValue));
+        Py_DECREF(pValue);
+      }
+      else {
+        Py_DECREF(pFunc);
+        Py_DECREF(pModule);
+        PyErr_Print();
+        fprintf(stderr,"Call failed\n");
+        return pValue;
+      }
+  }
+  else {
+    if (PyErr_Occurred())
+      PyErr_Print();
+    fprintf(stderr, "Cannot find function \"%s\"\n", function);
+  }
+  Py_XDECREF(pFunc);
+  Py_DECREF(pModule);
+
+  return pValue;
+}
+
+PyObject* loadPythonModule(char * module) {
+  PyObject *pName, *pModule;
+
+  // This should allow us to actually add to the stupid path.
+  PyRun_SimpleString("import sys");
+  PyRun_SimpleString("sys.path.append('/Users/apratt/work/yggdrasil/python/')");
+  //PyRun_SimpleString("import numpy as np");
+  // Hooray and success and all that.  Sucks to your asmar.
+  // Only for Python3!
+  //pName = PyString_FromString(module);
+  /* Error checking of pName left out */
+
+  // I think this returns a pointer.
+
+  // works with char.  Derp derp.
+  pModule = PyImport_ImportModule(module);
+
+  // yeah duh of course it fucking does.
+
+  if (pModule != NULL) {
+    return pModule;
+  }
+  else {
+    PyErr_Print();
+    fprintf(stderr, "Failed to load \"%s\"\n", module);
+    return pModule;
+  }
+
+  //return pModule;
+
+}
+
+void run() {
+  PyObject *pName, *pModule, *pFunc, *elfucko;
+  PyObject *pArgs, *pValue, *pTest, *test;
+
+  int i;
+  //pName = PyString_FromString("test");
+  pModule = loadPythonModule("gjTest.gjTest");
+
+  pFunc = PyObject_GetAttrString(pModule, "testRun");
+  if (pFunc && PyCallable_Check(pFunc)) {
+    pValue = PyObject_CallObject(pFunc, NULL);
+  } else {
+    PyErr_Print();
+  }
+  if (pValue) {
+    elfucko = PyObject_CallMethod(pValue, "printm", NULL);
+  } else {
+    PyErr_Print();
+    printf("get bent");
+  }
+
+}
+
+int main(int argc, char *argv[])
+{
+  PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
+  Py_Initialize();
+  run();
+  printf("stupid");
 }
