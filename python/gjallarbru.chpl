@@ -15,25 +15,37 @@ extern proc pythonFinal();
 
 require "gjallarbru.c";
 
+proc init() {
+  pythonInit();
+}
 
-/*
-static PyObject *returnNumpyArray(float *arr, npy_intp *dims);
-static PyObject *weights(PyObject *self, PyObject *args);
-run
-main
-*/
+proc final() {
+  pythonFinal();
+}
+
+proc createTestArray(l: int, d: int) {
+  var length: c_ulonglong = l : c_ulonglong;
+  var nd: c_ulonglong = d : c_ulonglong;
+  var arr: [0..(length**nd)] c_double = 0;
+  return arr;
+}
+
+proc createDimsArray(l: int, d: int) {
+  var length: c_ulonglong = l : c_ulonglong;
+  var nd: c_ulonglong = d : c_ulonglong;
+  var dims: [0..nd] c_ulonglong = length;
+  return dims;
+}
+
+proc testRun() {
+  //writeln(createTestArray(20, 2) : string);
+  //writeln(createDimsArray(20, 2) : string);
+  // Does almost seem to work?
+  pythonRun(createTestArray(20, 2), 2 : c_ulonglong, createDimsArray(20, 2));
+}
 
 proc main() {
-  writeln('man fuck you');
-  //var arr = [0.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,11.0, 456.0] : c_float;
-  var length: c_ulonglong = 100;
-  var arr: [0..length] c_double = 700;
-  var dims: [0..1] c_ulonglong = length;
-  var a = arr;
-  var d = dims;
-  pythonInit();
-  pythonRun(a, 1, d);
-  writeln("What der fuck");
-  pythonFinal();
-  //writeln(arr : string);
+  init();
+  testRun();
+  final();
 }
