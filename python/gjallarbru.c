@@ -4,10 +4,14 @@
 
 // Declare the functions that we'll need later.
 
-static PyObject *returnNumpyArray(float *arr, npy_intp *dims);
+static PyObject *returnNumpyArray(double *arr, unsigned long long *dims);
 static PyObject *weights(PyObject *self, PyObject *args);
 //static PyObject returnNumpyArray();
 
+double *globalArray;
+PyArrayObject *numpyArray;
+unsigned long long globalND;
+unsigned long long *globalDims;
 
 // You basically _always_ need this.  It's the methods that we're going to
 // expose to the python module.
@@ -15,17 +19,6 @@ static PyMethodDef methods[] = {
   { "weights", weights, METH_VARARGS, "Descriptions"},
   { NULL, NULL, 0, NULL }
 };
-
-// struct for holding data
-
-struct holdingArray {
-  // Create the array.
-  float *arr;
-  npy_intp dims[1];
-} chapelArray;
-
-float *globalArray;
-npy_intp globalDims[1];
 
 // Remove me if you enjoy segfaults!
 // https://docs.scipy.org/doc/numpy/user/c-info.ufunc-tutorial.html#example-numpy-ufunc-for-one-dtype
@@ -71,13 +64,16 @@ PyMODINIT_FUNC initgjallarbru(void) {
 
 // This is working code that creates an array in C, then wraps it up
 // as a numpy array.
-static PyObject *returnNumpyArray(float *arr, npy_intp *dims) {
+static PyObject *returnNumpyArray(double *arr, unsigned long long *dims) {
   //  return *self;
   // FUCKING FINALLY.
   PyObject *pArray;
 
   // FINALLY FUCKING WORKS
-  pArray = PyArray_SimpleNewFromData(1, dims, NPY_FLOAT, (void *)(arr));
+  printf("Hey is this working?");
+  // That should be the numnber of dimensions.
+  pArray = PyArray_SimpleNewFromData(globalND, dims, NPY_FLOAT64, (void *)(arr));
+  printf("Piece of fuck");
   PyArrayObject *np_arr = (PyArrayObject*)(pArray);
 
   Py_XINCREF(np_arr);
@@ -87,29 +83,16 @@ static PyObject *returnNumpyArray(float *arr, npy_intp *dims) {
 }
 
 static PyObject *weights(PyObject *self, PyObject *args) {
-  //  return *self;
-  // FUCKING FINALLY.
 
-  /*
-  // Create the array.
-  float *arr;
-  // MALLOC to the rescue bitches
-  // I think the garbage collector in python gets collection happy
-  // or something.  I have no idea.
-  arr = (float*)malloc(10*sizeof(float));
-  npy_intp dims[1];
-  dims[0] = 10;
-  for (int i = 0; i < 10; i++ ) {
-    arr[i] = i;
-  }
-  */
-
-  PyArrayObject *np_arr = returnNumpyArray(globalArray, globalDims);
-  Py_XINCREF(np_arr);
-
-  return np_arr;
-  //Py_RETURN_NONE;
-
+  // We're doing this here so that it stays in scope.
+  //npy_intp tDims[globalDims];
+  //for (int i = 0; i < globalLength; i++ ) {
+  //  tDims[i] = globalLength;
+  //}
+  printf("Are we going?");
+  numpyArray = returnNumpyArray(globalArray, globalDims);
+  Py_XINCREF(numpyArray);
+  return numpyArray;
 
 }
 
@@ -174,58 +157,40 @@ PyObject* loadPythonModule(char * module) {
     return pModule;
   }
 
-  //return pModule;
-
 }
 
 void run() {
-  PyObject *pName, *pModule, *pFunc, *elfucko;
-  PyObject *pArgs, *pValue, *pTest, *test;
+  PyObject *pModule, *pFunc, *pArgs, *pValue;
 
-  int i;
-  //pName = PyString_FromString("test");
-  // Not loading.  Bitches.
+  // Gotta be super careful about this call.
+  // There's probably some error checking but heyo.
+  printf("test");
   pModule = loadPythonModule("gjTest.gjTest");
-
+  printf("test2");
   pFunc = PyObject_GetAttrString(pModule, "testRun");
   if (pFunc && PyCallable_Check(pFunc)) {
     pValue = PyObject_CallObject(pFunc, NULL);
   } else {
     PyErr_Print();
   }
-  if (pValue) {
-    elfucko = PyObject_CallMethod(pValue, "printm", NULL);
-  } else {
-    PyErr_Print();
-    printf("get bent");
-  }
+  printf("test3");
 
 }
 
-//void pythonRun()
-void pythonRun(float * arr)
+void pythonRun(double * arr, unsigned long long nd, unsigned long long * dims)
 {
-  printf("yo from C!");
-  // MALLOC to the rescue bitches
-  // I think the garbage collector in python gets collection happy
-  // or something.  I have no idea.
-  //globalArray = (float*)malloc(10*sizeof(float));
-  //chapelArray.dims[0] = 10;
-  //printf('%f', arr);
-  for (int i = 0; i < 10; i++ ) {
-    //printf('%f', arr[i]);
-    //globalArray[i] = arr[i];
-    //globalArray[i] = i;
-    // This doesn't seem to work.  What's wrong with passing it in?
-    //globalArray[i] = arr[i];
-  }
+  // We're setting the pointer.  Keep in mind that this hinges on properly
+  // passing in the array; Chapel needs to make sure it's compatible with
+  // what C expects.
+
   globalArray = arr;
-  globalDims[0] = 10;
-  //globalArray = (float*)malloc(10*sizeof(float));
-  //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
-  //Py_Initialize();
+  globalND = nd;
+  globalDims = dims;
   run();
-  //printf("stupid");
+  // Just cause.
+  Py_XDECREF(numpyArray);
+  printf("Hey; don't abort.  I told you not to");
+  // Why does this just... die?
 }
 
 void pythonInit() {
@@ -233,6 +198,14 @@ void pythonInit() {
   setbuf(stdout, NULL);
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
+}
+
+void pythonFinal() {
+  // disable buffering for debugging.
+  //setbuf(stdout, NULL);
+  //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
+  printf("Killing python");
+  Py_Finalize();
 }
 
 /*
