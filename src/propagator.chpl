@@ -11,6 +11,7 @@ use spinlock;
 use Time;
 use IO.FormattedIO;
 use chromosomes;
+use gjallarbru;
 
 
 var UUID = new owned uuid.UUID();
@@ -51,7 +52,7 @@ var absComparator: Comparator;
 // who lives and who dies.
 // (this is a record for a worker class)
 record valkyrie {
-  var matrixValues: [0..mSize-1] real;
+  var matrixValues: [0..mSize] c_double;
   var takeAnyPath: bool = false;
   var moved: bool = false;
   var canMove: bool = false;
@@ -306,16 +307,27 @@ class Propagator {
     this.header();
     this.yh.header = 'NormalRuntime';
     this.yh += 'run';
+    // initialize the python interpreter.  Only do this once.
+    gjallarbru.init();
+    // I think the other valkyries should be able to do their thing.
+    // should probably do this for each task but hey whatever.
     // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
     var nnodes: atomic int;
     coforall i in 1..maxValkyries {
+      // spin up the Valkyries!
       var v = new valkyrie();
       v.currentTask = i;
       v.yh += 'run';
       for iL in v.logo {
         this.log.header(iL, hstring=v.header);
       }
+      // okay, we probably need to switch to said interpreter.
+      var p_i = gjallarbru.newInterpreter();
+      // do a test
+      // Yeah, the interpreter is not thread safe.  Shocking, I know!  Huge shock.
+      // major surprise, even.
+      gjallarbru.lockAndRun(p_i, v.matrixValues, 1 : c_ulonglong, gjallarbru.createDimsArray(mSize, 1));
       v.moveToRoot();
       for gen in 1..generations {
         v.gen = gen;

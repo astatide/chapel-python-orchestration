@@ -12,6 +12,7 @@ double *globalArray;
 PyArrayObject *numpyArray;
 unsigned long long globalND;
 unsigned long long *globalDims;
+PyObject * pModule;
 
 // You basically _always_ need this.  It's the methods that we're going to
 // expose to the python module.
@@ -96,41 +97,8 @@ static PyObject *weights(PyObject *self, PyObject *args) {
 
 }
 
-
-PyObject* runPythonFunction(char *function, PyObject *pModule) {
-  PyObject *pArgs, *pValue, *pFunc;
-  int i;
-
-  pFunc = PyObject_GetAttrString(pModule, function);
-  /* pFunc is a new reference */
-
-  if (pFunc && PyCallable_Check(pFunc)) {
-      pValue = PyObject_CallObject(pFunc, NULL);
-      if (pValue != NULL) {
-        //printf("Result of call: %ld\n", PyInt_AsLong(pValue));
-        Py_DECREF(pValue);
-      }
-      else {
-        Py_DECREF(pFunc);
-        Py_DECREF(pModule);
-        PyErr_Print();
-        fprintf(stderr,"Call failed\n");
-        return pValue;
-      }
-  }
-  else {
-    if (PyErr_Occurred())
-      PyErr_Print();
-    fprintf(stderr, "Cannot find function \"%s\"\n", function);
-  }
-  Py_XDECREF(pFunc);
-  Py_DECREF(pModule);
-
-  return pValue;
-}
-
 PyObject* loadPythonModule(char * module) {
-  PyObject *pName, *pModule;
+  PyObject *pName, *pMod;
 
   // This should allow us to actually add to the stupid path.
   PyRun_SimpleString("import sys");
@@ -144,60 +112,76 @@ PyObject* loadPythonModule(char * module) {
   // I think this returns a pointer.
 
   // works with char.  Derp derp.
-  pModule = PyImport_ImportModule(module);
+  pMod = PyImport_ImportModule(module);
 
   // yeah duh of course it fucking does.
 
-  if (pModule != NULL) {
-    return pModule;
+  if (pMod != NULL) {
+    return pMod;
   }
   else {
     PyErr_Print();
     fprintf(stderr, "Failed to load \"%s\"\n", module);
-    return pModule;
+    return pMod;
   }
 
 }
 
-void run() {
-  PyObject *pModule, *pFunc, *pArgs, *pValue;
+double run() {
+  PyObject *pFunc, *pArgs, *pValue;
 
   // Gotta be super careful about this call.
   // There's probably some error checking but heyo.
-  printf("test");
-  pModule = loadPythonModule("gjTest.gjTest");
-  printf("test2");
+  double score;
   pFunc = PyObject_GetAttrString(pModule, "testRun");
   if (pFunc && PyCallable_Check(pFunc)) {
     pValue = PyObject_CallObject(pFunc, NULL);
   } else {
     PyErr_Print();
   }
-  printf("test3");
+  score = PyFloat_AsDouble(pValue);
+  return score;
 
 }
 
-void pythonRun(double * arr, unsigned long long nd, unsigned long long * dims)
+double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims)
 {
   // We're setting the pointer.  Keep in mind that this hinges on properly
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
+  double score;
   globalArray = arr;
   globalND = nd;
   globalDims = dims;
-  run();
+  score = run();
   // Just cause.
   Py_XDECREF(numpyArray);
-  printf("Hey; don't abort.  I told you not to");
+  //printf("Hey; don't abort.  I told you not to");
   // Why does this just... die?
+  return score;
 }
+
+/*
+void pythonInit() {
+  // disable buffering for debugging.
+  setbuf(stdout, NULL);
+  PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
+  Py_Initialize();
+}
+*/
 
 void pythonInit() {
   // disable buffering for debugging.
   setbuf(stdout, NULL);
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
+  // load up the module.  Only do it once.
+  pModule = loadPythonModule("gjTest.gjTest");
+  // We actually don't give a shit about the GIL, so we just ignore it.
+  // The python programs are essentially _read only_ programs.
+  // They're not here to perform modifications to the algorithm.
+  //return Py_NewInterpreter();
 }
 
 void pythonFinal() {
@@ -205,7 +189,8 @@ void pythonFinal() {
   //setbuf(stdout, NULL);
   //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   printf("Killing python");
-  Py_Finalize();
+  //Py_NewInterpreter();
+  //Py_Finalize();
 }
 
 /*
