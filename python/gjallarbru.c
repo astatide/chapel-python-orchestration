@@ -16,6 +16,17 @@ static PyMethodDef methods[] = {
   { NULL, NULL, 0, NULL }
 };
 
+// struct for holding data
+
+struct holdingArray {
+  // Create the array.
+  float *arr;
+  npy_intp dims[1];
+} chapelArray;
+
+float *globalArray;
+npy_intp globalDims[1];
+
 // Remove me if you enjoy segfaults!
 // https://docs.scipy.org/doc/numpy/user/c-info.ufunc-tutorial.html#example-numpy-ufunc-for-one-dtype
 
@@ -79,6 +90,7 @@ static PyObject *weights(PyObject *self, PyObject *args) {
   //  return *self;
   // FUCKING FINALLY.
 
+  /*
   // Create the array.
   float *arr;
   // MALLOC to the rescue bitches
@@ -90,8 +102,10 @@ static PyObject *weights(PyObject *self, PyObject *args) {
   for (int i = 0; i < 10; i++ ) {
     arr[i] = i;
   }
+  */
 
-  PyArrayObject *np_arr = returnNumpyArray(arr, dims);
+  PyArrayObject *np_arr = returnNumpyArray(globalArray, globalDims);
+  Py_XINCREF(np_arr);
 
   return np_arr;
   //Py_RETURN_NONE;
@@ -170,6 +184,7 @@ void run() {
 
   int i;
   //pName = PyString_FromString("test");
+  // Not loading.  Bitches.
   pModule = loadPythonModule("gjTest.gjTest");
 
   pFunc = PyObject_GetAttrString(pModule, "testRun");
@@ -187,10 +202,47 @@ void run() {
 
 }
 
+//void pythonRun()
+void pythonRun(float * arr)
+{
+  printf("yo from C!");
+  // MALLOC to the rescue bitches
+  // I think the garbage collector in python gets collection happy
+  // or something.  I have no idea.
+  //globalArray = (float*)malloc(10*sizeof(float));
+  //chapelArray.dims[0] = 10;
+  //printf('%f', arr);
+  for (int i = 0; i < 10; i++ ) {
+    //printf('%f', arr[i]);
+    //globalArray[i] = arr[i];
+    //globalArray[i] = i;
+    // This doesn't seem to work.  What's wrong with passing it in?
+    //globalArray[i] = arr[i];
+  }
+  globalArray = arr;
+  globalDims[0] = 10;
+  //globalArray = (float*)malloc(10*sizeof(float));
+  //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
+  //Py_Initialize();
+  run();
+  //printf("stupid");
+}
+
+void pythonInit() {
+  // disable buffering for debugging.
+  setbuf(stdout, NULL);
+  PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
+  Py_Initialize();
+}
+
+/*
 int main(int argc, char *argv[])
 {
+
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
   run();
   printf("stupid");
+
 }
+*/
