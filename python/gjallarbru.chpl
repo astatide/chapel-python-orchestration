@@ -38,12 +38,11 @@ proc createDimsArray(l: int, d: int) {
 }
 
 proc testRun() {
-  //writeln(createTestArray(20, 2) : string);
-  //writeln(createDimsArray(20, 2) : string);
   // Does almost seem to work?
   pythonRun(createTestArray(20, 2), 2 : c_ulonglong, createDimsArray(20, 2));
 }
 
+// This is really only if you're compiling it as an executable.  It's more of a library.
 proc main() {
   init();
   testRun();
