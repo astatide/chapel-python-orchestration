@@ -12,7 +12,8 @@ double *globalArray;
 PyArrayObject *numpyArray;
 unsigned long long globalND;
 unsigned long long *globalDims;
-PyObject * pModule;
+PyInterpreterState * mainInterpreterState;
+PyThreadState * mainThreadState;
 
 // You basically _always_ need this.  It's the methods that we're going to
 // expose to the python module.
@@ -133,33 +134,74 @@ double run() {
   // Gotta be super careful about this call.
   // There's probably some error checking but heyo.
   double score;
+  PyObject * pModule;
+  printf("We're in run, now");
+  // This might need to be a per thread thing.
+  // This call fucks out because it's a fucking asshole.
+  // You are such an asshole.  Why are you like this?
+  pModule = loadPythonModule("gjTest.gjTest");
   pFunc = PyObject_GetAttrString(pModule, "testRun");
+  printf("We successfully grabbed the module");
   if (pFunc && PyCallable_Check(pFunc)) {
     pValue = PyObject_CallObject(pFunc, NULL);
   } else {
     PyErr_Print();
   }
+  printf("Are we able to get the score?  Seems the function ran");
   score = PyFloat_AsDouble(pValue);
+  printf("Score?");
   return score;
 
 }
 
-double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims)
+double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims, PyThreadState *pi)
 {
   // We're setting the pointer.  Keep in mind that this hinges on properly
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
+  printf("Do we get this far");
   double score;
+  PyGILState_STATE gstate;
   globalArray = arr;
   globalND = nd;
   globalDims = dims;
+  printf("Acquire that shit");
+  //PyEval_AcquireThread(pi);
+  gstate = PyGILState_Ensure();
+  // DEBUG
+  PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
+  printf("GIL acquired!");
+  //PyThreadState_Swap(pi);
+  printf("Threads swapped!");
+  // oh hi I'm a little bitch who doesn't run.
   score = run();
+  //PyEval_SimpleString("import sys\n");
+  printf("Shit, it ran!");
   // Just cause.
   Py_XDECREF(numpyArray);
   //printf("Hey; don't abort.  I told you not to");
   // Why does this just... die?
+  //PyGILState_Release(pi);
+  //PyThreadState_Swap(NULL);
+  //PyEval_ReleaseThread(pi);
+  PyGILState_Release(gstate);
+  printf("All that other shit is done");
   return score;
+}
+
+PyThreadState* newThread() {
+  // we're sort of faffing about here with the GIL.
+  //PyGILState_STATE a = PyGILState_Ensure();
+  //PyEval_AcquireLock();
+  PyGILState_STATE gstate;
+  gstate = PyGILState_Ensure();
+  //PyThreadState *interp = Py_NewInterpreter();
+  PyThreadState *thread = PyThreadState_New(mainInterpreterState);
+  PyGILState_Release(gstate);
+  //PyEval_ReleaseLock();
+  //PyGILState_Release(a);
+  return thread;
 }
 
 /*
@@ -176,8 +218,16 @@ void pythonInit() {
   setbuf(stdout, NULL);
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
+  PyEval_InitThreads();
+  // This call might need to be loaded into each individual thread, perhaps.
+  mainThreadState = PyThreadState_Get();
+  //PyEval_ReleaseLock();
+  //PyEval_AcquireLock();
+  mainInterpreterState = mainThreadState->interp;
+  PyEval_SaveThread();
+  //PyEval_ReleaseLock();
+  //PyEval_SaveThread();
   // load up the module.  Only do it once.
-  pModule = loadPythonModule("gjTest.gjTest");
   // We actually don't give a shit about the GIL, so we just ignore it.
   // The python programs are essentially _read only_ programs.
   // They're not here to perform modifications to the algorithm.

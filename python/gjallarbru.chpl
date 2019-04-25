@@ -9,10 +9,10 @@ extern type PyThreadState;
 extern proc returnNumpyArray(ref arr: c_float, ref dims: npy_intp) : PyObject;
 extern proc weights(ref self: PyObject, ref args: PyObject): PyObject;
 extern proc run();
-extern proc pythonRun(arr: [] c_double, nd: c_ulonglong, dims: [] c_ulonglong);
+extern proc pythonRun(arr: [] c_double, nd: c_ulonglong, dims: [] c_ulonglong, thread: c_void_ptr);
 extern proc pythonInit();
 extern proc pythonFinal();
-extern proc Py_NewInterpreter() : c_void_ptr;
+extern proc newThread() : c_void_ptr;
 extern proc PyThreadState_Swap(thread: c_void_ptr) : c_void_ptr;
 extern proc PyGILState_Ensure(): c_void_ptr;
 extern proc PyGILState_Release(lock: c_void_ptr);
@@ -27,7 +27,7 @@ proc init() {
 }
 
 proc newInterpreter() {
-  return Py_NewInterpreter();
+  return newThread();
 }
 
 proc final() {
@@ -57,10 +57,9 @@ proc testRun() {
 
 proc lockAndRun(pi, matrix, nd, dims ) {
   // This is just some bullshit to make us thread safe, I guess.
-  var gil = PyGILState_Ensure();
-  PyThreadState_Swap(pi);
-  pythonRun(matrix, nd, dims);
-  PyGILState_Release(gil);
+  //var gil = PyGILState_Ensure();
+  pythonRun(matrix, nd, dims, pi);
+  //PyGILState_Release(gil);
 }
 
 // This is really only if you're compiling it as an executable.  It's more of a library.
