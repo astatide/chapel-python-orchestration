@@ -324,10 +324,6 @@ class Propagator {
       }
       // okay, we probably need to switch to said interpreter.
       var p_i = gjallarbru.newInterpreter();
-      // do a test
-      // Yeah, the interpreter is not thread safe.  Shocking, I know!  Huge shock.
-      // major surprise, even.
-      gjallarbru.lockAndRun(p_i, v.matrixValues, 1 : c_ulonglong, gjallarbru.createDimsArray(mSize, 1));
       v.moveToRoot();
       for gen in 1..generations {
         v.gen = gen;
@@ -433,6 +429,12 @@ class Propagator {
                 }
               }
 
+              // do a test
+              // Yeah, the interpreter is not thread safe.  Shocking, I know!  Huge shock.
+              // major surprise, even.
+              // call that python shit homefry
+              //gjallarbru.lockAndRun(p_i, v.matrixValues, 1 : c_ulonglong, gjallarbru.createDimsArray(mSize, 1));
+              //writeln(v.matrixValues);
               this.lock.uwl(v.header);
               this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
               this.inCurrentGeneration.sub(1);

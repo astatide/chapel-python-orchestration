@@ -11,7 +11,7 @@ use ygglog;
 // This pulls from its own RNG.  Guarantees a bit more entropy.
 var UUID = new owned uuid.UUID();
 UUID.UUID4();
-var udevrandom = new owned rng.UDevRandomHandler();
+var udevrandom = new shared rng.UDevRandomHandler();
 var newrng = udevrandom.returnRNG();
 //writeln(UUID.UUID4());
 
@@ -29,8 +29,8 @@ record noiseFunctions {
   var newrng = udevrandom.returnRNG();
 
   proc noise(seed: int, c: real, ref matrix: [0] real) {
-    //return this.add_uniform_noise(seed, c, matrix);
-    return this.constant(seed, c, matrix);
+    return this.add_uniform_noise(seed, c, matrix);
+    //return this.constant(seed, c, matrix);
   }
 
   proc add_uniform_noise(seed: int, c: real, ref matrix: [0] real) {
@@ -39,7 +39,7 @@ record noiseFunctions {
     // Make a new array with the same domain as the input matrix.
     var m: [matrix.domain] real;
     this.newrng.fillRandom(m, seed=seed);
-    matrix += (m*c);
+    matrix += (m*c*.1);
   }
 
   proc constant(seed: int, c: real, ref matrix: [0] real) {
@@ -52,6 +52,8 @@ record noiseFunctions {
 record deltaRecord {
   var seeds: domain(int);
   var delta: [seeds] real;
+  //var udevrandom = new owned rng.UDevRandomHandler();
+  //var newrng = udevrandom.returnRNG();
 
   iter these() {
     //yield (seeds, delta);
@@ -84,10 +86,13 @@ record deltaRecord {
   }
 
   proc express(ref matrix) {
-    var m: [matrix.domain] real;
     for (s, c) in zip(this.seeds, this.delta) do {
       // This is the debug mode.
-      m = s;
+      //m = s;
+      //matrix += (m*c);
+      //var m: [matrix.domain] real;
+      var m: [0..matrix.size] c_double;
+      Random.fillRandom(m, seed=s);
       matrix += (m*c);
     }
   }
