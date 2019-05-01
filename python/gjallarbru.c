@@ -145,14 +145,27 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   globalND = nd;
   globalDims = dims;
   gstate = PyGILState_Ensure();
-  PyThreadState *thread = PyThreadState_New(mainInterpreterState);
-  PyThreadState_Swap(thread);
+  //PyEval_RestoreThread(mainThreadState);
+  printf("Lock it down blah blah blah");
+  // yeah, this so is not working.
+  //PyEval_AcquireLock();
+  printf("Hey, did you lock?  Okay, cool.  Now; can you create a new thread?");
+  // the answer to that question is "no".
+  //PyThreadState *ts = PyThreadState_New(pi);
+  printf("Cool.  Can you swap threads?");
+  //PyThreadState_Swap(ts);
+  // no.  We don't.
+  printf("Did we swap states correctly?");
   //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   *score = run("run");
   //newscore = *score;
   //Py_XDECREF(numpyArray);
-  PyThreadState_Swap(NULL);
+  //PyThreadState_Swap(mainThreadState);
+  //PyEval_ReleaseLock();
+  //PyThreadState_Clear(ts);
+  //PyThreadState_Delete(ts);
   PyGILState_Release(gstate);
+  //PyEval_ReleaseThread();
   return newscore;
 }
 
@@ -194,8 +207,9 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   for (int i = 0; i < maxValkyries; i++ ) {
     threads[i] = newThread();
   }
-  //PyEval_SaveThread();
+  PyEval_SaveThread();
   PyThreadState_Swap(mainThreadState);
+  //PyThreadState_Swap(mainThreadState);
   return threads;
   // Release the GIL, but swap in the main thread.
   // also fuck off.

@@ -326,6 +326,7 @@ class Propagator {
     var nnodes: atomic int;
     var globalGJ = new owned gjallarbru.Gjallarbru();
     globalGJ.pInit();
+    writeln("gjallblahladg");
     coforall i in 1..maxValkyries {
       // spin up the Valkyries!
       var v = new valkyrie();
@@ -338,13 +339,19 @@ class Propagator {
       // initialize the python interpreter.  Only do this once.
       // will this work?  On a per task basis, I mean.
       // I want to have multiple of these but also blaaaaah.
+      writeln("make new gj");
       var gj = new owned gjallarbru.Gjallarbru();
+      writeln("new gj made; get thread");
       //var p_i = gj.newInterpreter();
       var p_i = globalGJ.threads[i];
+      writeln("thread grabbed");
       v.moveToRoot();
+      writeln("What's going on?");
       for gen in 1..generations {
         v.gen = gen;
+        writeln("Are you though");
         this.log.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
+        writeln("so many lies");
         var currToProc: string;
         var toProcess: domain(string);
         var path: network.pathHistory;
@@ -420,7 +427,9 @@ class Propagator {
               dims[0] = 3;
               dims[1] = 24;
               dims[2] = 320;
+              writeln("Look, are you getting to the stupid score?");
               var score: c_double = gj.lockAndRun(p_i, v.matrixValues, 3 : c_ulonglong, dims);
+              writeln("Hooray for you.");
               //var score: c_double;
               this.lock.wl(v.header);
               var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
