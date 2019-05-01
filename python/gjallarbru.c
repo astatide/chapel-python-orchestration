@@ -140,36 +140,66 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   // what C expects.
 
   PyGILState_STATE gstate;
+  double newscore;
   globalArray = arr;
   globalND = nd;
   globalDims = dims;
   gstate = PyGILState_Ensure();
-  PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
-  *score = run();
-  newscore = score;
-  Py_XDECREF(numpyArray);
+  PyThreadState *thread = PyThreadState_New(mainInterpreterState);
+  PyThreadState_Swap(thread);
+  //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
+  *score = run("run");
+  //newscore = *score;
+  //Py_XDECREF(numpyArray);
+  PyThreadState_Swap(NULL);
   PyGILState_Release(gstate);
   return newscore;
 }
 
 PyThreadState* newThread() {
   // we're sort of faffing about here with the GIL.
-  PyGILState_STATE gstate;
-  gstate = PyGILState_Ensure();
-  PyThreadState *thread = PyThreadState_New(mainInterpreterState);
-  PyGILState_Release(gstate);
+  //PyGILState_STATE gstate;
+  //gstate = PyGILState_Ensure();
+
+  PyThreadState *thread = Py_NewInterpreter();
+  //PyThreadState *thread = PyThreadState_New(mainInterpreterState);
+  // Actually, do we need this?
+  //PyThreadState *thread = PyThreadState_New(interp);
+  // get it son.
+  //PyThreadState_Swap(thread);
+  //PyGILState_Release(gstate);
   return thread;
 }
 
-void pythonInit() {
+PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // disable buffering for debugging.
+  //PyGILState_STATE gstate;
+  //gstate = PyGILState_Ensure();
+
+  PyThreadState *threads[maxValkyries];
+
   setbuf(stdout, NULL);
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
   PyEval_InitThreads();
+  //import_array();
+  // For some reason, this seems necessary for... anything.
+  // However, when we call it in the second task, we get nothing.
+  // Because there's no active thread.
+  // Why does Python insist on not sandboxing itself?  I don't want to share
+  // memory between python interpreters.
+  // ugh it's just blah.
   mainThreadState = PyThreadState_Get();
   mainInterpreterState = mainThreadState->interp;
-  PyEval_SaveThread();
+  for (int i = 0; i < maxValkyries; i++ ) {
+    threads[i] = newThread();
+  }
+  //PyEval_SaveThread();
+  PyThreadState_Swap(mainThreadState);
+  return threads;
+  // Release the GIL, but swap in the main thread.
+  // also fuck off.
+  //PyGILState_Release(gstate);
 }
 
 void pythonFinal() {

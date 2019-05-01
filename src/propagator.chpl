@@ -324,6 +324,8 @@ class Propagator {
     // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
     var nnodes: atomic int;
+    var globalGJ = new owned gjallarbru.Gjallarbru();
+    globalGJ.pInit();
     coforall i in 1..maxValkyries {
       // spin up the Valkyries!
       var v = new valkyrie();
@@ -336,8 +338,9 @@ class Propagator {
       // initialize the python interpreter.  Only do this once.
       // will this work?  On a per task basis, I mean.
       // I want to have multiple of these but also blaaaaah.
-      gjallarbru.init();
-      var p_i = gjallarbru.newInterpreter();
+      var gj = new owned gjallarbru.Gjallarbru();
+      //var p_i = gj.newInterpreter();
+      var p_i = globalGJ.threads[i];
       v.moveToRoot();
       for gen in 1..generations {
         v.gen = gen;
@@ -413,11 +416,12 @@ class Propagator {
               //this.scoreDomain.add(currToProc : string);
               //this.scoreArray[currToProc] = score;
               // actually, just add it if we're... yeah, why not?
-              var dims = gjallarbru.createDimsArray(mSize, 3);
+              var dims = gj.createDimsArray(mSize, 3);
               dims[0] = 3;
               dims[1] = 24;
               dims[2] = 320;
-              var score: c_double = gjallarbru.lockAndRun(p_i, v.matrixValues, 3 : c_ulonglong, dims);
+              var score: c_double = gj.lockAndRun(p_i, v.matrixValues, 3 : c_ulonglong, dims);
+              //var score: c_double;
               this.lock.wl(v.header);
               var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
               if score < maxVal {
