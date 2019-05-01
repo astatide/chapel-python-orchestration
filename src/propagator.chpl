@@ -319,8 +319,6 @@ class Propagator {
     this.header();
     this.yh.header = 'NormalRuntime';
     this.yh += 'run';
-    // initialize the python interpreter.  Only do this once.
-    gjallarbru.init();
     // I think the other valkyries should be able to do their thing.
     // should probably do this for each task but hey whatever.
     // We're catching a signal interrupt, which is slightly mangled for some reason.
@@ -335,6 +333,10 @@ class Propagator {
         this.log.header(iL, hstring=v.header);
       }
       // okay, we probably need to switch to said interpreter.
+      // initialize the python interpreter.  Only do this once.
+      // will this work?  On a per task basis, I mean.
+      // I want to have multiple of these but also blaaaaah.
+      gjallarbru.init();
       var p_i = gjallarbru.newInterpreter();
       v.moveToRoot();
       for gen in 1..generations {
@@ -411,12 +413,12 @@ class Propagator {
               //this.scoreDomain.add(currToProc : string);
               //this.scoreArray[currToProc] = score;
               // actually, just add it if we're... yeah, why not?
-              this.lock.wl(v.header);
               var dims = gjallarbru.createDimsArray(mSize, 3);
               dims[0] = 3;
               dims[1] = 24;
               dims[2] = 320;
               var score: c_double = gjallarbru.lockAndRun(p_i, v.matrixValues, 3 : c_ulonglong, dims);
+              this.lock.wl(v.header);
               var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
               if score < maxVal {
                 this.scoreArray[maxLoc] = score;
