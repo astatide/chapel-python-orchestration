@@ -13,12 +13,20 @@ use IO.FormattedIO;
 use chromosomes;
 use gjallarbru;
 
+record scoreComparator {
+  proc keyPart(x: (string, real), i: int) {
+    if i > 2 then
+      return (-1, ('NULL', 0));
+    return (0, (x[1], x[2]));
+  }
+}
+
 
 var UUID = new owned uuid.UUID();
 UUID.UUID4();
 
 config const mSize = 20;
-config const maxPerGeneration = 400;
+config const maxPerGeneration = 10;
 config const mutationRate = 0.03;
 config const maxValkyries = 1;
 config const startingSeeds = 4;
@@ -133,6 +141,10 @@ class Propagator {
   // now a few globals.
   var nodesToProcess: domain(string);
   var processedArray: [nodesToProcess] atomic bool;
+  // actually, this should probably be its own thing.
+  //var scoreDomain: domain(string);
+  var scoreArray: [1..maxPerGeneration] real = Math.INFINITY;
+  var idArray: [1..maxPerGeneration] string;
   var inCurrentGeneration: atomic int;
   var nextGeneration: domain(string);
 
@@ -394,48 +406,36 @@ class Propagator {
               }
               this.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
               this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
-              this.log.debug('Attempting to move ID', currToProc, 'into the next generation.', hstring=v.header);
-              var nextNode = this.ygg.nextNode(currToProc, hstring=v.header);
-              // They should really know about each other, I mean, come on.
-              assert(this.ygg.nodes[currToProc].nodeInEdges(nextNode, v.header));
-              assert(this.ygg.nodes[nextNode].nodeInEdges(currToProc, v.header));
-              var mergeTest: string;
-              this.log.debug('Node', nextNode : string, 'added', hstring=v.header);
-              v.nProcessed += 1;
-              v.moved = true;
-              // test it!
-              if unitTestMode {
-                if currToProc != this.ygg.testNodeId {
-                  this.log.debug('Attempting to merge ID', currToProc, 'with', this.ygg.testNodeId, hstring=v.header);
-                  mergeTest = this.ygg.mergeNodes(currToProc, this.ygg.testNodeId, hstring=v.header);
-                  this.log.debug('Node', mergeTest : string, 'added', hstring=v.header);
-                }
-              }
+              // we've moved; now score it.
+              // this already IS a string, so remove the cast.
+              //this.scoreDomain.add(currToProc : string);
+              //this.scoreArray[currToProc] = score;
+              // actually, just add it if we're... yeah, why not?
               this.lock.wl(v.header);
-              // We're testing to see if we can do this.
-              // I want this in there ultimately, but it needs to
-              // not result in a race condition.
-              //this.nodesToProcess.remove(currToProc);
-              // We only want to add to an empty domain here such that we only
-              // prioritize nodes which are close to the current node.
-              // Eventually, if we mutate, we'll add that in, too.
-              //v.priorityNodes.clear();
-              v.priorityNodes.add(nextNode);
-              this.nextGeneration.add(nextNode);
-              if unitTestMode {
-                if currToProc != this.ygg.testNodeId {
-                  v.priorityNodes.add(mergeTest);
-                  this.nextGeneration.add(mergeTest);
-                }
+              var dims = gjallarbru.createDimsArray(mSize, 3);
+              dims[0] = 3;
+              dims[1] = 24;
+              dims[2] = 320;
+              var score: c_double = gjallarbru.lockAndRun(p_i, v.matrixValues, 3 : c_ulonglong, dims);
+              var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
+              if score < maxVal {
+                this.scoreArray[maxLoc] = score;
+                this.idArray[maxLoc] = currToProc;
               }
+              this.lock.uwl(v.header);
+              // yay!  Now we have a score!  Fuck yeah broski.
+
 
               // do a test
               // Yeah, the interpreter is not thread safe.  Shocking, I know!  Huge shock.
               // major surprise, even.
               // call that python shit homefry
-              //gjallarbru.lockAndRun(p_i, v.matrixValues, 1 : c_ulonglong, gjallarbru.createDimsArray(mSize, 1));
+              // this is just a test run.  It isn't really doing much but then again, ISN'T it?!
+              // the score exists now!  Yay!
+              //writeln("What's the score in chapel?");
+              //writeln(score : string);
               //writeln(v.matrixValues);
-              this.lock.uwl(v.header);
+              //this.lock.uwl(v.header);
               this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
               this.inCurrentGeneration.sub(1);
               this.log.debug('inCurrentGeneration successfully reduced', hstring=v.header);
@@ -502,6 +502,55 @@ class Propagator {
           // do global cleanup to ensure the global arrays are ready.
           v.moved = false;
           this.lock.wl(v.header);
+
+          // we'll just throw this in here for now.
+          // Only do the max!
+          //var bestInGen: real = this.scoreArray[1];
+          var (bestInGen, minLoc) = minloc reduce zip(this.scoreArray, this.scoreArray.domain);
+          writeln(this.scoreArray);
+          for ij in 1..maxPerGeneration {
+            currToProc = this.idArray[ij];
+            if this.scoreArray[ij] == Math.INFINITY {
+              break;
+            }
+            this.log.debug('Attempting to move ID', currToProc, 'into the next generation.', hstring=v.header);
+            var nextNode = this.ygg.nextNode(currToProc, hstring=v.header);
+            // They should really know about each other, I mean, come on.
+            assert(this.ygg.nodes[currToProc].nodeInEdges(nextNode, v.header));
+            assert(this.ygg.nodes[nextNode].nodeInEdges(currToProc, v.header));
+            var mergeTest: string;
+            this.log.debug('Node', nextNode : string, 'added', hstring=v.header);
+            v.nProcessed += 1;
+            v.moved = true;
+            // test it!
+            //if unitTestMode {
+            if currToProc != this.idArray[minLoc] {
+              this.log.debug('Attempting to merge ID', currToProc, 'with', this.idArray[minLoc], hstring=v.header);
+              mergeTest = this.ygg.mergeNodes(currToProc, this.idArray[minLoc], hstring=v.header);
+              this.log.debug('Node', mergeTest : string, 'added', hstring=v.header);
+              //}
+            }
+            //this.lock.wl(v.header);
+            // We're testing to see if we can do this.
+            // I want this in there ultimately, but it needs to
+            // not result in a race condition.
+            //this.nodesToProcess.remove(currToProc);
+            // We only want to add to an empty domain here such that we only
+            // prioritize nodes which are close to the current node.
+            // Eventually, if we mutate, we'll add that in, too.
+            //v.priorityNodes.clear();
+            v.priorityNodes.add(nextNode);
+            this.nextGeneration.add(nextNode);
+            //if unitTestMode {
+            if currToProc != this.idArray[minLoc] {
+              v.priorityNodes.add(mergeTest);
+              this.nextGeneration.add(mergeTest);
+            }
+            //}
+          }
+          this.scoreArray = Math.INFINITY;
+          //
+
           this.log.debug('Switching generations', v.header);
           // Clear out the current nodesToProcess domain, and swap it for the
           // ones we've set to process for the next generation.
@@ -533,7 +582,7 @@ class Propagator {
           eff /= maxValkyries;
           //std = 1 - (sqrt(std)/avg);
           processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
-          this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, processedString : string, hstring=this.yh);
+          this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
           this.yh.printedHeader = true;
           //this.log.log(stdin.read(string));
           this.generationTime = 0 : real;

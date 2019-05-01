@@ -86,14 +86,14 @@ record deltaRecord {
   }
 
   proc express(ref matrix) {
+    var m: [0..matrix.size] c_double;
     for (s, c) in zip(this.seeds, this.delta) do {
       // This is the debug mode.
       //m = s;
       //matrix += (m*c);
       //var m: [matrix.domain] real;
-      var m: [0..matrix.size] c_double;
       Random.fillRandom(m, seed=s);
-      matrix += (m*c);
+      matrix += (m*c*0.01);
     }
   }
 

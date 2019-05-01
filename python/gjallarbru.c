@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <math.h>
+#include <stdlib.h>
 
 // Declare the functions that we'll need later.
 
@@ -140,7 +141,7 @@ double run() {
   // This call fucks out because it's a fucking asshole.
   // You are such an asshole.  Why are you like this?
   pModule = loadPythonModule("gjTest.gjTest");
-  pFunc = PyObject_GetAttrString(pModule, "testRun");
+  pFunc = PyObject_GetAttrString(pModule, "run");
   ////printf("We successfully grabbed the module");
   if (pFunc && PyCallable_Check(pFunc)) {
     // you pretend to work.  YOU LIE.
@@ -149,7 +150,20 @@ double run() {
   } else {
     PyErr_Print();
   }
-  if (pValue == NULL) {
+  if (pValue != NULL) {
+    //printf("Result of call: %s\n", (char)PyFloat_AsDouble(pValue));
+    PyObject* repr = PyObject_Repr(pValue);
+    PyObject* str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
+    const char *bytes = PyBytes_AS_STRING(str);
+    //printf("Result of call: %s\n", bytes);
+    Py_DECREF(pValue);
+    // horrid way to do this but heeeeeey
+    score = atof(bytes);
+    //printf("Everything sucks: %f\n", score);
+    if (PyErr_Occurred()) {
+      PyErr_Print();
+    }
+  } else {
     // we should also kill it if the score is null.
     PyErr_Print();
     // we can check for null on the python side, and if it's NULL, we can
@@ -157,20 +171,19 @@ double run() {
     //return NULL;
   }
   //printf("Are we able to get the score?  Seems the function ran");
-  score = PyFloat_AsDouble(pValue);
   //printf("Score?");
   return score;
 
 }
 
-double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims, PyThreadState *pi)
+double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims, PyThreadState *pi, double *score)
 {
   // We're setting the pointer.  Keep in mind that this hinges on properly
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
   //printf("Do we get this far");
-  double score;
+  //double score;
   PyGILState_STATE gstate;
   globalArray = arr;
   globalND = nd;
@@ -184,7 +197,9 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   //printf("GIL acquired!");
   //printf("Threads swapped!");
   // oh hi I'm a little bitch who doesn't run.
-  score = run();
+  *score = run();
+  //*score = 12;
+  double newscore = 12;
   //PyEval_SimpleString("import sys\n");
   //printf("Shit, it ran!");
   // Just cause.
@@ -196,7 +211,7 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   //PyEval_ReleaseThread(pi);
   PyGILState_Release(gstate);
   //printf("All that other shit is done");
-  return score;
+  return newscore;
 }
 
 PyThreadState* newThread() {
