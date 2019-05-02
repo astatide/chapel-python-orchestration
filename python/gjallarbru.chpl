@@ -20,6 +20,7 @@ extern proc PyGILState_Release(lock: c_void_ptr);
 //extern proc pythonRun();
 
 require "python/gjallarbru.c";
+//require "python/test.cpp";
 
 class Gjallarbru {
 

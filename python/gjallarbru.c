@@ -14,7 +14,9 @@ PyArrayObject *numpyArray;
 unsigned long long globalND;
 unsigned long long *globalDims;
 PyInterpreterState * mainInterpreterState;
+// Main thread doesn't go away, but the other threads seem to?
 PyThreadState * mainThreadState;
+volatile PyThreadState ** threads;
 
 // You basically _always_ need this.  It's the methods that we're going to
 // expose to the python module.
@@ -91,9 +93,13 @@ PyObject* loadPythonModule(char * module) {
   PyObject *pName, *pMod;
 
   // This should allow us to actually add to the stupid path.
+  printf("can we import sys?");
   PyRun_SimpleString("import sys");
+  printf("Okay; can we add our path to the path?");
   PyRun_SimpleString("sys.path.append('/Users/apratt/work/yggdrasil/python/')");
+  printf("Good; what about the actual import module command?");
   pMod = PyImport_ImportModule(module);
+  printf("hey, that worked.  So what gives?");
   if (pMod != NULL) {
     return pMod;
   }
@@ -110,7 +116,9 @@ double run(char * function) {
   // There's probably some error checking but heyo.
   double score;
   PyObject * pModule;
+  printf("Wait, so is it just this?");
   pModule = loadPythonModule("gjTest.gjTest");
+  printf("Okay, so that loaded...");
   pFunc = PyObject_GetAttrString(pModule, function);
   if (pFunc && PyCallable_Check(pFunc)) {
     pValue = PyObject_CallObject(pFunc, NULL);
@@ -141,30 +149,48 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
 
   PyGILState_STATE gstate;
   double newscore;
+  PyObject * pModule;
   globalArray = arr;
   globalND = nd;
   globalDims = dims;
-  gstate = PyGILState_Ensure();
+  PyThreadState *old;
+  //gstate = PyGILState_Ensure();
   //PyEval_RestoreThread(mainThreadState);
-  printf("Lock it down blah blah blah");
-  // yeah, this so is not working.
   //PyEval_AcquireLock();
+  //PyThreadState_Swap(mainThreadState);
+  //PyEval_AcquireThread(pi);
+  printf("Lock it down blah blah blah");
+  //PyThreadState * interp = Py_NewInterpreter();
+  // yeah, this so is not working.
   printf("Hey, did you lock?  Okay, cool.  Now; can you create a new thread?");
   // the answer to that question is "no".
-  //PyThreadState *ts = PyThreadState_New(pi);
+  //PyThreadState *ts = PyThreadState_New(interp->interp);
+  PyThreadState *ts = PyThreadState_New(mainInterpreterState);
   printf("Cool.  Can you swap threads?");
-  //PyThreadState_Swap(ts);
+  //old = PyThreadState_Swap(ts);
+  //PyEval_SaveThread();
+  PyEval_AcquireThread(ts);
+  //Py_InitializeEx(0);
+  //PyRun_SimpleString("import importlib; importlib.reload()");
+  //void* throw = import_array();
+  // hmmmm.  Maybe?
+  printf("Can you add a module, or do you suck?");
+  //PyRun_SimpleString("print(134342)");
+  //PyRun_SimpleString("import sys");
+  //pModule = loadPythonModule("gjTest.gjTest");
   // no.  We don't.
   printf("Did we swap states correctly?");
   //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   *score = run("run");
+  PyEval_ReleaseThread(ts);
   //newscore = *score;
   //Py_XDECREF(numpyArray);
+  //PyThreadState_Swap(mainThreadState);
   //PyThreadState_Swap(mainThreadState);
   //PyEval_ReleaseLock();
   //PyThreadState_Clear(ts);
   //PyThreadState_Delete(ts);
-  PyGILState_Release(gstate);
+  //PyGILState_Release(gstate);
   //PyEval_ReleaseThread();
   return newscore;
 }
@@ -174,7 +200,7 @@ PyThreadState* newThread() {
   //PyGILState_STATE gstate;
   //gstate = PyGILState_Ensure();
 
-  PyThreadState *thread = Py_NewInterpreter();
+  PyThreadState *thread = Py_NewInterpreter()->interp;
   //PyThreadState *thread = PyThreadState_New(mainInterpreterState);
   // Actually, do we need this?
   //PyThreadState *thread = PyThreadState_New(interp);
@@ -188,11 +214,13 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // disable buffering for debugging.
   //PyGILState_STATE gstate;
   //gstate = PyGILState_Ensure();
+  //PyThreadState *threads[maxValkyries];
 
-  PyThreadState *threads[maxValkyries];
+  // malloc the damn thing.
+  threads = malloc(sizeof(PyThreadState*)*maxValkyries);
+  PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
 
   setbuf(stdout, NULL);
-  PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
   PyEval_InitThreads();
   //import_array();
@@ -205,10 +233,24 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   mainThreadState = PyThreadState_Get();
   mainInterpreterState = mainThreadState->interp;
   for (int i = 0; i < maxValkyries; i++ ) {
-    threads[i] = newThread();
+    //threads[i] = newThread();
+    //threads[i] = Py_NewInterpreter();
+    threads[i] = PyThreadState_New(mainInterpreterState);
+
   }
+  //PyEval_ReleaseLock();
   PyEval_SaveThread();
-  PyThreadState_Swap(mainThreadState);
+  //printf("swap the fucking threads asshole");
+  //PyThreadState_Swap(mainThreadState);
+  //printf("Make a new goddamn thread");
+  //PyThreadState *ts = PyThreadState_New(threads[0]->interp);
+  //printf("Now fucking swap it");
+  //PyThreadState_Swap(ts);
+  //printf("Good for you you fucking asshole");
+  //Py_BEGIN_ALLOW_THREADS
+  //PyRun_SimpleString("print(134342)");
+  // Since all that works, I suspect we're going out of scope, somehow.
+  // Jesus.
   //PyThreadState_Swap(mainThreadState);
   return threads;
   // Release the GIL, but swap in the main thread.
@@ -217,6 +259,9 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
 }
 
 void pythonFinal() {
+  // blah?
+
+  //Py_END_ALLOW_THREADS
   Py_Finalize();
 }
 
