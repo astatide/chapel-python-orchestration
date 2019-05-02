@@ -89,17 +89,104 @@ static PyObject *weights(PyObject *self, PyObject *args) {
 
 }
 
+static PyObject *returnManyNumpyArrays(double *arr, unsigned long long *dims, Py_ssize_t nd) {
+  PyObject *pArray;
+
+  pArray = PyArray_SimpleNewFromData(nd, dims, NPY_FLOAT64, (void *)(arr));
+  PyArrayObject *np_arr = (PyArrayObject*)(pArray);
+
+  Py_XINCREF(np_arr);
+  Py_XINCREF(pArray);
+
+  return np_arr;
+}
+
+static PyObject *weights_multi(PyObject *self, PyObject *args) {
+  // The idea here is that we want to return a list of weights.
+  // or return it from blah blah blah.
+  // So args is going to contain some standard stuff or whatever.
+  /*
+  const char *field = 0; PyObject *value; int typeField; size_t size = 0;
+  if (!PyArg_ParseTuple(args, "isO|n", &typeField, &field, &value, &size)) {
+    return 0;
+  }
+  */
+  PyObject * argList;
+  double * cArray = globalArray;
+  Py_ssize_t n, m;
+
+  unsigned long long *dimArray;
+  unsigned long long elements;
+
+  if (!PyArg_ParseTuple(args, "!O", &PyList_Type, &argList)) {
+    PyErr_SetString(PyExc_TypeError, "parameter must be a list.");
+    return NULL;
+  }
+
+  PyObject ** returnArrayList;
+  PyObject * tempTuple;
+  // construct the dims on the fly.  So we essentially want a list of tuples.
+  /*
+  weights = [np.ones((24,320)),
+           np.ones((80,320)),
+           np.ones((320,)),
+           np.ones((80,3)),
+           np.ones((3))]
+           */
+  n = PyList_Size(argList);
+  m = 0;
+  returnArrayList = malloc(n * sizeof(PyArrayObject*));
+  // Get the size of the amount of memory we need to malloc
+  for (int i = 0; i < n; i++) {
+    m += PyTuple_Size(&argList[i]);
+  }
+  dimArray = malloc(m * sizeof(unsigned long long));
+  m = 0;
+  for (int i = 0; i < n; i++) {
+    elements = 1;
+    tempTuple = PyList_GetItem(argList, i);
+    m = PyTuple_Size(tempTuple);
+    // m is the number of dimensions.
+    /*
+    proc createDimsArray(l: int, d: int) {
+      var length: c_ulonglong = l : c_ulonglong;
+      var nd: c_ulonglong = d : c_ulonglong;
+      var dims: [0..nd-1] c_ulonglong = length;
+      return dims;
+    }
+    */
+    for (int ti = 0; ti < m; ti++) {
+      // Set the dimensional array value to be equal to the value in the tuple.
+      dimArray[i + ti] = PyLong_AsUnsignedLongLong(PyTuple_GetItem(tempTuple, ti));
+      elements *= PyLong_AsUnsignedLongLong(PyTuple_GetItem(tempTuple, ti));
+      // okay, so now we're going through the tuples and blah blah blah.
+    }
+    returnArrayList[i] = returnManyNumpyArrays(cArray, dimArray, m);
+    // shift the array pointer up by the appropriate number of elements.
+    cArray += elements;
+    Py_XINCREF(returnArrayList[i]);
+  }
+  PyObject * returnTuple;
+  returnTuple = PyTuple_New(n);
+  for (int i = 0; i < n; i++) {
+    PyTuple_SetItem(returnTuple, i, returnArrayList[i]);
+  }
+  Py_XINCREF(returnTuple);
+  return returnTuple;
+
+}
+
 PyObject* loadPythonModule(char * module) {
   PyObject *pName, *pMod;
 
   // This should allow us to actually add to the stupid path.
-  printf("can we import sys?");
+  //printf("can we import sys?");
   PyRun_SimpleString("import sys");
-  printf("Okay; can we add our path to the path?");
+  //printf("Okay; can we add our path to the path?");
   PyRun_SimpleString("sys.path.append('/Users/apratt/work/yggdrasil/python/')");
-  printf("Good; what about the actual import module command?");
+  //printf("Good; what about the actual import module command?");
   pMod = PyImport_ImportModule(module);
-  printf("hey, that worked.  So what gives?");
+  //printf("hey, that worked.  So what gives?");
   if (pMod != NULL) {
     return pMod;
   }
@@ -116,9 +203,9 @@ double run(char * function) {
   // There's probably some error checking but heyo.
   double score;
   PyObject * pModule;
-  printf("Wait, so is it just this?");
+  //printf("Wait, so is it just this?");
   pModule = loadPythonModule("gjTest.gjTest");
-  printf("Okay, so that loaded...");
+  //printf("Okay, so that loaded...");
   pFunc = PyObject_GetAttrString(pModule, function);
   if (pFunc && PyCallable_Check(pFunc)) {
     pValue = PyObject_CallObject(pFunc, NULL);
@@ -159,14 +246,14 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   //PyEval_AcquireLock();
   //PyThreadState_Swap(mainThreadState);
   //PyEval_AcquireThread(pi);
-  printf("Lock it down blah blah blah");
+  //printf("Lock it down blah blah blah");
   //PyThreadState * interp = Py_NewInterpreter();
   // yeah, this so is not working.
-  printf("Hey, did you lock?  Okay, cool.  Now; can you create a new thread?");
+  //printf("Hey, did you lock?  Okay, cool.  Now; can you create a new thread?");
   // the answer to that question is "no".
   //PyThreadState *ts = PyThreadState_New(interp->interp);
   PyThreadState *ts = PyThreadState_New(mainInterpreterState);
-  printf("Cool.  Can you swap threads?");
+  //printf("Cool.  Can you swap threads?");
   //old = PyThreadState_Swap(ts);
   //PyEval_SaveThread();
   PyEval_AcquireThread(ts);
@@ -174,12 +261,12 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   //PyRun_SimpleString("import importlib; importlib.reload()");
   //void* throw = import_array();
   // hmmmm.  Maybe?
-  printf("Can you add a module, or do you suck?");
+  //printf("Can you add a module, or do you suck?");
   //PyRun_SimpleString("print(134342)");
   //PyRun_SimpleString("import sys");
   //pModule = loadPythonModule("gjTest.gjTest");
   // no.  We don't.
-  printf("Did we swap states correctly?");
+  //printf("Did we swap states correctly?");
   //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   *score = run("run");
   PyEval_ReleaseThread(ts);
@@ -240,13 +327,13 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   }
   //PyEval_ReleaseLock();
   PyEval_SaveThread();
-  //printf("swap the fucking threads asshole");
+  ////printf("swap the fucking threads asshole");
   //PyThreadState_Swap(mainThreadState);
-  //printf("Make a new goddamn thread");
+  ////printf("Make a new goddamn thread");
   //PyThreadState *ts = PyThreadState_New(threads[0]->interp);
-  //printf("Now fucking swap it");
+  ////printf("Now fucking swap it");
   //PyThreadState_Swap(ts);
-  //printf("Good for you you fucking asshole");
+  ////printf("Good for you you fucking asshole");
   //Py_BEGIN_ALLOW_THREADS
   //PyRun_SimpleString("print(134342)");
   // Since all that works, I suspect we're going out of scope, somehow.
@@ -272,7 +359,7 @@ int main(int argc, char *argv[])
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
   run();
-  //printf("stupid");
+  ////printf("stupid");
 
 }
 */
