@@ -7,6 +7,7 @@
 
 static PyObject *returnNumpyArray(double *arr, unsigned long long *dims);
 static PyObject *weights(PyObject *self, PyObject *args);
+static PyObject *weights_multi(PyObject *self, PyObject *args);
 //static PyObject returnNumpyArray();
 
 double *globalArray;
@@ -22,6 +23,7 @@ volatile PyThreadState ** threads;
 // expose to the python module.
 static PyMethodDef methods[] = {
   { "weights", weights, METH_VARARGS, "Descriptions"},
+  { "weights_multi", weights_multi, METH_VARARGS, "Descriptions"},
   { NULL, NULL, 0, NULL }
 };
 
@@ -111,20 +113,28 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
     return 0;
   }
   */
-  PyObject * argList;
+  PyObject * argList, * tupleValue;
   double * cArray = globalArray;
   Py_ssize_t n, m;
 
   unsigned long long *dimArray;
   unsigned long long elements;
+  unsigned long long tValue;
 
-  if (!PyArg_ParseTuple(args, "!O", &PyList_Type, &argList)) {
-    PyErr_SetString(PyExc_TypeError, "parameter must be a list.");
+  if (!PyArg_ParseTuple(args, "O!", &PyList_Type, &argList)) {
+    // Eh, what der fuck?
+  //  PyErr_Print();
+    PyErr_SetString(PyExc_TypeError, "Argument must be a list.");
     return NULL;
   }
+  //PyArg_ParseTuple(args, "O!", &PyList_Type, &argList);
 
   PyObject ** returnArrayList;
   PyObject * tempTuple;
+
+  PyObject* repr;
+  PyObject* str;
+  char *bytes;
   // construct the dims on the fly.  So we essentially want a list of tuples.
   /*
   weights = [np.ones((24,320)),
@@ -135,17 +145,25 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
            */
   n = PyList_Size(argList);
   m = 0;
-  returnArrayList = malloc(n * sizeof(PyArrayObject*));
   // Get the size of the amount of memory we need to malloc
   for (int i = 0; i < n; i++) {
-    m += PyTuple_Size(&argList[i]);
+    tempTuple = PyList_GetItem(argList, i);
+    m += PyTuple_Size(tempTuple);
   }
+  // probably fucking up the mallocs
   dimArray = malloc(m * sizeof(unsigned long long));
-  m = 0;
+  returnArrayList = malloc(n * sizeof(PyArrayObject*));
   for (int i = 0; i < n; i++) {
     elements = 1;
+    m = 0;
     tempTuple = PyList_GetItem(argList, i);
-    m = PyTuple_Size(tempTuple);
+    // not all of these are tuples, unfortunately.
+    // It seems sometimes, they're just ints.
+    if (PyTuple_Check(tempTuple)) {
+      m = PyTuple_Size(tempTuple);
+    } else {
+      m = 1;
+    }
     // m is the number of dimensions.
     /*
     proc createDimsArray(l: int, d: int) {
@@ -157,18 +175,38 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
     */
     for (int ti = 0; ti < m; ti++) {
       // Set the dimensional array value to be equal to the value in the tuple.
-      dimArray[i + ti] = PyLong_AsUnsignedLongLong(PyTuple_GetItem(tempTuple, ti));
-      elements *= PyLong_AsUnsignedLongLong(PyTuple_GetItem(tempTuple, ti));
+      //repr = PyObject_Repr(PyTuple_GetItem(tempTuple, ti));
+      //if (PyErr_Occurred()) {
+      //  PyErr_Print();
+      //  return NULL;
+      //}
+      //str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
+      //bytes = PyBytes_AS_STRING(str);
+      //tValue = atof(bytes);
+      //tValue = PyLong_AsUnsignedLongLong(PyTuple_GetItem(tempTuple, ti));
+      if (PyTuple_Check(tempTuple)) {
+        tupleValue = PyTuple_GetItem(tempTuple, ti);
+        tValue = PyLong_AsUnsignedLongLong(tupleValue);
+      } else {
+        tValue = PyLong_AsUnsignedLongLong(tempTuple);
+      }
+      dimArray[i + ti] = tValue;
+      elements *= tValue;
+      printf("tValue %llu, elements %llu", tValue, elements);
       // okay, so now we're going through the tuples and blah blah blah.
     }
+    printf("How big is m? %llu", m);
     returnArrayList[i] = returnManyNumpyArrays(cArray, dimArray, m);
     // shift the array pointer up by the appropriate number of elements.
+    dimArray += m;
     cArray += elements;
     Py_XINCREF(returnArrayList[i]);
   }
   PyObject * returnTuple;
+  printf("Create a tuple, then populate");
   returnTuple = PyTuple_New(n);
   for (int i = 0; i < n; i++) {
+    printf("Populating tuple element %i", i);
     PyTuple_SetItem(returnTuple, i, returnArrayList[i]);
   }
   Py_XINCREF(returnTuple);
