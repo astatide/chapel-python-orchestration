@@ -119,6 +119,8 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
   long long cD;
   cD = 0;
 
+  printf("\nSTARTING FUNCTION; what is cArray? %p\n", cArray);
+
   unsigned long long *dimArray;
   unsigned long long elements;
   unsigned long long tValue;
@@ -158,7 +160,14 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
   for (int i = 0; i < n; i++) {
     elements = 1;
     m = 0;
+    printf("\nGet the tuple item\n");
     tempTuple = PyList_GetItem(argList, i);
+    printf("\nDid the getting work?\n");
+    if (PyErr_Occurred()) {
+      PyErr_Print();
+    //  return NULL;
+    }
+    printf("\nIf no error was there, then yes.\n");
     // not all of these are tuples, unfortunately.
     // It seems sometimes, they're just ints.
     if (PyTuple_Check(tempTuple)) {
@@ -166,55 +175,48 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
     } else {
       m = 1;
     }
-    // m is the number of dimensions.
-    /*
-    proc createDimsArray(l: int, d: int) {
-      var length: c_ulonglong = l : c_ulonglong;
-      var nd: c_ulonglong = d : c_ulonglong;
-      var dims: [0..nd-1] c_ulonglong = length;
-      return dims;
-    }
-    */
     for (int ti = 0; ti < m; ti++) {
       // Set the dimensional array value to be equal to the value in the tuple.
-      //repr = PyObject_Repr(PyTuple_GetItem(tempTuple, ti));
-      //if (PyErr_Occurred()) {
-      //  PyErr_Print();
-      //  return NULL;
-      //}
-      //str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
-      //bytes = PyBytes_AS_STRING(str);
-      //tValue = atof(bytes);
-      //tValue = PyLong_AsUnsignedLongLong(PyTuple_GetItem(tempTuple, ti));
       if (PyTuple_Check(tempTuple)) {
         tupleValue = PyTuple_GetItem(tempTuple, ti);
         tValue = PyLong_AsUnsignedLongLong(tupleValue);
       } else {
         tValue = PyLong_AsUnsignedLongLong(tempTuple);
       }
-      dimArray[cD + ti] = tValue;
+      dimArray[ti] = tValue;
       elements *= tValue;
-      printf("tValue %llu, elements %llu", tValue, elements);
+      printf("\ntValue %llu, elements %llu\n", tValue, elements);
       // okay, so now we're going through the tuples and blah blah blah.
     }
-    printf("How big is m? %llu", m);
+    printf("\nHow big is m? %llu\n", m);
     returnArrayList[i] = returnManyNumpyArrays(cArray, dimArray, m);
+    if (PyErr_Occurred()) {
+      PyErr_Print();
+    }
     // shift the array pointer up by the appropriate number of elements.
     dimArray += m;
     cArray += elements;
     // how many elements have we used?
     cD += m;
-    Py_XINCREF(returnArrayList[i]);
   }
-  PyObject * returnTuple;
-  printf("Create a tuple, then populate");
-  returnTuple = PyTuple_New(n);
+  Py_XINCREF(returnArrayList);
+  PyObject * returnList;
+  Py_XINCREF(returnList);
+  printf("\nCreate a tuple, then populate\n");
+  returnList = PyList_New(n);
+  if (PyErr_Occurred()) {
+    PyErr_Print();
+  //  return NULL;
+  }
   for (int i = 0; i < n; i++) {
-    printf("Populating tuple element %i", i);
-    PyTuple_SetItem(returnTuple, i, returnArrayList[i]);
+    printf("\nPopulating List element %i\n", i);
+    PyList_SetItem(returnList, i, returnArrayList[i]);
+    if (PyErr_Occurred()) {
+      PyErr_Print();
+    //  return NULL;
+    }
   }
-  Py_XINCREF(returnTuple);
-  return returnTuple;
+  return returnList;
 
 }
 
@@ -258,7 +260,7 @@ double run(char * function) {
     PyObject* repr = PyObject_Repr(pValue);
     PyObject* str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
     const char *bytes = PyBytes_AS_STRING(str);
-    Py_DECREF(pValue);
+    //Py_DECREF(pValue);
     score = atof(bytes);
     if (PyErr_Occurred()) {
       PyErr_Print();
@@ -311,6 +313,7 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   //printf("Did we swap states correctly?");
   //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   *score = run("run");
+  printf("\n We ran, but did we finish? \n");
   PyEval_ReleaseThread(ts);
   //newscore = *score;
   //Py_XDECREF(numpyArray);
