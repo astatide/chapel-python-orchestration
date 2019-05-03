@@ -116,6 +116,8 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
   PyObject * argList, * tupleValue;
   double * cArray = globalArray;
   Py_ssize_t n, m;
+  long long cD;
+  cD = 0;
 
   unsigned long long *dimArray;
   unsigned long long elements;
@@ -190,7 +192,7 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
       } else {
         tValue = PyLong_AsUnsignedLongLong(tempTuple);
       }
-      dimArray[i + ti] = tValue;
+      dimArray[cD + ti] = tValue;
       elements *= tValue;
       printf("tValue %llu, elements %llu", tValue, elements);
       // okay, so now we're going through the tuples and blah blah blah.
@@ -200,6 +202,8 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
     // shift the array pointer up by the appropriate number of elements.
     dimArray += m;
     cArray += elements;
+    // how many elements have we used?
+    cD += m;
     Py_XINCREF(returnArrayList[i]);
   }
   PyObject * returnTuple;
