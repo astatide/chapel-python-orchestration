@@ -2,6 +2,7 @@
 #include <numpy/arrayobject.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 // Declare the functions that we'll need later.
 
@@ -18,6 +19,12 @@ PyInterpreterState * mainInterpreterState;
 // Main thread doesn't go away, but the other threads seem to?
 PyThreadState * mainThreadState;
 volatile PyThreadState ** threads;
+PyObject ** returnArrayList;
+PyObject * returnList;
+unsigned long long *dimArray;
+Py_ssize_t returnArrayListSize;
+
+int functionRunOnce = false;
 
 // You basically _always_ need this.  It's the methods that we're going to
 // expose to the python module.
@@ -77,8 +84,8 @@ static PyObject *returnNumpyArray(double *arr, unsigned long long *dims) {
   pArray = PyArray_SimpleNewFromData(globalND, dims, NPY_FLOAT64, (void *)(arr));
   PyArrayObject *np_arr = (PyArrayObject*)(pArray);
 
-  Py_XINCREF(np_arr);
-  Py_XINCREF(pArray);
+  //Py_XINCREF(np_arr);
+  //Py_XINCREF(pArray);
 
   return np_arr;
 }
@@ -86,7 +93,7 @@ static PyObject *returnNumpyArray(double *arr, unsigned long long *dims) {
 static PyObject *weights(PyObject *self, PyObject *args) {
 
   numpyArray = returnNumpyArray(globalArray, globalDims);
-  Py_XINCREF(numpyArray);
+  //Py_XINCREF(numpyArray);
   return numpyArray;
 
 }
@@ -95,12 +102,13 @@ static PyObject *returnManyNumpyArrays(double *arr, unsigned long long *dims, Py
   PyObject *pArray;
 
   pArray = PyArray_SimpleNewFromData(nd, dims, NPY_FLOAT64, (void *)(arr));
-  PyArrayObject *np_arr = (PyArrayObject*)(pArray);
+  //PyArrayObject *np_arr = (PyArrayObject*)(pArray);
 
-  Py_XINCREF(np_arr);
-  Py_XINCREF(pArray);
+  // These ones are sort of unbounded...
+  //Py_XINCREF(np_arr);
+  //Py_XINCREF(pArray);
 
-  return np_arr;
+  return (PyArrayObject*)(pArray);
 }
 
 static PyObject *weights_multi(PyObject *self, PyObject *args) {
@@ -113,6 +121,19 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
     return 0;
   }
   */
+
+  // clean that shit up, yo.
+  if (functionRunOnce) {
+    for (int i = 0; i < returnArrayListSize; i++) {
+      Py_XDECREF(returnArrayList[i]);
+    }
+    printf("Freeing memory from previous call");
+    Py_XDECREF(returnList);
+    free(returnArrayList);
+  }
+
+  printf("Freed!");
+  functionRunOnce = true;
   PyObject * argList, * tupleValue;
   double * cArray = globalArray;
   Py_ssize_t n, m;
@@ -121,47 +142,50 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
 
   printf("\nSTARTING FUNCTION; what is cArray? %p\n", cArray);
 
-  unsigned long long *dimArray;
   unsigned long long elements;
   unsigned long long tValue;
 
+  Py_XINCREF(args);
   if (!PyArg_ParseTuple(args, "O!", &PyList_Type, &argList)) {
     // Eh, what der fuck?
   //  PyErr_Print();
     PyErr_SetString(PyExc_TypeError, "Argument must be a list.");
     return NULL;
   }
+  Py_XDECREF(args);
+  Py_XINCREF(argList);
   //PyArg_ParseTuple(args, "O!", &PyList_Type, &argList);
 
-  PyObject ** returnArrayList;
   PyObject * tempTuple;
 
   PyObject* repr;
   PyObject* str;
   char *bytes;
-  // construct the dims on the fly.  So we essentially want a list of tuples.
-  /*
-  weights = [np.ones((24,320)),
-           np.ones((80,320)),
-           np.ones((320,)),
-           np.ones((80,3)),
-           np.ones((3))]
-           */
+
   n = PyList_Size(argList);
+  returnArrayListSize = n;
   m = 0;
   // Get the size of the amount of memory we need to malloc
   for (int i = 0; i < n; i++) {
     tempTuple = PyList_GetItem(argList, i);
+    Py_XINCREF(tempTuple);
     m += PyTuple_Size(tempTuple);
+    Py_XDECREF(tempTuple);
   }
   // probably fucking up the mallocs
   dimArray = malloc(m * sizeof(unsigned long long));
   returnArrayList = malloc(n * sizeof(PyArrayObject*));
+  double * dArray = dimArray;
+  //unsigned long long dArray [ m ];
+  //unsigned long long * dimArray = dArray;
+  //PyObject * rAList [ n ];
+  //PyObject ** returnArrayList = rAList;
   for (int i = 0; i < n; i++) {
     elements = 1;
     m = 0;
     printf("\nGet the tuple item\n");
     tempTuple = PyList_GetItem(argList, i);
+    Py_XINCREF(tempTuple);
     printf("\nDid the getting work?\n");
     if (PyErr_Occurred()) {
       PyErr_Print();
@@ -179,17 +203,23 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
       // Set the dimensional array value to be equal to the value in the tuple.
       if (PyTuple_Check(tempTuple)) {
         tupleValue = PyTuple_GetItem(tempTuple, ti);
+        Py_XINCREF(tupleValue);
         tValue = PyLong_AsUnsignedLongLong(tupleValue);
       } else {
         tValue = PyLong_AsUnsignedLongLong(tempTuple);
       }
       dimArray[ti] = tValue;
       elements *= tValue;
+      if (PyTuple_Check(tempTuple)) {
+        Py_XDECREF(tupleValue);
+      }
       printf("\ntValue %llu, elements %llu\n", tValue, elements);
       // okay, so now we're going through the tuples and blah blah blah.
     }
     printf("\nHow big is m? %llu\n", m);
+    Py_XDECREF(tempTuple);
     returnArrayList[i] = returnManyNumpyArrays(cArray, dimArray, m);
+    Py_XINCREF(returnArrayList[i]);
     if (PyErr_Occurred()) {
       PyErr_Print();
     }
@@ -198,12 +228,12 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
     cArray += elements;
     // how many elements have we used?
     cD += m;
+    //Py_XINCREF(returnArrayList[i]);
   }
-  Py_XINCREF(returnArrayList);
-  PyObject * returnList;
-  Py_XINCREF(returnList);
+  free(dArray);
   printf("\nCreate a tuple, then populate\n");
   returnList = PyList_New(n);
+  Py_XINCREF(returnList);
   if (PyErr_Occurred()) {
     PyErr_Print();
   //  return NULL;
@@ -211,11 +241,16 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
   for (int i = 0; i < n; i++) {
     printf("\nPopulating List element %i\n", i);
     PyList_SetItem(returnList, i, returnArrayList[i]);
-    if (PyErr_Occurred()) {
-      PyErr_Print();
+    printf("\nElement %i populated\n", i);
+    //if (PyErr_Occurred()) {
+    //  PyErr_Print();
     //  return NULL;
-    }
+    //}
   }
+  //free(returnArrayList);
+  printf("\nDecref on argList\n");
+  Py_XDECREF(argList);
+  printf("\nNow, we return!\n");
   return returnList;
 
 }
@@ -249,37 +284,48 @@ double run(char * function) {
   PyObject * pModule;
   //printf("Wait, so is it just this?");
   pModule = loadPythonModule("gjTest.gjTest");
+  Py_XINCREF(pModule);
   //printf("Okay, so that loaded...");
   pFunc = PyObject_GetAttrString(pModule, function);
+  Py_XINCREF(pFunc);
   if (pFunc && PyCallable_Check(pFunc)) {
+    // Oh, so we're a fancy lad, eh.
     pValue = PyObject_CallObject(pFunc, NULL);
+    Py_XINCREF(pValue);
   } else {
     PyErr_Print();
   }
   if (pValue != NULL) {
     PyObject* repr = PyObject_Repr(pValue);
+    Py_XINCREF(repr);
     PyObject* str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
+    Py_XINCREF(str);
     const char *bytes = PyBytes_AS_STRING(str);
-    //Py_DECREF(pValue);
+    //Py_XDECREF(pValue);
     score = atof(bytes);
+    Py_XDECREF(repr);
+    Py_XDECREF(str);
     if (PyErr_Occurred()) {
       PyErr_Print();
     }
   } else {
     PyErr_Print();
   }
+  Py_XDECREF(pValue);
+  Py_XDECREF(pModule);
+  Py_XDECREF(pFunc);
   return score;
 
 }
 
-double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims, PyThreadState *pi, double *score)
+double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims, PyThreadState *pi)
 {
   // We're setting the pointer.  Keep in mind that this hinges on properly
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
   PyGILState_STATE gstate;
-  double newscore;
+  double score;
   PyObject * pModule;
   globalArray = arr;
   globalND = nd;
@@ -312,9 +358,21 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   // no.  We don't.
   //printf("Did we swap states correctly?");
   //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
-  *score = run("run");
+  score = run("run");
+  for (int i = 0; i < returnArrayListSize; i++) {
+    Py_XDECREF(returnArrayList[i]);
+    //PyObject_GC_UnTrack(returnArrayList[i]);
+  }
+  functionRunOnce = false;
+  Py_XDECREF(returnList);
+  //PyObject_GC_UnTrack(returnList);
+  free(returnArrayList);
+  //free(dimArray);
   printf("\n We ran, but did we finish? \n");
+  //dimArray = malloc(m * sizeof(unsigned long long));
+  //returnArrayList = malloc(n * sizeof(PyArrayObject*));
   PyEval_ReleaseThread(ts);
+  printf("\n Did we release the thread? \n");
   //newscore = *score;
   //Py_XDECREF(numpyArray);
   //PyThreadState_Swap(mainThreadState);
@@ -324,7 +382,7 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   //PyThreadState_Delete(ts);
   //PyGILState_Release(gstate);
   //PyEval_ReleaseThread();
-  return newscore;
+  return score;
 }
 
 PyThreadState* newThread() {

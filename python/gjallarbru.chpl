@@ -9,7 +9,7 @@ extern type PyThreadState;
 extern proc returnNumpyArray(ref arr: c_float, ref dims: npy_intp) : PyObject;
 extern proc weights(ref self: PyObject, ref args: PyObject): PyObject;
 extern proc run();
-extern proc pythonRun(arr: [] c_double, nd: c_ulonglong, dims: [] c_ulonglong, thread: c_void_ptr, ref score: c_double) : c_double;
+extern proc pythonRun(arr: [] c_double, nd: c_ulonglong, dims: [] c_ulonglong, thread: c_void_ptr) : c_double;
 extern proc pythonInit(n: c_ulonglong): c_void_ptr;
 extern proc pythonFinal();
 extern proc newThread() : c_void_ptr;
@@ -67,8 +67,8 @@ class Gjallarbru {
     // We're sending in a pointer and then writing to it.  Seems to work more cleanly.
     // or that's the hope.  Who fucking knows anymore.
     var score: c_double;
-    var newscore = pythonRun(matrix, nd, dims, pi, score);
-    //writeln("from lockandrun, what is the score?");
+    score = pythonRun(matrix, nd, dims, pi);
+    writeln("from lockandrun, what is the score?");
     //writeln(score : real : string);
     return score;
     //PyGILState_Release(gil);

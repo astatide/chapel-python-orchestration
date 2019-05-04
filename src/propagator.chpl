@@ -429,7 +429,7 @@ class Propagator {
               dims[2] = 320;
               //writeln("Look, are you getting to the stupid score?");
               var score: c_double = globalGJ.lockAndRun(globalGJ.threads[i], v.matrixValues, 3 : c_ulonglong, dims);
-              //writeln("Hooray for you.");
+              writeln("Hooray for you.");
               //var score: c_double;
               this.lock.wl(v.header);
               var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
