@@ -99,16 +99,16 @@ static PyObject *weights(PyObject *self, PyObject *args) {
 }
 
 static PyObject *returnManyNumpyArrays(double *arr, unsigned long long *dims, Py_ssize_t nd) {
-  PyObject *pArray;
+  PyArrayObject *pArray;
 
-  pArray = PyArray_SimpleNewFromData(nd, dims, NPY_FLOAT64, (void *)(arr));
+  pArray = (PyArrayObject *)PyArray_SimpleNewFromData(nd, dims, NPY_FLOAT64, (void *)(arr));
   //PyArrayObject *np_arr = (PyArrayObject*)(pArray);
 
   // These ones are sort of unbounded...
   //Py_XINCREF(np_arr);
   //Py_XINCREF(pArray);
 
-  return (PyArrayObject*)(pArray);
+  return pArray;
 }
 
 static PyObject *weights_multi(PyObject *self, PyObject *args) {
@@ -128,7 +128,10 @@ static PyObject *weights_multi(PyObject *self, PyObject *args) {
       Py_XDECREF(returnArrayList[i]);
     }
     printf("Freeing memory from previous call");
+    // why does this fail out sometimes?
     Py_XDECREF(returnList);
+    // force garbage collection
+    PyRun_SimpleString("import gc; gc.collect()");
     free(returnArrayList);
   }
 
@@ -365,6 +368,8 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   }
   functionRunOnce = false;
   Py_XDECREF(returnList);
+  // force garbage collection
+  PyRun_SimpleString("import gc; gc.collect()");
   //PyObject_GC_UnTrack(returnList);
   free(returnArrayList);
   //free(dimArray);
@@ -372,6 +377,8 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   //dimArray = malloc(m * sizeof(unsigned long long));
   //returnArrayList = malloc(n * sizeof(PyArrayObject*));
   PyEval_ReleaseThread(ts);
+  //PyThreadState_Clear(ts);
+  PyThreadState_Delete(ts);
   printf("\n Did we release the thread? \n");
   //newscore = *score;
   //Py_XDECREF(numpyArray);
