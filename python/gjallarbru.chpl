@@ -68,7 +68,7 @@ class Gjallarbru {
     // or that's the hope.  Who fucking knows anymore.
     var score: c_double;
     score = pythonRun(matrix, nd, dims, pi);
-    writeln("from lockandrun, what is the score?");
+    //writeln("from lockandrun, what is the score?");
     //writeln(score : real : string);
     return score;
     //PyGILState_Release(gil);

@@ -117,7 +117,7 @@ static PyObject *returnManyNumpyArrays(double *arr, unsigned long long *dims, Py
   PyArrayObject *pArray;
 
   pArray = (PyArrayObject *)PyArray_SimpleNewFromData(nd, dims, NPY_FLOAT64, (void *)(arr));
-  printf("\npArray pointer %p\n", pArray);
+  //printf("\npArray pointer %p\n", pArray);
   //PyArrayObject *np_arr = (PyArrayObject*)(pArray);
 
   // These ones are sort of unbounded...
@@ -150,6 +150,7 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
   unsigned long long *dimArray;
   Py_ssize_t n, m;
   long long cD;
+  Py_ssize_t mTotal;
 
   unsigned long long elements;
   unsigned long long tValue;
@@ -160,6 +161,7 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
   returnList = NULL;
 
   cD = 0;
+  mTotal = 0;
 
   // So, it might already be dead?  Unless we grab ownership?
   Py_XINCREF(args);
@@ -174,12 +176,20 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
   // Get the size of the amount of memory we need to malloc
   for (int i = 0; i < n; i++) {
     tempTuple = PyList_GetItem(argList, i);
-    m += PyTuple_Size(tempTuple);
+    if (PyTuple_Check(tempTuple)) {
+      //m = PyTuple_Size(tempTuple);
+      m += PyTuple_Size(tempTuple);
+    } else {
+      // Assume an int, if not a tuple.
+      // AH.  That's where the fucking... jesus.
+      // I forgot to do error checking here.  I mean _come on_.
+      m += 1;
+    }
   }
 
   // probably fucking up the mallocs
   dimArray = malloc(m * sizeof(unsigned long long));
-  unsigned long long * dArray = dimArray;
+  //unsigned long long * dArray = dimArray;
   returnList = PyList_New(n);
   Py_XINCREF(returnList);
 
@@ -205,7 +215,7 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
       } else {
         tValue = PyLong_AsUnsignedLongLong(tempTuple);
       }
-      dimArray[ti] = tValue;
+      dimArray[ti] = (unsigned long long)tValue;
       elements *= tValue;
     }
     // Keep it in scope.
@@ -215,10 +225,12 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
     }
     // shift the array pointer up by the appropriate number of elements.
     dimArray += m;
+    mTotal += m;
     cArray += elements;
     cD += m;
   }
-  free(dArray);
+  dimArray -= mTotal;
+  free(dimArray);
 
   if (PyErr_Occurred()) {
     PyErr_Print();
@@ -339,11 +351,11 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   returnList = NULL;
   //PyRun_SimpleString("import gc; gc.set_debug(gc.DEBUG_UNCOLLECTABLE); gc.get_stats(); gc.collect();");
   // decref the list
-  printf("\n We ran, but did we finish? \n");
+  //printf("\n We ran, but did we finish? \n");
   PyThreadState_Clear(ts);
   PyEval_ReleaseThread(ts);
   PyThreadState_Delete(ts);
-  printf("\n Did we release the thread? \n");
+  //printf("\n Did we release the thread? \n");
   moduleImportedOnce = true;
 
   return score;
