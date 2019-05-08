@@ -9,7 +9,7 @@ extern type PyThreadState;
 extern proc returnNumpyArray(ref arr: c_float, ref dims: npy_intp) : PyObject;
 extern proc weights(ref self: PyObject, ref args: PyObject): PyObject;
 extern proc run();
-extern proc pythonRun(arr: [] c_double, nd: c_ulonglong, dims: [] c_ulonglong, thread: c_void_ptr) : c_double;
+extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong) : c_double;
 extern proc pythonInit(n: c_ulonglong): c_void_ptr;
 extern proc pythonFinal();
 extern proc newThread() : c_void_ptr;
@@ -61,13 +61,13 @@ class Gjallarbru {
 
   //       gjallarbru.pythonRun(v.matrixValues, 1 : c_ulonglong, gjallarbru.createDimsArray(mSize, 1));
 
-  proc lockAndRun(pi, matrix, nd, dims ) {
+  proc lockAndRun(matrix, valkyrie) {
     // This is just some bullshit to make us thread safe, I guess.
     //var gil = PyGILState_Ensure();
     // We're sending in a pointer and then writing to it.  Seems to work more cleanly.
     // or that's the hope.  Who fucking knows anymore.
     var score: c_double;
-    score = pythonRun(matrix, nd, dims, pi);
+    score = pythonRun(matrix, valkyrie : c_ulonglong);
     //writeln("from lockandrun, what is the score?");
     //writeln(score : real : string);
     return score;

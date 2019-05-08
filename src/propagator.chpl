@@ -347,6 +347,7 @@ class Propagator {
       //writeln("thread grabbed");
       v.moveToRoot();
       //writeln("What's going on?");
+      var gj = new owned gjallarbru.Gjallarbru();
       for gen in 1..generations {
         v.gen = gen;
         //writeln("Are you though");
@@ -428,7 +429,10 @@ class Propagator {
               dims[1] = 24;
               dims[2] = 320;
               //writeln("Look, are you getting to the stupid score?");
-              var score: c_double = globalGJ.lockAndRun(globalGJ.threads[i], v.matrixValues, 3 : c_ulonglong, dims);
+              //var score: c_double = globalGJ.lockAndRun(globalGJ.threads[i], v.matrixValues, 3 : c_ulonglong, dims);
+              // Can we change the scope here?
+              var score: c_double = gj.lockAndRun(v.matrixValues, i);
+
               //writeln("Hooray for you.");
               //var score: c_double;
               this.lock.wl(v.header);

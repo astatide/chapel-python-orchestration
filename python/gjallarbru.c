@@ -322,58 +322,64 @@ double run(char * function) {
 
 }
 
-double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims, PyThreadState *pi)
+PyThreadState* newThread() {
+  // we're sort of faffing about here with the GIL.
+  PyThreadState *thread = Py_NewInterpreter();
+  return thread;
+}
+
+double pythonRun(double * arr, unsigned long long valkyrie)
 {
   // We're setting the pointer.  Keep in mind that this hinges on properly
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
   double score;
-  globalArray = arr;
-  PyThreadState *ts = PyThreadState_New(mainInterpreterState);
-  PyEval_AcquireThread(ts);
-  functionRunOnce = false;
-  if (moduleImportedOnce) {
-    // we sure fucking do.
-    //printf("\n What is the value of prevReturnList?  Do we still exist?\n");
-    //printf("\nHow many references to prevReturnList? %i", (int)prevReturnList->ob_refcnt);
-    //PyArray_DebugPrint(prevReturnList);
-  }
-  score = run("run");
+
   if (!moduleImportedOnce) {
-    prevReturnList = returnList;
+    // get it, and store it.
+    // This thread is only accessible to us, and there's no point in killing it
+    // until we're actually done.
+
   }
-  functionRunOnce = false;
+  PyThreadState *ts;
+  PyInterpreterState *inpt;
+  //inpt = newThread();
+  //ts = PyThreadState_New(mainInterpreterState);
+  // We apparently do not need the GIL for this.
+  //inpt = PyInterpreterState_New();
+  //ts = PyThreadState_New(threads[valkyrie]->interp);
+  ts = PyThreadState_New(mainInterpreterState);
+  // Nor do we need it for this.
+  //ts = PyThreadState_New(inpt);
+  // This will grab the GIL.
+  PyEval_AcquireThread(ts);
+  //PyThreadState_Swap(ts);
 
-  //Py_DECREF(returnList);
-  Py_CLEAR(returnList);
-  //printf("\nHow many references to returnList? %i", (int)returnList->ob_refcnt);
-  returnList = NULL;
-  //PyRun_SimpleString("import gc; gc.set_debug(gc.DEBUG_UNCOLLECTABLE); gc.get_stats(); gc.collect();");
-  // decref the list
-  //printf("\n We ran, but did we finish? \n");
-  PyThreadState_Clear(ts);
-  PyEval_ReleaseThread(ts);
-  PyThreadState_Delete(ts);
-  //printf("\n Did we release the thread? \n");
-  moduleImportedOnce = true;
+  // So, while this is a global variable, it's hardly thread safe.
+  // and each thread operates on it when they choose.  AcquireThread is blocking,
+  // so doing it here _should_ avoid issues where the threads are changing the value.
+  // I hope, anyway.  Or will it?  Goddammit.  I wish I could avoid this.
+  // Hm, I could just pass the matrix in, I guess.
 
-  return score;
-}
-
-PyThreadState* newThread() {
-  // we're sort of faffing about here with the GIL.
+  // This little item could allow us to maybe send info in.
+  PyObject* inptDict = PyThreadState_GetDict();
   //PyGILState_STATE gstate;
   //gstate = PyGILState_Ensure();
 
-  PyThreadState *thread = Py_NewInterpreter()->interp;
-  //PyThreadState *thread = PyThreadState_New(mainInterpreterState);
-  // Actually, do we need this?
-  //PyThreadState *thread = PyThreadState_New(interp);
-  // get it son.
-  //PyThreadState_Swap(thread);
+  globalArray = arr;
+  functionRunOnce = false;
+  score = run("run");
+  functionRunOnce = false;
+  Py_CLEAR(returnList);
+  returnList = NULL;
+  //PyThreadState_Clear(ts);
+  PyEval_ReleaseThread(ts);
+  PyThreadState_Delete(ts);
   //PyGILState_Release(gstate);
-  return thread;
+  moduleImportedOnce = true;
+
+  return score;
 }
 
 PyThreadState* pythonInit(unsigned long long maxValkyries) {
@@ -401,7 +407,8 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   for (int i = 0; i < maxValkyries; i++ ) {
     //threads[i] = newThread();
     //threads[i] = Py_NewInterpreter();
-    threads[i] = PyThreadState_New(mainInterpreterState);
+    //threads[i] = PyThreadState_New(mainInterpreterState);
+    threads[i] = newThread();
 
   }
   //PyEval_ReleaseLock();
