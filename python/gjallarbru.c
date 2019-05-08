@@ -13,6 +13,7 @@ PyObject *weights_multi(PyObject *self, PyObject *args);
 
 double *globalArray;
 PyObject * returnList;
+PyObject * prevReturnList;
 //PyArrayObject *numpyArray;
 //unsigned long long globalND;
 //unsigned long long *globalDims;
@@ -136,20 +137,27 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
 
   if (functionRunOnce) {
     //Py_XINCREF(returnList);
-    return returnList;
+    //return returnList;
+    // clear up the memory.
+    // This should cause it to fail, which we want.
+    Py_XDECREF(returnList);
   }
 
   functionRunOnce = true;
 
   PyObject * argList, * tupleValue, * tempTuple;
-  unsigned long long *dimArray;
   double * cArray = globalArray;
-  double * dArray = dimArray;
+  unsigned long long *dimArray;
   Py_ssize_t n, m;
   long long cD;
 
   unsigned long long elements;
   unsigned long long tValue;
+
+  argList = NULL;
+  tupleValue = NULL;
+  tempTuple = NULL;
+  returnList = NULL;
 
   cD = 0;
 
@@ -171,7 +179,9 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
 
   // probably fucking up the mallocs
   dimArray = malloc(m * sizeof(unsigned long long));
+  unsigned long long * dArray = dimArray;
   returnList = PyList_New(n);
+  Py_XINCREF(returnList);
 
   for (int i = 0; i < n; i++) {
     elements = 1;
@@ -214,12 +224,12 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
     PyErr_Print();
   }
 
-  printf("\nDecref on args\n");
+  //printf("\nDecref on args\n");
   // If I call this on the args in this case, they die.
   //Py_XDECREF(args);
   Py_XDECREF(argList);
-  printf("\nNow, we return!\n");
-  Py_XINCREF(returnList);
+  //printf("\nNow, we return!\n");
+  //Py_XINCREF(returnList);
   //Py_XDECREF(returnList);
   return returnList;
 
@@ -260,7 +270,6 @@ double run(char * function) {
   //if (!moduleImportedOnce) {
     pModule = loadPythonModule("gjTest.gjTest");
     //Py_XINCREF(pModule);
-  //  moduleImportedOnce = true;
   //}
   //Py_XINCREF(pModule);
   //printf("Okay, so that loaded...");
@@ -311,13 +320,31 @@ double pythonRun(double * arr, unsigned long long nd, unsigned long long * dims,
   globalArray = arr;
   PyThreadState *ts = PyThreadState_New(mainInterpreterState);
   PyEval_AcquireThread(ts);
+  functionRunOnce = false;
+  if (moduleImportedOnce) {
+    // we sure fucking do.
+    //printf("\n What is the value of prevReturnList?  Do we still exist?\n");
+    //printf("\nHow many references to prevReturnList? %i", (int)prevReturnList->ob_refcnt);
+    //PyArray_DebugPrint(prevReturnList);
+  }
   score = run("run");
-  //functionRunOnce = false;
+  if (!moduleImportedOnce) {
+    prevReturnList = returnList;
+  }
+  functionRunOnce = false;
+
+  //Py_DECREF(returnList);
+  Py_CLEAR(returnList);
+  //printf("\nHow many references to returnList? %i", (int)returnList->ob_refcnt);
+  returnList = NULL;
+  //PyRun_SimpleString("import gc; gc.set_debug(gc.DEBUG_UNCOLLECTABLE); gc.get_stats(); gc.collect();");
+  // decref the list
   printf("\n We ran, but did we finish? \n");
   PyThreadState_Clear(ts);
   PyEval_ReleaseThread(ts);
   PyThreadState_Delete(ts);
   printf("\n Did we release the thread? \n");
+  moduleImportedOnce = true;
 
   return score;
 }
@@ -379,6 +406,8 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // Since all that works, I suspect we're going out of scope, somehow.
   // Jesus.
   //PyThreadState_Swap(mainThreadState);
+  returnList = NULL;
+  prevReturnList = NULL;
   return threads;
   // Release the GIL, but swap in the main thread.
   // also fuck off.
