@@ -431,7 +431,7 @@ class Propagator {
               //writeln("Look, are you getting to the stupid score?");
               //var score: c_double = globalGJ.lockAndRun(globalGJ.threads[i], v.matrixValues, 3 : c_ulonglong, dims);
               // Can we change the scope here?
-              var score: c_double = gj.lockAndRun(v.matrixValues, i);
+              var score: c_double = globalGJ.lockAndRun(v.matrixValues, i);
 
               //writeln("Hooray for you.");
               //var score: c_double;
@@ -570,6 +570,12 @@ class Propagator {
           this.scoreArray = Math.INFINITY;
           //
 
+          //gj.gc();
+          // To avoid GC problems, what if we shut it down and spin it back up?
+          this.log.debug("Destroying Python", v.header);
+          //gj.final();
+          this.log.debug("Recreating Python", v.header);
+          //gj.pInit();
           this.log.debug('Switching generations', v.header);
           // Clear out the current nodesToProcess domain, and swap it for the
           // ones we've set to process for the next generation.

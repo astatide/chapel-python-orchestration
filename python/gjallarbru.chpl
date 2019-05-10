@@ -16,6 +16,7 @@ extern proc newThread() : c_void_ptr;
 extern proc PyThreadState_Swap(thread: c_void_ptr) : c_void_ptr;
 extern proc PyGILState_Ensure(): c_void_ptr;
 extern proc PyGILState_Release(lock: c_void_ptr);
+extern proc garbageCollect(valkyrie: c_ulonglong);
 //extern proc
 //extern proc pythonRun();
 
@@ -25,11 +26,22 @@ require "python/gjallarbru.c";
 class Gjallarbru {
 
   var threads: [1..propagator.maxValkyries] c_void_ptr;
+  var runGC: atomic bool;
+  var roundsProcessed: [1..propagator.maxValkyries] atomic int;
+  var rounds: int = 0;
+  var valkyriesDone: atomic int;
+  var valkyriesUnblocked: atomic int;
+  var moveOn: sync bool;
+  //var ready: [1..propagator.maxValkyries] atomic bool;
 
   proc pInit() {
     // return the sub-interpreter
     this.threads = pythonInit(propagator.maxValkyries : c_ulonglong);
     //return threads;
+  }
+
+  proc gc() {
+    garbageCollect(0 : c_ulonglong);
   }
 
   proc newInterpreter() {
@@ -68,6 +80,53 @@ class Gjallarbru {
     // or that's the hope.  Who fucking knows anymore.
     var score: c_double;
     score = pythonRun(matrix, valkyrie : c_ulonglong);
+
+    if false {
+      if this.roundsProcessed[valkyrie].read() == rounds {
+        // basically, once this happens, set it to done, then sit your ass _down_
+        if this.valkyriesDone.fetchAdd(1) < (propagator.maxValkyries-1) {
+          // waiting.
+          writeln("Waiting");
+          //this.moveOn;
+          this.valkyriesUnblocked.add(1);
+          while this.valkyriesUnblocked.read() > 0 do chpl_task_yield();
+          writeln("No longer waiting");
+          //this.roundsProcessed[valkyrie].write(0);
+          //this.valkyriesDone.sub(1);
+          // Clear on out and go.
+        } else {
+          // Set it and go.
+          writeln("Processing gc");
+          //writeln(this.valkyriesDone.read() : string);
+          //this.valkyriesDone.sub(1);
+          //this.roundsProcessed[valkyrie].write(0);
+          // If this is called when TF is active, haaaa.
+          this.gc();
+          writeln("gc done");
+          for i in 1..propagator.maxValkyries {
+            this.roundsProcessed[valkyrie].write(0);
+          }
+          this.valkyriesDone.write(0);
+          //this.moveOn = true;
+          // Does this work in order?
+          //while this.valkyriesUnblocked.read() < (propagator.maxValkyries-1) do chpl_task_yield();
+          //this.moveOn.reset();
+          this.valkyriesUnblocked.write(0);
+          // Now we wait for the others to clear out.
+          //while this.valkyriesDone.fetchAdd(1) > 0 do chpl_task_yield();
+          //this.moveOn = false;
+          writeln("At last, the gc thread moves on");
+        }
+      } else {
+        this.roundsProcessed[valkyrie].add(1);
+      }
+    }
+    //if !runGC.testAndSet() {} {
+      // Fact is, we can't really run this until... aaaaanyway.
+      // If you run GC and TF at the same time, haaaahahaha.
+    //  gc();
+    //  runGC.write(false);
+    //}
     //writeln("from lockandrun, what is the score?");
     //writeln(score : real : string);
     return score;

@@ -3,15 +3,17 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 
 // Declare the functions that we'll need later.
 
 static PyObject *returnNumpyArray(double *arr, unsigned long long *dims);
 static PyObject *weights(PyObject *self, PyObject *args);
 PyObject *weights_multi(PyObject *self, PyObject *args);
+PyObject *valkyrieID(PyObject *self, PyObject *args);
 //static PyObject returnNumpyArray();
 
-double *globalArray;
+double **globalArray;
 PyObject * returnList;
 PyObject * prevReturnList;
 //PyArrayObject *numpyArray;
@@ -21,17 +23,23 @@ PyInterpreterState * mainInterpreterState;
 // Main thread doesn't go away, but the other threads seem to?
 PyThreadState * mainThreadState;
 volatile PyThreadState ** threads;
+int * threadsInitialized;
 PyObject * pModule;
 int moduleImportedOnce = false;
 //PyObject ** returnArrayList;
 
 int functionRunOnce = false;
 
+atomic_int * valkyriesDone;
+
+unsigned long long globalMaxValkyries;
+
 // You basically _always_ need this.  It's the methods that we're going to
 // expose to the python module.
 static PyMethodDef methods[] = {
   { "weights", weights, METH_VARARGS, "Descriptions"},
   { "weights_multi", weights_multi, METH_VARARGS, "Descriptions"},
+  { "valkyrieID", valkyrieID, METH_VARARGS, "Descriptions"},
   { NULL, NULL, 0, NULL }
 };
 
@@ -102,6 +110,30 @@ static PyObject *weights(PyObject *self, PyObject *args) {
 
 }
 */
+
+
+PyObject *valkyrieID(PyObject *self, PyObject *args) {
+  // this just returns the thread ID so we can use it
+  // from within Python.
+
+  PyObject* inptDict = PyThreadState_GetDict();
+  PyObject* valkyrie = PyDict_GetItemString(inptDict, "valkyrieID");
+
+  return valkyrie;
+
+}
+
+PyObject *checkLock(PyObject *self, PyObject *args) {
+  //
+  if (atomic_fetch_add(valkyriesDone, 1) < globalMaxValkyries-1) {
+
+  } else {
+    atomic_store(valkyriesDone, 0);
+  }
+
+}
+
+
 static PyObject *weights(PyObject *self, PyObject *args) {
   //PyArrayObject *numpyArray;
 
@@ -143,10 +175,18 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
     Py_XDECREF(returnList);
   }
 
+  // We're going to go ahead and pull the appropriate thread state
+  // out of the module.  Then link it up to the pointer above.
+  PyObject* inptDict = PyThreadState_GetDict();
+  // So let's add to this dictionary yo!
+  unsigned long long valkyrie = PyLong_AsUnsignedLongLong(PyDict_GetItemString(inptDict, "valkyrieID"));
+
+  double * vArray = globalArray[valkyrie];
+
   functionRunOnce = true;
 
   PyObject * argList, * tupleValue, * tempTuple;
-  double * cArray = globalArray;
+  double * cArray = vArray;
   unsigned long long *dimArray;
   Py_ssize_t n, m;
   long long cD;
@@ -349,7 +389,11 @@ double pythonRun(double * arr, unsigned long long valkyrie)
   // We apparently do not need the GIL for this.
   //inpt = PyInterpreterState_New();
   //ts = PyThreadState_New(threads[valkyrie]->interp);
-  ts = PyThreadState_New(mainInterpreterState);
+  if (!threadsInitialized[valkyrie-1]) {
+    threads[valkyrie-1] = PyThreadState_New(mainInterpreterState);
+    threadsInitialized[valkyrie-1] = true;
+  }
+  ts = threads[valkyrie-1];
   // Nor do we need it for this.
   //ts = PyThreadState_New(inpt);
   // This will grab the GIL.
@@ -364,10 +408,14 @@ double pythonRun(double * arr, unsigned long long valkyrie)
 
   // This little item could allow us to maybe send info in.
   PyObject* inptDict = PyThreadState_GetDict();
+  // So let's add to this dictionary yo!
+  // ... remember that Chapel doesn't start at 0.
+  PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(valkyrie-1));
+  globalArray[valkyrie-1] = arr;
   //PyGILState_STATE gstate;
   //gstate = PyGILState_Ensure();
 
-  globalArray = arr;
+  //globalArray = arr;
   functionRunOnce = false;
   score = run("run");
   functionRunOnce = false;
@@ -375,7 +423,7 @@ double pythonRun(double * arr, unsigned long long valkyrie)
   returnList = NULL;
   //PyThreadState_Clear(ts);
   PyEval_ReleaseThread(ts);
-  PyThreadState_Delete(ts);
+  //PyThreadState_Delete(ts);
   //PyGILState_Release(gstate);
   moduleImportedOnce = true;
 
@@ -388,8 +436,14 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   //gstate = PyGILState_Ensure();
   //PyThreadState *threads[maxValkyries];
 
+  // set the global variables
+  // we have to do a little thread safety here.
+  //atomic_store(valkyriesDone, 0);
+  globalMaxValkyries = maxValkyries;
+
   // malloc the damn thing.
   threads = malloc(sizeof(PyThreadState*)*maxValkyries);
+  threadsInitialized = malloc(sizeof(int)*maxValkyries);
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
 
   setbuf(stdout, NULL);
@@ -402,13 +456,15 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // Why does Python insist on not sandboxing itself?  I don't want to share
   // memory between python interpreters.
   // ugh it's just blah.
+  globalArray = malloc(maxValkyries * sizeof(double*));
   mainThreadState = PyThreadState_Get();
   mainInterpreterState = mainThreadState->interp;
   for (int i = 0; i < maxValkyries; i++ ) {
     //threads[i] = newThread();
     //threads[i] = Py_NewInterpreter();
     //threads[i] = PyThreadState_New(mainInterpreterState);
-    threads[i] = newThread();
+    //threads[i] = newThread();
+    threadsInitialized[i] = false;
 
   }
   //PyEval_ReleaseLock();
@@ -433,10 +489,29 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   //PyGILState_Release(gstate);
 }
 
+void garbageCollect(unsigned long long valkyrie) {
+  // Spawn a new thread, then collect the garbage.
+  // Nothing should be active right now!  Just this thread.
+  PyThreadState *ts;
+
+  //ts = PyThreadState_New(mainInterpreterState);
+  if (!threadsInitialized[valkyrie]) {
+    threads[valkyrie] = PyThreadState_New(mainInterpreterState);
+    threadsInitialized[valkyrie] = true;
+  }
+  ts = threads[valkyrie];
+  PyEval_AcquireThread(ts);
+  //PyRun_SimpleString("import gc; gc.collect()");
+  PyEval_ReleaseThread(ts);
+  //PyThreadState_Delete(ts);
+}
+
 void pythonFinal() {
   // blah?
 
   //Py_END_ALLOW_THREADS
+  free(threads);
+  free(threadsInitialized);
   Py_Finalize();
 }
 
