@@ -23,12 +23,15 @@ PyInterpreterState * mainInterpreterState;
 // Main thread doesn't go away, but the other threads seem to?
 PyThreadState * mainThreadState;
 volatile PyThreadState ** threads;
+volatile PyThreadState ** interps;
 int * threadsInitialized;
 PyObject * pModule;
 int moduleImportedOnce = false;
 //PyObject ** returnArrayList;
 
 int functionRunOnce = false;
+
+int initializedAlready = false;
 
 atomic_int * valkyriesDone;
 
@@ -62,8 +65,9 @@ static struct PyModuleDef moduledef = {
 PyMODINIT_FUNC PyInit_gjallarbru(void) {
   PyObject *m;
   m = PyModule_Create(&moduledef);
-  // This is necessary for the numpy bits to work.
   import_array();
+  // This is necessary for the numpy bits to work.
+  //printf("\nIMPORTING NUMPY API\n");
   if (!m) {
     return NULL;
   }
@@ -76,7 +80,7 @@ PyMODINIT_FUNC initgjallarbru(void) {
   PyObject *m, *logit, *d;
   m = Py_InitModule("gjallarbru", methods);
   // This is necessary for the numpy bits to work.
-  import_array();
+  //import_array();
   if (m == NULL) {
     return;
   }
@@ -383,13 +387,15 @@ double pythonRun(double * arr, unsigned long long valkyrie)
 
   }
   PyThreadState *ts;
-  PyInterpreterState *inpt;
+  PyInterpreterState *npi;
+  //_PyGILState_check_enabled = 0;
   //inpt = newThread();
   //ts = PyThreadState_New(mainInterpreterState);
   // We apparently do not need the GIL for this.
   //inpt = PyInterpreterState_New();
   //ts = PyThreadState_New(threads[valkyrie]->interp);
   if (!threadsInitialized[valkyrie-1]) {
+    //threads[valkyrie-1] = PyThreadState_New(interps[valkyrie-1]->interp);
     threads[valkyrie-1] = PyThreadState_New(mainInterpreterState);
     threadsInitialized[valkyrie-1] = true;
   }
@@ -398,6 +404,7 @@ double pythonRun(double * arr, unsigned long long valkyrie)
   //ts = PyThreadState_New(inpt);
   // This will grab the GIL.
   PyEval_AcquireThread(ts);
+  //void * blah = import_array();
   //PyThreadState_Swap(ts);
 
   // So, while this is a global variable, it's hardly thread safe.
@@ -443,12 +450,17 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
 
   // malloc the damn thing.
   threads = malloc(sizeof(PyThreadState*)*maxValkyries);
+  interps = malloc(sizeof(PyThreadState*)*maxValkyries);
   threadsInitialized = malloc(sizeof(int)*maxValkyries);
+  // we're adding this to the list of builtins in order to export it.
+  // and yet.
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
 
   setbuf(stdout, NULL);
   Py_Initialize();
   PyEval_InitThreads();
+  initializedAlready = true;
+  //import_array();
   //import_array();
   // For some reason, this seems necessary for... anything.
   // However, when we call it in the second task, we get nothing.
@@ -462,8 +474,9 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   for (int i = 0; i < maxValkyries; i++ ) {
     //threads[i] = newThread();
     //threads[i] = Py_NewInterpreter();
-    //threads[i] = PyThreadState_New(mainInterpreterState);
+    threads[i] = PyThreadState_New(mainInterpreterState);
     //threads[i] = newThread();
+    //interps[i] = Py_NewInterpreter();
     threadsInitialized[i] = false;
 
   }
@@ -512,6 +525,7 @@ void pythonFinal() {
   //Py_END_ALLOW_THREADS
   free(threads);
   free(threadsInitialized);
+  free(interps);
   Py_Finalize();
 }
 
