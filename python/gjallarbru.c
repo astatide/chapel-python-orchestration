@@ -4,6 +4,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdatomic.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+//#include "../tf/aegir.c"
 
 // Declare the functions that we'll need later.
 
@@ -11,6 +17,7 @@ static PyObject *returnNumpyArray(double *arr, unsigned long long *dims);
 static PyObject *weights(PyObject *self, PyObject *args);
 PyObject *weights_multi(PyObject *self, PyObject *args);
 PyObject *valkyrieID(PyObject *self, PyObject *args);
+static PyObject * gjallarbru_write(PyObject *self, PyObject *args);
 //static PyObject returnNumpyArray();
 
 double **globalArray;
@@ -43,6 +50,7 @@ static PyMethodDef methods[] = {
   { "weights", weights, METH_VARARGS, "Descriptions"},
   { "weights_multi", weights_multi, METH_VARARGS, "Descriptions"},
   { "valkyrieID", valkyrieID, METH_VARARGS, "Descriptions"},
+  { "write", gjallarbru_write, METH_VARARGS, "Descriptions"},
   { NULL, NULL, 0, NULL }
 };
 
@@ -114,7 +122,15 @@ static PyObject *weights(PyObject *self, PyObject *args) {
 
 }
 */
-
+static PyObject * gjallarbru_write(PyObject *self, PyObject *args)
+{
+    const char *what;
+    if (!PyArg_ParseTuple(args, "s", &what))
+        return NULL;
+    // this right here is the stdout.
+    printf("==%s==", what);
+    return Py_BuildValue("");
+}
 
 PyObject *valkyrieID(PyObject *self, PyObject *args) {
   // this just returns the thread ID so we can use it
@@ -135,6 +151,60 @@ PyObject *checkLock(PyObject *self, PyObject *args) {
     atomic_store(valkyriesDone, 0);
   }
 
+}
+
+PyObject *runTF(PyObject *self, PyObject *args) {
+
+  // We're going to go ahead and pull the appropriate thread state
+  // out of the module.  Then link it up to the pointer above.
+  PyObject* inptDict = PyThreadState_GetDict();
+  // So let's add to this dictionary yo!
+  unsigned long long valkyrie = PyLong_AsUnsignedLongLong(PyDict_GetItemString(inptDict, "valkyrieID"));
+
+  //double * vArray = globalArray[valkyrie];
+
+  PyObject * argList, * tupleValue, * tempTuple;
+  //double * cArray = vArray;
+  //unsigned long long *dimArray;
+  Py_ssize_t n, m;
+  long long cD;
+  Py_ssize_t mTotal;
+
+  unsigned long long elements;
+  unsigned long long tValue;
+
+  argList = NULL;
+  tupleValue = NULL;
+  tempTuple = NULL;
+  returnList = NULL;
+
+  cD = 0;
+  mTotal = 0;
+
+  // So, it might already be dead?  Unless we grab ownership?
+  // we need to parse these into... a numpy array.  And possibly the model string?
+  Py_XINCREF(args);
+  if (!PyArg_ParseTuple(args, "O!", &PyList_Type, &argList)) {
+    // Eh, what der fuck?
+    PyErr_SetString(PyExc_TypeError, "Argument must be a list.");
+    return NULL;
+  }
+
+  n = PyList_Size(argList);
+  m = 0;
+  // Get the size of the amount of memory we need to malloc
+  for (int i = 0; i < n; i++) {
+    tempTuple = PyList_GetItem(argList, i);
+    if (PyTuple_Check(tempTuple)) {
+      //m = PyTuple_Size(tempTuple);
+      m += PyTuple_Size(tempTuple);
+    } else {
+      // Assume an int, if not a tuple.
+      // AH.  That's where the fucking... jesus.
+      // I forgot to do error checking here.  I mean _come on_.
+      m += 1;
+    }
+  }
 }
 
 
@@ -378,7 +448,71 @@ double pythonRun(double * arr, unsigned long long valkyrie)
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
-  double score;
+  // fork the fucking thing.
+  double *score;
+
+  score = mmap(NULL, sizeof *score, PROT_READ | PROT_WRITE,
+                MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
+  for (int i = 0; i < 1; i++) {
+    if (fork() == 0) {
+      // child process
+      //printf("I'm child %d, my pid is %d\n", i, getpid());
+      PyThreadState *ts;
+      PyInterpreterState *npi;
+      //_PyGILState_check_enabled = 0;
+      //inpt = newThread();
+      //ts = PyThreadState_New(mainInterpreterState);
+      // We apparently do not need the GIL for this.
+      //inpt = PyInterpreterState_New();
+      //ts = PyThreadState_New(threads[valkyrie]->interp);
+      if (!threadsInitialized[valkyrie-1]) {
+        //threads[valkyrie-1] = PyThreadState_New(interps[valkyrie-1]->interp);
+        threads[valkyrie-1] = PyThreadState_New(mainInterpreterState);
+        threadsInitialized[valkyrie-1] = true;
+      }
+      ts = threads[valkyrie-1];
+      // Nor do we need it for this.
+      //ts = PyThreadState_New(inpt);
+      // This will grab the GIL.
+      PyEval_AcquireThread(ts);
+      //void * blah = import_array();
+      //PyThreadState_Swap(ts);
+
+      // So, while this is a global variable, it's hardly thread safe.
+      // and each thread operates on it when they choose.  AcquireThread is blocking,
+      // so doing it here _should_ avoid issues where the threads are changing the value.
+      // I hope, anyway.  Or will it?  Goddammit.  I wish I could avoid this.
+      // Hm, I could just pass the matrix in, I guess.
+
+      // This little item could allow us to maybe send info in.
+      PyObject* inptDict = PyThreadState_GetDict();
+      // So let's add to this dictionary yo!
+      // ... remember that Chapel doesn't start at 0.
+      PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(valkyrie-1));
+      //PyDict_SetItemString(inptDict, "logname", PyUnicode_FromString(logname));
+      globalArray[valkyrie-1] = arr;
+      //PyGILState_STATE gstate;
+      //gstate = PyGILState_Ensure();
+
+      //globalArray = arr;
+      functionRunOnce = false;
+      *score = run("run");
+      functionRunOnce = false;
+      Py_CLEAR(returnList);
+      returnList = NULL;
+      //PyThreadState_Clear(ts);
+      PyEval_ReleaseThread(ts);
+      //PyThreadState_Delete(ts);
+      //PyGILState_Release(gstate);
+      moduleImportedOnce = true;
+      exit(0);
+    } else {
+      wait(0);
+    }
+  }
+
+  //double score;
 
   if (!moduleImportedOnce) {
     // get it, and store it.
@@ -386,55 +520,8 @@ double pythonRun(double * arr, unsigned long long valkyrie)
     // until we're actually done.
 
   }
-  PyThreadState *ts;
-  PyInterpreterState *npi;
-  //_PyGILState_check_enabled = 0;
-  //inpt = newThread();
-  //ts = PyThreadState_New(mainInterpreterState);
-  // We apparently do not need the GIL for this.
-  //inpt = PyInterpreterState_New();
-  //ts = PyThreadState_New(threads[valkyrie]->interp);
-  if (!threadsInitialized[valkyrie-1]) {
-    //threads[valkyrie-1] = PyThreadState_New(interps[valkyrie-1]->interp);
-    threads[valkyrie-1] = PyThreadState_New(mainInterpreterState);
-    threadsInitialized[valkyrie-1] = true;
-  }
-  ts = threads[valkyrie-1];
-  // Nor do we need it for this.
-  //ts = PyThreadState_New(inpt);
-  // This will grab the GIL.
-  PyEval_AcquireThread(ts);
-  //void * blah = import_array();
-  //PyThreadState_Swap(ts);
 
-  // So, while this is a global variable, it's hardly thread safe.
-  // and each thread operates on it when they choose.  AcquireThread is blocking,
-  // so doing it here _should_ avoid issues where the threads are changing the value.
-  // I hope, anyway.  Or will it?  Goddammit.  I wish I could avoid this.
-  // Hm, I could just pass the matrix in, I guess.
-
-  // This little item could allow us to maybe send info in.
-  PyObject* inptDict = PyThreadState_GetDict();
-  // So let's add to this dictionary yo!
-  // ... remember that Chapel doesn't start at 0.
-  PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(valkyrie-1));
-  globalArray[valkyrie-1] = arr;
-  //PyGILState_STATE gstate;
-  //gstate = PyGILState_Ensure();
-
-  //globalArray = arr;
-  functionRunOnce = false;
-  score = run("run");
-  functionRunOnce = false;
-  Py_CLEAR(returnList);
-  returnList = NULL;
-  //PyThreadState_Clear(ts);
-  PyEval_ReleaseThread(ts);
-  //PyThreadState_Delete(ts);
-  //PyGILState_Release(gstate);
-  moduleImportedOnce = true;
-
-  return score;
+  return *score;
 }
 
 PyThreadState* pythonInit(unsigned long long maxValkyries) {

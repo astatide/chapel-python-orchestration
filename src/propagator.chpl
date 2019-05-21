@@ -411,6 +411,12 @@ class Propagator {
 
             //if existsInDomainAndCanProcess {
             if currToProc != '' {
+              // Actually, reduce the count BEFORE we do this.
+              // Otherwise we could have threads stealing focus that should
+              // actually be idle.
+              this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
+              this.inCurrentGeneration.sub(1);
+              this.log.debug('inCurrentGeneration successfully reduced', hstring=v.header);
               // If this node is one of the ones in our priority queue, remove it
               // as we clearly processing it now.
               if v.priorityNodes.contains(currToProc) {
@@ -424,14 +430,15 @@ class Propagator {
               //this.scoreDomain.add(currToProc : string);
               //this.scoreArray[currToProc] = score;
               // actually, just add it if we're... yeah, why not?
-              var dims = globalGJ.createDimsArray(mSize, 3);
-              dims[0] = 3;
-              dims[1] = 24;
-              dims[2] = 320;
+              //var dims = globalGJ.createDimsArray(mSize, 3);
+              //dims[0] = 3;
+              //dims[1] = 24;
+              //dims[2] = 320;
               //writeln("Look, are you getting to the stupid score?");
               //var score: c_double = globalGJ.lockAndRun(globalGJ.threads[i], v.matrixValues, 3 : c_ulonglong, dims);
               // Can we change the scope here?
-              var score: c_double = globalGJ.lockAndRun(v.matrixValues, i);
+              this.log.debug('Executing python', hstring=v.header);
+              var score: c_double = globalGJ.lockAndRun(v.matrixValues, i, hstring=v.header);
 
               //writeln("Hooray for you.");
               //var score: c_double;
@@ -455,9 +462,6 @@ class Propagator {
               //writeln(score : string);
               //writeln(v.matrixValues);
               //this.lock.uwl(v.header);
-              this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
-              this.inCurrentGeneration.sub(1);
-              this.log.debug('inCurrentGeneration successfully reduced', hstring=v.header);
             }
             // While it seems odd we might try this twice, this helps us keep
             // track of algorithm efficiency by determining whether we're processing

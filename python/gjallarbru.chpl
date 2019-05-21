@@ -32,6 +32,7 @@ class Gjallarbru {
   var valkyriesDone: atomic int;
   var valkyriesUnblocked: atomic int;
   var moveOn: sync bool;
+  var log: shared ygglog.YggdrasilLogging;
   //var ready: [1..propagator.maxValkyries] atomic bool;
 
   proc pInit() {
@@ -73,11 +74,13 @@ class Gjallarbru {
 
   //       gjallarbru.pythonRun(v.matrixValues, 1 : c_ulonglong, gjallarbru.createDimsArray(mSize, 1));
 
-  proc lockAndRun(matrix, valkyrie) {
+  proc lockAndRun(matrix, valkyrie, hstring) {
     // This is just some bullshit to make us thread safe, I guess.
     //var gil = PyGILState_Ensure();
     // We're sending in a pointer and then writing to it.  Seems to work more cleanly.
     // or that's the hope.  Who fucking knows anymore.
+    //this.log.debug('Launching and running Python code.', hstring=hstring);
+    // We're gonna pass in the file object.
     var score: c_double;
     score = pythonRun(matrix, valkyrie : c_ulonglong);
 
