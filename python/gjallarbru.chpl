@@ -2,6 +2,9 @@
 
 // We're gonna create a main then try and call the python C bits.
 
+use propagator;
+use Math;
+
 extern type PyObject;
 extern type npy_intp;
 extern type PyThreadState;
@@ -9,7 +12,7 @@ extern type PyThreadState;
 extern proc returnNumpyArray(ref arr: c_float, ref dims: npy_intp) : PyObject;
 extern proc weights(ref self: PyObject, ref args: PyObject): PyObject;
 extern proc run();
-extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong) : c_double;
+extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong, ref score : c_double, ref buffer : c_string) : real;
 extern proc pythonInit(n: c_ulonglong): c_void_ptr;
 extern proc pythonFinal();
 extern proc newThread() : c_void_ptr;
@@ -37,6 +40,8 @@ class Gjallarbru {
 
   proc pInit() {
     // return the sub-interpreter
+    this.log = new shared ygglog.YggdrasilLogging();
+    this.log.currentDebugLevel = propagator.debug;
     this.threads = pythonInit(propagator.maxValkyries : c_ulonglong);
     //return threads;
   }
@@ -81,8 +86,28 @@ class Gjallarbru {
     // or that's the hope.  Who fucking knows anymore.
     //this.log.debug('Launching and running Python code.', hstring=hstring);
     // We're gonna pass in the file object.
+    //var score: real;
+    var score2: [0..1] real = Math.INFINITY;
+    var buffer : [0..1023] c_string;
+    var moveOn: [0..1] bool = false;
+    //string lf = ('logs/V-' + hstring.currentTask + '.log');
+    //begin {
     var score: c_double;
-    score = pythonRun(matrix, valkyrie : c_ulonglong);
+    pythonRun(matrix, valkyrie : c_ulonglong, score, buffer[0]);
+    var a: string;
+    for i in 0..1023 {
+      a += buffer[i] : string;
+    }
+    //writeln("Blah blah blah, " + a : string);
+    score2[0] = score;
+    moveOn[0] = true;
+    //while (!moveOn[0]) {
+    //  if buffer[0].size > 0 {
+    //    this.log.debug(buffer[0] : string, hstring=hstring);
+    //  }
+    //}
+    score = score2[0];
+    //writeln("The score is: ", score : string);
 
     if false {
       if this.roundsProcessed[valkyrie].read() == rounds {

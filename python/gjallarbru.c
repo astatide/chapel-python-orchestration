@@ -8,6 +8,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+// we crash on OSX if we don't init the time.
+#include <time.h>
+
 
 //#include "../tf/aegir.c"
 
@@ -40,6 +43,7 @@ int functionRunOnce = false;
 
 int initializedAlready = false;
 
+// Wait on forks, maybe?
 atomic_int * valkyriesDone;
 
 unsigned long long globalMaxValkyries;
@@ -143,6 +147,7 @@ PyObject *valkyrieID(PyObject *self, PyObject *args) {
 
 }
 
+/*
 PyObject *checkLock(PyObject *self, PyObject *args) {
   //
   if (atomic_fetch_add(valkyriesDone, 1) < globalMaxValkyries-1) {
@@ -152,6 +157,7 @@ PyObject *checkLock(PyObject *self, PyObject *args) {
   }
 
 }
+*/
 
 PyObject *runTF(PyObject *self, PyObject *args) {
 
@@ -390,6 +396,10 @@ double run(char * function) {
   // Gotta be super careful about this call.
   // There's probably some error checking but heyo.
   double score;
+  // This is really just for debugging.
+  PyObject* inptDict = PyThreadState_GetDict();
+  unsigned long long valkyrie = PyLong_AsUnsignedLongLong(PyDict_GetItemString(inptDict, "valkyrieID"));
+
   //printf("Wait, so is it just this?");
   // Multiple calls to this may only produce shallow copies; we want to make
   // sure we don't destroy it in between calls, maybe?
@@ -408,26 +418,34 @@ double run(char * function) {
     // Oh, so we're a fancy lad, eh.
     // Here, garbage collection can occur.
     pValue = PyObject_CallObject(pFunc, NULL);
+    printf("Valkyrie ID: %i We have left CallObject\n", valkyrie);
     //Py_XINCREF(pValue);
   } else {
     PyErr_Print();
   }
   if (pValue != NULL) {
     PyObject* repr = PyObject_Repr(pValue);
+      printf("Valkyrie ID: %i Converted to repr\n", valkyrie);
     //Py_XINCREF(repr);
     PyObject* str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
+    printf("Valkyrie ID: %i Converted to str\n", valkyrie);
     //Py_XINCREF(str);
     const char *bytes = PyBytes_AS_STRING(str);
+    printf("Valkyrie ID: %i Converted to double\n", valkyrie);
     score = atof(bytes);
+    printf("Valkyrie ID: %i Called atof\n", valkyrie);
+    //printf("Hey, the score is %f", score);
     //Py_XDECREF(pValue);
     Py_XDECREF(str);
     Py_XDECREF(repr);
+    printf("Valkyrie ID: %i Decremented references\n", valkyrie);
     if (PyErr_Occurred()) {
       PyErr_Print();
     }
   } else {
     PyErr_Print();
   }
+  printf("Valkyrie ID: %i We have left formatted the score\n", valkyrie);
   Py_XDECREF(pFunc);
   Py_XDECREF(pValue);
   // this MIGHT be a borrowed reference
@@ -442,40 +460,84 @@ PyThreadState* newThread() {
   return thread;
 }
 
-double pythonRun(double * arr, unsigned long long valkyrie)
+struct threadArgs {
+  double * arr;
+  unsigned long long valkyrie;
+  double * score2;
+  char * buffer;
+};
+
+
+double pythonRun(double * arr, unsigned long long valkyrie, double * score2, char * buffer)
+//void *pythonRunInThread(void * arguments)
+
 {
   // We're setting the pointer.  Keep in mind that this hinges on properly
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
+  /*
+  struct threadArgs *args = arguments;
+  unsigned long long valkyrie = args->valkyrie;
+  double * arr = args->arr;
+  double * score2 = args->score2;
+  char * buffer = args->buffer;
+  */
+
   // fork the fucking thing.
   double *score;
+  int pid;
+  int stat;
+  //int pipefd[2];
+  //pipe(pipefd);
 
   score = mmap(NULL, sizeof *score, PROT_READ | PROT_WRITE,
                 MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
-  for (int i = 0; i < 1; i++) {
-    if (fork() == 0) {
+  //for (int i = 0; i < 1; i++) {
+  printf("Valkyrie ID: %i About to call fork\n", valkyrie-1);
+  pid = fork();
+  //pid = 0;
+
+  switch(pid) {
+    case 0:
+      // sometimes, this is as far as we get.  WHY?
+      // We successfully fork, but...
+      printf("Valkyrie ID: %i Child proc; importing gjallarbru\n", valkyrie-1);
+      //setbuf(stdout, NULL);
+      PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
+      printf("Valkyrie ID: %i gj imported; initializing Python\n", valkyrie-1);
+      Py_Initialize();
+      printf("Valkyrie ID: %i python initialized; getting thread dict\n", valkyrie-1);
+      // maybe this is the asshole.
+      //PyEval_InitThreads();
       // child process
       //printf("I'm child %d, my pid is %d\n", i, getpid());
-      PyThreadState *ts;
-      PyInterpreterState *npi;
+      //close(pipefd[0]);    // close reading end in the child
+
+      //dup2(pipefd[1], 1);  // send stdout to the pipe
+      //dup2(pipefd[1], 2);  // send stderr to the pipe
+      //PyThreadState *ts;
+      //PyInterpreterState *npi;
       //_PyGILState_check_enabled = 0;
       //inpt = newThread();
       //ts = PyThreadState_New(mainInterpreterState);
       // We apparently do not need the GIL for this.
       //inpt = PyInterpreterState_New();
       //ts = PyThreadState_New(threads[valkyrie]->interp);
-      if (!threadsInitialized[valkyrie-1]) {
+      //if (!threadsInitialized[valkyrie-1]) {
         //threads[valkyrie-1] = PyThreadState_New(interps[valkyrie-1]->interp);
-        threads[valkyrie-1] = PyThreadState_New(mainInterpreterState);
-        threadsInitialized[valkyrie-1] = true;
-      }
-      ts = threads[valkyrie-1];
+      //  threads[valkyrie-1] = PyThreadState_New(mainInterpreterState);
+      //  threadsInitialized[valkyrie-1] = true;
+      //}
+      //ts = threads[valkyrie-1];
       // Nor do we need it for this.
       //ts = PyThreadState_New(inpt);
       // This will grab the GIL.
-      PyEval_AcquireThread(ts);
+      //PyEval_AcquireThread(ts);
+      // if we're using fork.
+      //PyGILState_STATE gstate;
+      //gstate = PyGILState_Ensure();
       //void * blah = import_array();
       //PyThreadState_Swap(ts);
 
@@ -487,30 +549,57 @@ double pythonRun(double * arr, unsigned long long valkyrie)
 
       // This little item could allow us to maybe send info in.
       PyObject* inptDict = PyThreadState_GetDict();
+      printf("Valkyrie ID: %i thread dict obtained; inserting valkyrie id\n", valkyrie-1);
       // So let's add to this dictionary yo!
       // ... remember that Chapel doesn't start at 0.
       PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(valkyrie-1));
       //PyDict_SetItemString(inptDict, "logname", PyUnicode_FromString(logname));
       globalArray[valkyrie-1] = arr;
-      //PyGILState_STATE gstate;
-      //gstate = PyGILState_Ensure();
 
       //globalArray = arr;
       functionRunOnce = false;
+      printf("Valkyrie ID: %i id inserted; running run function\n", valkyrie-1);
       *score = run("run");
+      // if we can get here, then we're getting in and out of python quickly enough...
+      printf("Valkyrie ID: %i Score from run is %f\n", valkyrie-1, *score);
       functionRunOnce = false;
       Py_CLEAR(returnList);
       returnList = NULL;
       //PyThreadState_Clear(ts);
-      PyEval_ReleaseThread(ts);
+      //PyEval_ReleaseThread(ts);
       //PyThreadState_Delete(ts);
       //PyGILState_Release(gstate);
+      printf("Valkyrie ID: %i Release the GIL, shut it down\n", valkyrie-1);
       moduleImportedOnce = true;
+      //close(pipefd[1]);
+      Py_Finalize();
+      printf("Valkyrie ID: %i Exiting\n", valkyrie-1);
       exit(0);
-    } else {
-      wait(0);
+      //break;
+
+    case -1:
+      printf("Fork Error");
+      break;
+
+    default: {
+      char buffer2[1024];
+      printf("Valkyrie ID: %i Parent proc\n", valkyrie-1);
+
+      //close(pipefd[1]);  // close the write end of the pipe in the parent
+
+      //while (read(pipefd[0], buffer2, 1024) != 0)
+      //{
+        //printf("READING YALL");
+        //printf("FROM PYTHON: %s\n", buffer2);
+      //  buffer = buffer2;
+      //}
+      //wait(0);
+      // wait on the specific child?
+      waitpid(pid, &stat, 0);
+      printf("Valkyrie ID: %i Returning to Chapel\n", valkyrie-1);
     }
   }
+  //}
 
   //double score;
 
@@ -520,9 +609,36 @@ double pythonRun(double * arr, unsigned long long valkyrie)
     // until we're actually done.
 
   }
-
+  //printf("Score from child proc is %f", *score);
+  *score2 = *score;
   return *score;
 }
+
+/*
+double pythonRunpThread(double * arr, unsigned long long valkyrie, double * score2, char * buffer) {
+  pthread_t thread_id;
+
+  struct threadArgs args;
+  args.arr = arr;
+  args.valkyrie = valkyrie;
+  args.score2 = score2;
+  args.buffer = buffer;
+
+  if(pthread_create(&thread_id, NULL, pythonRunInThread, (void *)&args)) {
+
+    fprintf(stderr, "Error creating thread\n");
+    return 1;
+
+  }
+  if(pthread_join(thread_id, NULL)) {
+
+    fprintf(stderr, "Error joining thread\n");
+    return 2;
+
+  }
+  return *args.score2;
+}
+*/
 
 PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // disable buffering for debugging.
@@ -534,18 +650,31 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // we have to do a little thread safety here.
   //atomic_store(valkyriesDone, 0);
   globalMaxValkyries = maxValkyries;
+  // man, fuck you apple
+  struct timeval tv;
+  //if (gettimeofday(&tv, NULL) < 0) {
+  //  FATAL1("gettimeofday returned an error (%s)\n", strerror(errno));
+  //}
+  struct tm decomposed;
+  struct tm* error_code = localtime_r(&(tv.tv_sec), &decomposed);
+  //if (error_code == NULL) {
+  //  FATAL1("localtime_r returned an error (%s)\n", strerror(errno));
+  //}
+
+  // this is some stupid apple shit
 
   // malloc the damn thing.
-  threads = malloc(sizeof(PyThreadState*)*maxValkyries);
-  interps = malloc(sizeof(PyThreadState*)*maxValkyries);
-  threadsInitialized = malloc(sizeof(int)*maxValkyries);
+  //threads = malloc(sizeof(PyThreadState*)*maxValkyries);
+  //interps = malloc(sizeof(PyThreadState*)*maxValkyries);
+  //threadsInitialized = malloc(sizeof(int)*maxValkyries);
   // we're adding this to the list of builtins in order to export it.
   // and yet.
+  // this actually nabs the whole time thing, so.
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
 
-  setbuf(stdout, NULL);
-  Py_Initialize();
-  PyEval_InitThreads();
+
+  //Py_Initialize();
+  //PyEval_InitThreads();
   initializedAlready = true;
   //import_array();
   //import_array();
@@ -556,19 +685,19 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // memory between python interpreters.
   // ugh it's just blah.
   globalArray = malloc(maxValkyries * sizeof(double*));
-  mainThreadState = PyThreadState_Get();
-  mainInterpreterState = mainThreadState->interp;
-  for (int i = 0; i < maxValkyries; i++ ) {
+  //mainThreadState = PyThreadState_Get();
+  //mainInterpreterState = mainThreadState->interp;
+  //for (int i = 0; i < maxValkyries; i++ ) {
     //threads[i] = newThread();
     //threads[i] = Py_NewInterpreter();
-    threads[i] = PyThreadState_New(mainInterpreterState);
+    //threads[i] = PyThreadState_New(mainInterpreterState);
     //threads[i] = newThread();
     //interps[i] = Py_NewInterpreter();
-    threadsInitialized[i] = false;
+    //threadsInitialized[i] = false;
 
-  }
+  //}
   //PyEval_ReleaseLock();
-  PyEval_SaveThread();
+  //PyEval_SaveThread();
   ////printf("swap the fucking threads asshole");
   //PyThreadState_Swap(mainThreadState);
   ////printf("Make a new goddamn thread");

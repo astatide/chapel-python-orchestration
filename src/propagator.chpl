@@ -438,7 +438,8 @@ class Propagator {
               //var score: c_double = globalGJ.lockAndRun(globalGJ.threads[i], v.matrixValues, 3 : c_ulonglong, dims);
               // Can we change the scope here?
               this.log.debug('Executing python', hstring=v.header);
-              var score: c_double = globalGJ.lockAndRun(v.matrixValues, i, hstring=v.header);
+              var score: real = globalGJ.lockAndRun(v.matrixValues, i, hstring=v.header);
+              this.log.debug('SCORE IS', score : string, hstring=v.header);
 
               //writeln("Hooray for you.");
               //var score: c_double;
