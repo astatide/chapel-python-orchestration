@@ -151,6 +151,9 @@ proc main {
   // get the information necessary.  We need a currentTask, for instance.
   var v = new owned valkyrieExecutor(1);
   v.setChannels(stdin, stdout);
+  // redirect normal stdout;
+  var lf = open('test.log' : string, iomode.cwr);
+  stdout = lf.writer();
   //writeln(5);
   //v.OK();
   v.run();

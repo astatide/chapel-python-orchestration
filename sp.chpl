@@ -26,17 +26,31 @@ class vSpawner: msgHandler {
   proc run() {
     var i: int;
     var d = new deltaRecord();
+    d += (123, 2);
+    d += (54345, 4);
     writeln("Spawning valkyrie");
     var vp = spawn(["./valkyrie"], stdout=PIPE, stdin=PIPE);
     // this SHOULD be good?
     this.setChannels(vp.stdout, vp.stdin);
+    /*
+    var c: channel(true,iokind.dynamic,true);
+    var z: channel(false,iokind.dynamic,true);
+    var lf = open('test.log' : string, iomode.cwr);
+    c = lf.writer();
+    z = lf.reader();
+    c.write(d);
+    c.flush();
+    //var l: genes.deltaRecord;
+    var l = z.read(genes.deltaRecord);
+    writeln("This should be a delta");
+    writeln(d);
+    writeln(l);
+    */
     while true {
       //vp.stdin.writeln("blooo");
       //var b: int = 12;
       //vp.stdout.read(b);
       //writeln(b : string);
-      d += (123, 2);
-      d += (54345, 4);
       var newMsg: messaging.msg;
       newMsg.COMMAND = messaging.command.SET_TASK;
       writeln(newMsg);
@@ -45,6 +59,19 @@ class vSpawner: msgHandler {
       writeln("Message sent");
       // setting the task, now.
       SEND(1);
+      newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
+      writeln(newMsg);
+      writeln("Attempting to run TF");
+      SEND(newMsg);
+      writeln("Message sent; sending delta");
+      writeln(d);
+      SEND(d);
+      writeln("delta sent; awaiting instructions");
+      RECV(newMsg);
+      var score: real;
+      RECV(score);
+      writeln(score);
+      vp.wait();
     }
   }
 }

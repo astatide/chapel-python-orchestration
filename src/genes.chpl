@@ -100,40 +100,49 @@ record deltaRecord {
   }
 
   proc writeThis(f /*: Reader or Writer*/) {
-    f <~> new ioLiteral("{size:") <~> this.seeds.size <~> new ioLiteral(",");
-    f <~> new ioLiteral("to:") <~> this.to <~> new ioLiteral(",");
-    f <~> new ioLiteral("from:") <~> this.from <~> new ioLiteral("--");
+    f <~> new ioLiteral("{size=") <~> this.seeds.size <~> new ioLiteral(" ");
+    f <~> new ioLiteral("to=") <~> this.to <~> new ioLiteral(" ");
+    f <~> new ioLiteral("from=") <~> this.from <~> new ioLiteral(" ");
     var first = true;
     for (s, c) in zip(this.seeds, this.delta) {
       if first {
         first = false;
       } else {
-        f <~> new ioLiteral(",");
+        f <~> new ioLiteral(", ");
       }
-      f <~> new ioLiteral("(") <~> s <~> ":" <~> c <~> new ioLiteral(")");
+      f <~> new ioLiteral("(") <~> s <~> ", " <~> c <~> new ioLiteral(")");
     }
     f <~> new ioLiteral("}");
   }
 
   proc readThis(f /*: Reader or Writer*/) {
+    this.seeds.clear();
     var size: int;
-    f <~> new ioLiteral("{size:") <~> size <~> new ioLiteral(",");
-    f <~> new ioLiteral("to:") <~> this.to <~> new ioLiteral(",");
-    f <~> new ioLiteral("from:") <~> this.from <~> new ioLiteral("--");
     var first = true;
+    var s: int;
+    var c: real;
+    var to: string;
+    var from: string;
+    f <~> new ioLiteral("{size=") <~> size <~> new ioLiteral(" ");
+    writeln(size : string);
+    f <~> new ioLiteral("to=") <~> to <~> new ioLiteral(" ");
+    f <~> new ioLiteral("from=") <~> from <~> new ioLiteral(" ");
+    this.to = to;
+    this.from = from;
+    writeln(this.to, ", ", this.from);
     for i in 1..size {
       if first {
         first = false;
       } else {
         f <~> new ioLiteral(", ");
       }
-      var s: int;
-      var c: real;
-      f <~> new ioLiteral("(") <~> s <~> new ioLiteral(":") <~> c <~> new ioLiteral(")");
+      f <~> new ioLiteral("(") <~> s <~> new ioLiteral(", ") <~> c <~> new ioLiteral(")");
+      writeln(s : string, ", ", c: string);
       this.seeds.add(s);
       this.delta[s] = c;
     }
     f <~> new ioLiteral("}");
+    writeln(this);
   }
 }
 
