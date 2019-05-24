@@ -48,11 +48,17 @@ class msgHandler {
     this.fout[i] = fout;
   }
 
+  proc setChannels(fin, fout /* takes a channel as input */) {
+    var i: int;
+    this.fin[i] = fin;
+    this.fout[i] = fout;
+  }
+
   proc __receiveMessage__(i: int) {
     // listen for a message.
     var m: msg;
     fin[i].readln(m);
-    this.PROCESS(m, i);
+    this.__PROCESS__(m, i);
   }
 
   proc __OK__(i: int) {
@@ -67,6 +73,7 @@ class msgHandler {
 
   proc __RECV_STATUS__(i: int) {
     var s: int;
+    // ?  This is not working.
     fin[i].readln(s);
     //return s;
     if s == status.OK {
@@ -92,8 +99,11 @@ class msgHandler {
   // Each time a message is considered received by process, it _must_
   // end with a status okay.
 
-  proc PROCESS(m: msg, i: int) {}
-  proc PROCESS(m: msg) {}
+  proc __PROCESS__(m: msg, i: int) { OK(i); this.PROCESS(m, i); }
+  proc __PROCESS__(m: msg) { OK(this.id); this.PROCESS(m); }
+
+  proc PROCESS(m: msg, i: int) { }
+  proc PROCESS(m: msg) { }
 
   // these are functions for sending.  Essentially, all listen functions
   // must receive a status, or they are blocked.
@@ -137,4 +147,43 @@ class msgHandler {
 
   proc SEND(j: real, i: int) { this.__SEND__(j, i); }
   proc SEND(j: real) { this.__SEND__(j, this.id); }
+
+  // these are functions for receiving.  Essentially, all listen functions
+  // must receive a status, or they are blocked.
+
+  proc __RECV__(ref m: msg, i: int) {
+    // receive the message!
+    fin[i].readln(m);
+    OK(i);
+  }
+
+  proc __RECV__(ref d: genes.deltaRecord, i: int) {
+    // receive the message!
+    fin[i].readln(d);
+    OK(i);
+  }
+
+  proc __RECV__(ref j: int, i: int) {
+    // receive the message!
+    fin[i].readln(j);
+    OK(i);
+  }
+
+  proc __RECV__(ref j: real, i: int) {
+    // receive the message!
+    fin[i].readln(j);
+    OK(i);
+  }
+
+  proc RECV(ref m: msg, i: int) { this.__RECV__(m, i); }
+  proc RECV(ref m: msg) { this.__RECV__(m, this.id); }
+
+  proc RECV(ref d: genes.deltaRecord, i: int) { this.__RECV__(d, i); }
+  proc RECV(ref d: genes.deltaRecord) { this.__RECV__(d, this.id); }
+
+  proc RECV(ref j: int, i: int) { this.__RECV__(j, i); }
+  proc RECV(ref j: int) { this.__RECV__(j, this.id); }
+
+  proc RECV(ref j: real, i: int) { this.__RECV__(j, i); }
+  proc RECV(ref j: real) { this.__RECV__(j, this.id); }
 }

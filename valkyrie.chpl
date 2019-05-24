@@ -85,8 +85,6 @@ class valkyrieExecutor: msgHandler {
     // basically, we want to sit at the read point... and then do something with
     // the input.
     // spawn the Python business.
-    this.fout.writeln("VALKYRIE_LAUNCHED");
-    this.fout.flush();
     gj.pInit();
     // python is initialized.  Yay.
     while true {
@@ -98,23 +96,18 @@ class valkyrieExecutor: msgHandler {
   }
 
   // this is implemented as part of the messaging class.
-  proc PROCESS(m: msg, i: int) {
+  // Don't forget that override!
+  override proc PROCESS(m: msg, i: int) {
     // This is a stub class.  Those inheriting it must
     // handle it themselves.
     // does chapel have case/switch?  Hmmmm.
     if m.COMMAND == messaging.command.RETURN_STATUS {
-      this.SEND_STATUS(this.STATUS);
-    }
-    if m.COMMAND == messaging.command.SET_TASK {
-      var task: int = 0;
-      fin[i].readln(this.currentTask);
-      OK();
-      // return task?
-    }
-    if m.COMMAND == messaging.command.RECEIVE_AND_PROCESS_DELTA {
+      SEND(this.STATUS);
+    } else if m.COMMAND == messaging.command.SET_TASK {
+      RECV(this.currentTask);
+    } else if m.COMMAND == messaging.command.RECEIVE_AND_PROCESS_DELTA {
       var delta: genes.deltaRecord;
-      fin[i].readln(delta);
-      OK();
+      RECV(delta);
       this.move(delta);
       var score: real = gj.lockAndRun(this.matrixValues, this.currentTask, hstring=this.header);
       // now, return the score.
@@ -157,6 +150,8 @@ proc main {
 
   // get the information necessary.  We need a currentTask, for instance.
   var v = new owned valkyrieExecutor(1);
-  v.setChannels(stdin, stdout, 1);
+  v.setChannels(stdin, stdout);
+  //writeln(5);
+  //v.OK();
   v.run();
 }
