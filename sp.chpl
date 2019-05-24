@@ -26,12 +26,38 @@ class vSpawner: msgHandler {
   proc run() {
     var i: int;
     var d = new deltaRecord();
+    var recvPort: string;
     d += (123, 2);
     d += (54345, 4);
     writeln("Spawning valkyrie");
     var vp = spawn(["./valkyrie"], stdout=PIPE, stdin=PIPE);
+    //var vp = spawn(["./valkyrie"], stdin=PIPE);
     // this SHOULD be good?
-    this.setChannels(vp.stdout, vp.stdin);
+    //vp.stdout.readln(recvPort);
+    //writeln(recvPort);
+    writeln("Valkyrie spawned; initializing sockets");
+    //this.setChannels(vp.stdout, vp.stdin);
+    this.initSendSocket(1);
+    vp.stdin.writeln(this.sendPorts[1]);
+    // don't forget to flush the connection
+    vp.stdin.flush();
+    vp.stdout.readln(recvPort);
+    //writeln(recvPort);
+    //vp.stdout.readln(recvPort);
+    this.initRecvSocket(1, recvPort);
+    writeln(this.sendPorts[1], " ", this.recvPorts[1]);
+    writeln(this.recvSocket[1]);
+    /*
+    begin {
+      // start dumping the stdout.
+      var l: string;
+      while true {
+        while vp.stdout.readln(l) {
+          writeln(l);
+        }
+      }
+    }
+    */
     /*
     var c: channel(true,iokind.dynamic,true);
     var z: channel(false,iokind.dynamic,true);
@@ -71,7 +97,7 @@ class vSpawner: msgHandler {
       var score: real;
       RECV(score);
       writeln(score);
-      vp.wait();
+      //vp.wait();
     }
   }
 }

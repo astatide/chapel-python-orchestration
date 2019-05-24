@@ -10,6 +10,10 @@ use messaging;
 var VUUID = new owned uuid.UUID();
 VUUID.UUID4();
 
+var lf = open('test.log' : string, iomode.cwr);
+var c = lf.writer(kind=ionative);
+var z = lf.reader(kind=ionative);
+
 class valkyrieExecutor: msgHandler {
   var matrixValues: [0..propagator.mSize] c_double;
   var takeAnyPath: bool = false;
@@ -85,9 +89,19 @@ class valkyrieExecutor: msgHandler {
     // basically, we want to sit at the read point... and then do something with
     // the input.
     // spawn the Python business.
+    c.writeln("init python");
+    c.flush();
     gj.pInit();
     // python is initialized.  Yay.
+    c.writeln("python initialized; attempting to receive messages");
+    c.flush();
+    var writeOnce: bool = true;
     while true {
+      if writeOnce {
+        //writeOnce = false;
+        c.writeln("we're in the loop yo");
+        c.flush();
+      }
       // basically, while we're able to read in a record...
       // ... we pretty much read and process.
       this.receiveMessage();
@@ -101,19 +115,39 @@ class valkyrieExecutor: msgHandler {
     // This is a stub class.  Those inheriting it must
     // handle it themselves.
     // does chapel have case/switch?  Hmmmm.
+    c.writeln("Starting to process a msg");
+    c.writeln(m);
+    c.flush();
     if m.COMMAND == messaging.command.RETURN_STATUS {
       SEND(this.STATUS);
     } else if m.COMMAND == messaging.command.SET_TASK {
       RECV(this.currentTask);
+      c.writeln("What is my task?");
+      c.writeln(this.currentTask);
+      c.flush();
     } else if m.COMMAND == messaging.command.RECEIVE_AND_PROCESS_DELTA {
       var delta: genes.deltaRecord;
+      c.writeln("About to get a message for delta; what is it?");
+      c.flush();
       RECV(delta);
+      c.writeln(delta);
+      c.writeln("Attemptiong to move");
+      c.flush();
       this.move(delta);
+      c.writeln("attempting to start python");
+      c.flush();
       var score: real = gj.lockAndRun(this.matrixValues, this.currentTask, hstring=this.header);
+      c.writeln("Python done; trying to send message back");
+      c.writeln(score);
+      c.flush();
       // now, return the score.
       var newMsg: messaging.msg;
       newMsg.COMMAND = messaging.command.RECEIVE_SCORE;
+      c.writeln("Sending message...");
+      c.flush();
       SEND(newMsg);
+      c.writeln("Well, I did my job, anyway");
+      c.flush();
       SEND(score);
     } else {
       SEND_STATUS(messaging.status.IGNORED);
@@ -151,9 +185,22 @@ proc main {
   // get the information necessary.  We need a currentTask, for instance.
   var v = new owned valkyrieExecutor(1);
   v.setChannels(stdin, stdout);
+  //v.id = 1;
+  //stdout.writeln("Started!");
+  var recvPort = stdin.readln(string);
+  //writeln("received port!");
+  v.initRecvSocket(1, recvPort);
+  v.initSendSocket(1);
+  writeln(v.sendPorts[1]);
+  stdout.flush();
+  c.write("So, I've got all that stuff set");
+  c.write(v.sendPorts[1], " ", v.recvPorts[1]);
+  c.flush();
+  //writeln("Hey, so, I can be chatty now, yeah?");
+  //stdout.flush();
+  //writeln("Hey, am I working?");
   // redirect normal stdout;
-  var lf = open('test.log' : string, iomode.cwr);
-  stdout = lf.writer();
+  //stdout = lf.writer();
   //writeln(5);
   //v.OK();
   v.run();

@@ -23,7 +23,7 @@ extern proc garbageCollect(valkyrie: c_ulonglong);
 //extern proc
 //extern proc pythonRun();
 
-require "python/gjallarbru.c";
+require "gjallarbru.c";
 //require "python/test.cpp";
 
 class Gjallarbru {
