@@ -26,9 +26,6 @@ static PyObject * gjallarbru_write(PyObject *self, PyObject *args);
 double **globalArray;
 PyObject * returnList;
 PyObject * prevReturnList;
-//PyArrayObject *numpyArray;
-//unsigned long long globalND;
-//unsigned long long *globalDims;
 PyInterpreterState * mainInterpreterState;
 // Main thread doesn't go away, but the other threads seem to?
 PyThreadState * mainThreadState;
@@ -496,8 +493,8 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
 
   //for (int i = 0; i < 1; i++) {
   printf("Valkyrie ID: %i About to call fork\n", valkyrie-1);
-  pid = fork();
-  //pid = 0;
+  //pid = fork();
+  pid = 0;
 
   switch(pid) {
     case 0:
@@ -505,10 +502,10 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
       // We successfully fork, but...
       printf("Valkyrie ID: %i Child proc; importing gjallarbru\n", valkyrie-1);
       //setbuf(stdout, NULL);
-      PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
-      printf("Valkyrie ID: %i gj imported; initializing Python\n", valkyrie-1);
-      Py_Initialize();
-      printf("Valkyrie ID: %i python initialized; getting thread dict\n", valkyrie-1);
+      //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
+      //printf("Valkyrie ID: %i gj imported; initializing Python\n", valkyrie-1);
+      //Py_Initialize();
+      //printf("Valkyrie ID: %i python initialized; getting thread dict\n", valkyrie-1);
       // maybe this is the asshole.
       //PyEval_InitThreads();
       // child process
@@ -572,10 +569,10 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
       printf("Valkyrie ID: %i Release the GIL, shut it down\n", valkyrie-1);
       moduleImportedOnce = true;
       //close(pipefd[1]);
-      Py_Finalize();
+      //Py_Finalize();
       printf("Valkyrie ID: %i Exiting\n", valkyrie-1);
-      exit(0);
-      //break;
+      //exit(0);
+      break;
 
     case -1:
       printf("Fork Error");
@@ -594,8 +591,22 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
       //  buffer = buffer2;
       //}
       //wait(0);
+      waitpid(-1, &stat, WUNTRACED);
+
       // wait on the specific child?
-      waitpid(pid, &stat, 0);
+      //waitpid(pid, &stat, 0);
+      if (WIFEXITED(stat)) {
+        // this happens if everything is good and such.  Yay!;
+      } else {
+        printf("Valkyrie ID: %i SOMETHING HAPPENED\n", valkyrie-1);
+        if (WIFSTOPPED(stat)) {
+          // this happens if we just freeze up.  Bit hacky, but hey.
+          // for now, just try again...
+          printf("Valkyrie ID: %i FORK FAILED; TRY AGAIN\n", valkyrie-1);
+          pythonRun(arr,valkyrie,score2,buffer);
+
+        }
+      }
       printf("Valkyrie ID: %i Returning to Chapel\n", valkyrie-1);
     }
   }
@@ -673,7 +684,7 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
 
 
-  //Py_Initialize();
+  Py_Initialize();
   //PyEval_InitThreads();
   initializedAlready = true;
   //import_array();
@@ -739,9 +750,9 @@ void pythonFinal() {
   // blah?
 
   //Py_END_ALLOW_THREADS
-  free(threads);
-  free(threadsInitialized);
-  free(interps);
+  //free(threads);
+  //free(threadsInitialized);
+  //free(interps);
   Py_Finalize();
 }
 

@@ -14,8 +14,8 @@ use Sort;
 // from entropy at the same time (this kept happening before I locked it).
 // However, as the chromosome and gene domain are unique, we don't need uniqueness
 // between the sets, and so a gene and chromosome sharing the same UUID is fine.
-var UUID = new owned uuid.UUID();
-UUID.UUID4();
+var CUUID = new owned uuid.UUID();
+CUUID.UUID4();
 
 //var AssocDom:domain(int);
 //type AssocArrayType = [AssocDom] int;
@@ -101,7 +101,7 @@ record Chromosome {
 
   proc init(id='') {
     if id == '' {
-      this.id = UUID.UUID4();
+      this.id = CUUID.UUID4();
     } else {
       this.id = id;
     }

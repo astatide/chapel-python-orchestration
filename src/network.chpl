@@ -335,11 +335,11 @@ class GeneNetwork {
   proc move(ref v: propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) throws {
     // This is the pathless one.  We just need the path, then we're good.
     var path = this.calculatePath(v.currentNode, id, hstring=v.header);
-    this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
+    return this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
   }
 
   proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
-    this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
+    return this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
   }
 
   proc __move__(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
@@ -367,6 +367,9 @@ class GeneNetwork {
     if propagator.unitTestMode {
       this.log.debug('Delta to move to is:', d : string, hstring=vstring);
     }
+    // this is actually the command that moves us.
+    // rather than actually handling the move, let's just send the delta back.
+    /*
     var success = v.move(d, id);
     // for now, hardcode the errors.
     if success == 0 {
@@ -375,6 +378,8 @@ class GeneNetwork {
       this.log.critical('CRITICAL FAILURE: Valkyrie did not move correctly!', hstring=vstring);
       this.log.critical('Matrix should be:', id : string, 'but is:', v.matrixValues : string, hstring=vstring);
     }
+    */
+    return d;
   }
 
   proc deltaFromPath(in path: network.pathHistory, id: string, hstring: ygglog.yggHeader) throws {

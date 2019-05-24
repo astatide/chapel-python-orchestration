@@ -9,8 +9,8 @@ use spinlock;
 use ygglog;
 
 // This pulls from its own RNG.  Guarantees a bit more entropy.
-var UUID = new owned uuid.UUID();
-UUID.UUID4();
+var GUUID = new owned uuid.UUID();
+GUUID.UUID4();
 var udevrandom = new shared rng.UDevRandomHandler();
 var newrng = udevrandom.returnRNG();
 //writeln(UUID.UUID4());
@@ -52,6 +52,8 @@ record noiseFunctions {
 record deltaRecord {
   var seeds: domain(int);
   var delta: [seeds] real;
+  var to: string = "root";
+  var from: string = "root";
   //var udevrandom = new owned rng.UDevRandomHandler();
   //var newrng = udevrandom.returnRNG();
 
@@ -97,6 +99,42 @@ record deltaRecord {
     }
   }
 
+  proc writeThis(f /*: Reader or Writer*/) {
+    f <~> new ioLiteral("{size:") <~> this.seeds.size <~> new ioLiteral(",");
+    f <~> new ioLiteral("to:") <~> this.to <~> new ioLiteral(",");
+    f <~> new ioLiteral("from:") <~> this.from <~> new ioLiteral("--");
+    var first = true;
+    for (s, c) in zip(this.seeds, this.delta) {
+      if first {
+        first = false;
+      } else {
+        f <~> new ioLiteral(",");
+      }
+      f <~> new ioLiteral("(") <~> s <~> ":" <~> c <~> new ioLiteral(")");
+    }
+    f <~> new ioLiteral("}");
+  }
+
+  proc readThis(f /*: Reader or Writer*/) {
+    var size: int;
+    f <~> new ioLiteral("{size:") <~> size <~> new ioLiteral(",");
+    f <~> new ioLiteral("to:") <~> this.to <~> new ioLiteral(",");
+    f <~> new ioLiteral("from:") <~> this.from <~> new ioLiteral("--");
+    var first = true;
+    for i in 1..size {
+      if first {
+        first = false;
+      } else {
+        f <~> new ioLiteral(", ");
+      }
+      var s: int;
+      var c: real;
+      f <~> new ioLiteral("(") <~> s <~> new ioLiteral(":") <~> c <~> new ioLiteral(")");
+      this.seeds.add(s);
+      this.delta[s] = c;
+    }
+    f <~> new ioLiteral("}");
+  }
 }
 
 proc +(a: deltaRecord, b: deltaRecord) {
@@ -232,7 +270,7 @@ class GeneNode {
     this.parent = parent;
     // Here, we make an ID if we don't already have one.
     if id == '' {
-      this.id = UUID.UUID4();
+      this.id = GUUID.UUID4();
     } else {
       this.id = id;
     }

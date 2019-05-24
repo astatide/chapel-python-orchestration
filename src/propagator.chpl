@@ -12,6 +12,8 @@ use Time;
 use IO.FormattedIO;
 use chromosomes;
 use gjallarbru;
+use Spawn;
+use messaging;
 
 record scoreComparator {
   proc keyPart(x: (string, real), i: int) {
@@ -22,8 +24,8 @@ record scoreComparator {
 }
 
 
-var UUID = new owned uuid.UUID();
-UUID.UUID4();
+var UUIDP = new owned uuid.UUID();
+UUIDP.UUID4();
 
 config const mSize = 20;
 config const maxPerGeneration = 10;
@@ -60,6 +62,7 @@ var absComparator: Comparator;
 // who lives and who dies.
 // (this is a record for a worker class)
 record valkyrie {
+  // it's okay for now.
   var matrixValues: [0..mSize] c_double;
   var takeAnyPath: bool = false;
   var moved: bool = false;
@@ -76,7 +79,7 @@ record valkyrie {
   var nProcessed: int;
   var gen: int;
 
-  var id = UUID.UUID4();
+  var id = UUIDP.UUID4();
 
   var yh = new ygglog.yggHeader();
 
@@ -134,7 +137,7 @@ record valkyrie {
   }
 }
 
-class Propagator {
+class Propagator: msgHandler {
   // this is going to actually hold all the logic for running EvoCap.
   var generation: int;
 
@@ -335,6 +338,17 @@ class Propagator {
       for iL in v.logo {
         this.log.header(iL, hstring=v.header);
       }
+      // also, spin up the tasks.
+      var vout: string;
+      var vp = spawn(["./valkyrie"], stdout=PIPE, stdin=PIPE);
+      writeln(vp.stdout.readln(vout));
+      // tell it what Valkyrie it is.
+      vp.stdin.writeln(i);
+
+      vp.stdout.readln(vout);
+      // ABOUT TO RUN
+      vp.stdout.readln(vout);
+      // VALKYRIE LAUNCHED
       // okay, we probably need to switch to said interpreter.
       // initialize the python interpreter.  Only do this once.
       // will this work?  On a per task basis, I mean.
@@ -424,7 +438,48 @@ class Propagator {
                 v.nPriorityNodesProcessed += 1;
               }
               this.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
-              this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
+              // rather than moving, we just... don't!  Yay!
+              var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
+              d.to = currToProc;
+              vp.stdin.write(d);
+              /*
+              var e: genes.deltaRecord;
+              var c: channel(true,iokind.native,true);
+              var z: channel(false,iokind.native,true);
+              //var lf = open('test.log' : string, iomode.cwr);
+              var seeds: domain(int);
+              var delta: [seeds] real;
+              var po: domain(int);
+              var pk: [po] real;
+              var lf = openmem();
+              var kg: domain(string);
+              var kr: domain(string);
+              kg.add("blah!");
+              seeds.add(1);
+              d += (123232, 10.0);
+              delta[1] = 12;
+              c = lf.writer(kind=ionative);
+              z = lf.reader(kind=ionative);
+              writeln(c.binary() : string);
+              writeln(z.binary() : string);
+              stdout.writef("%jt", d);
+              //writeln(seeds);
+              //c.writef("%jt", kg);
+              c.write(d);
+              c.flush();
+              var l = z.read(genes.deltaRecord);
+              */
+              //var m: int;
+              //var m = z.read(domain(int));
+              //c.close();
+              //lf = open('test.log' : string, iomode.rw);
+              //var l = z.readf("%jt", kr);
+              //stdout.writef("%jt", po);
+              //writeln(pk);
+              //e.readThis(d : string);
+              //e.read(d);
+
+              // okay, so we have the d.  Should we...
               // we've moved; now score it.
               // this already IS a string, so remove the cast.
               //this.scoreDomain.add(currToProc : string);
@@ -437,8 +492,9 @@ class Propagator {
               //writeln("Look, are you getting to the stupid score?");
               //var score: c_double = globalGJ.lockAndRun(globalGJ.threads[i], v.matrixValues, 3 : c_ulonglong, dims);
               // Can we change the scope here?
-              this.log.debug('Executing python', hstring=v.header);
-              var score: real = globalGJ.lockAndRun(v.matrixValues, i, hstring=v.header);
+              //this.log.debug('Executing python', hstring=v.header);
+              //var score: real = globalGJ.lockAndRun(v.matrixValues, i, hstring=v.header);
+              var score = vp.stdout.read(real);
               this.log.debug('SCORE IS', score : string, hstring=v.header);
 
               //writeln("Hooray for you.");
