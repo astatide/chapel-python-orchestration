@@ -22,8 +22,61 @@ var command: commandRecord;
 
 record msg {
   // there are two types of records; commands and results.
+  var TYPE: int = 0;
+  var ISINT: int = 1;
+  var ISSTR: int = 2;
+  var ISREL: int = 3;
+  var ISDEL: int = 4;
   var STATUS: int;
   var COMMAND: int;
+  var s: string;
+  var i: int;
+  var r: real;
+
+  // this.complete() means we complete!
+
+  proc init() {}
+
+  proc init(s: string) {
+    this.complete();
+    this.TYPE = this.ISSTR;
+    this.s = s;
+  }
+  proc init(i: int) {
+    this.complete();
+    this.TYPE = this.ISINT;
+    this.i = i;
+  }
+  proc init(r: real) {
+    this.complete();
+    this.TYPE = this.ISREL;
+    this.r = r;
+  }
+  proc init(d: genes.deltaRecord) {
+    this.complete();
+    this.TYPE = this.ISDEL;
+    this.s = d : string;
+  }
+
+  proc open(ref ret) {
+    // use this to open the message.
+
+    select ret.type {
+      when int do ret = this.i;
+      when string do ret = this.s;
+      when real do ret = this.r;
+      when genes.deltaRecord do {
+        var d: genes.deltaRecord;
+        var lf = openmem();
+        var c = lf.writer();
+        var z = lf.reader();
+        c.writeln(this.s);
+        c.flush();
+        d = z.readln(genes.deltaRecord);
+        ret = d;
+      }
+    }
+  }
 }
 
 class msgHandler {

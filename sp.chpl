@@ -53,9 +53,9 @@ class vSpawner: msgHandler {
       // start dumping the stdout.
       var l: string;
       while true {
-        vp.stdout.readln(l);
+        vp.stdout.readline(l);
         if (l != "") {
-          //writeln(l);  
+          writeln(l);
         }
       }
     }
@@ -75,30 +75,28 @@ class vSpawner: msgHandler {
     writeln(d);
     writeln(l);
     */
+    var newMsg = new messaging.msg(1);
+    newMsg.COMMAND = messaging.command.SET_TASK;
+    writeln(newMsg);
+    writeln("Attempting to send message");
+    SEND(newMsg);
+    writeln("Message sent");
+    // setting the task, now.
     while true {
       //vp.stdin.writeln("blooo");
       //var b: int = 12;
       //vp.stdout.read(b);
       //writeln(b : string);
-      var newMsg: messaging.msg;
-      newMsg.COMMAND = messaging.command.SET_TASK;
-      writeln(newMsg);
-      writeln("Attempting to send message");
-      SEND(newMsg);
-      writeln("Message sent");
-      // setting the task, now.
-      SEND(1);
+      newMsg = new messaging.msg(d);
       newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
       writeln(newMsg);
       writeln("Attempting to run TF");
       SEND(newMsg);
-      writeln("Message sent; sending delta");
-      writeln(d);
-      SEND(d);
-      writeln("delta sent; awaiting instructions");
+      writeln("Message & delta sent; awaiting instructions");
       RECV(newMsg);
+      writeln("Message received; awaiting score");
       var score: real;
-      RECV(score);
+      newMsg.open(score);
       writeln(score);
       //vp.wait();
     }

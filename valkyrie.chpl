@@ -119,37 +119,36 @@ class valkyrieExecutor: msgHandler {
     c.writeln(m);
     c.flush();
     if m.COMMAND == messaging.command.RETURN_STATUS {
-      SEND(this.STATUS);
+      //SEND(this.STATUS);
     } else if m.COMMAND == messaging.command.SET_TASK {
-      RECV(this.currentTask);
+      //RECV(this.currentTask);
+      //this.currentTask = m.open();
+      m.open(this.currentTask);
       c.writeln("What is my task?");
       c.writeln(this.currentTask);
       c.flush();
     } else if m.COMMAND == messaging.command.RECEIVE_AND_PROCESS_DELTA {
       var delta: genes.deltaRecord;
-      c.writeln("About to get a message for delta; what is it?");
-      c.flush();
-      RECV(delta);
+      m.open(delta);
       c.writeln(delta);
-      c.writeln("Attemptiong to move");
+      c.writeln("Attempting to move");
       c.flush();
       this.move(delta);
       c.writeln("attempting to start python");
       c.flush();
-      var score: real = gj.lockAndRun(this.matrixValues, this.currentTask, hstring=this.header);
+      var score: c_double = gj.lockAndRun(this.matrixValues, this.currentTask, hstring=this.header);
       stdout.flush();
       c.writeln("Python done; trying to send message back");
       c.writeln(score);
       c.flush();
       // now, return the score.
-      var newMsg: messaging.msg;
+      var newMsg = new messaging.msg(score);
       newMsg.COMMAND = messaging.command.RECEIVE_SCORE;
       c.writeln("Sending message...");
       c.flush();
       SEND(newMsg);
       c.writeln("Well, I did my job, anyway");
       c.flush();
-      SEND(score);
     } else {
       SEND_STATUS(messaging.status.IGNORED);
     }
