@@ -137,6 +137,7 @@ class valkyrieExecutor: msgHandler {
       c.writeln("attempting to start python");
       c.flush();
       var score: real = gj.lockAndRun(this.matrixValues, this.currentTask, hstring=this.header);
+      stdout.flush();
       c.writeln("Python done; trying to send message back");
       c.writeln(score);
       c.flush();

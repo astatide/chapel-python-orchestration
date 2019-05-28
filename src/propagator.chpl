@@ -441,7 +441,7 @@ class Propagator: msgHandler {
               // rather than moving, we just... don't!  Yay!
               var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
               d.to = currToProc;
-              vp.stdin.write(d);
+              vp.stdin.writeline(d);
               /*
               var e: genes.deltaRecord;
               var c: channel(true,iokind.native,true);

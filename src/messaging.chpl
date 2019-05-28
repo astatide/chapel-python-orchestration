@@ -145,9 +145,21 @@ class msgHandler {
     //fout[i].writeln(d);
     //fout[i].flush();
     var ds = d : string;
-    writeln(ds);
+    //writeln(ds);
     this.sendSocket[i].send(ds);
-    writeln("blah");
+    //writeln("blah");
+    // workaround for now...
+    var lf = openmem();
+    var c = lf.writer();
+    var z = lf.reader();
+    var tmp = d : string;
+    c.writeln(tmp);
+    c.flush();
+    var dn: genes.deltaRecord;
+    //var dn: string;
+    dn = z.readln(genes.deltaRecord);
+    //dn = z.readln(string);
+    writeln(dn : string);
     this.RECV_STATUS(i);
   }
 
@@ -199,9 +211,11 @@ class msgHandler {
     var lf = openmem();
     var c = lf.writer();
     var z = lf.reader();
-    c.write(ds);
+    c.writeln(ds);
     c.flush();
-    d = z.read(genes.deltaRecord);
+    writeln("Oh yeah");
+    writeln(ds);
+    d = z.readln(genes.deltaRecord);
   }
 
   proc __RECV__(ref j: int, i: int) {

@@ -65,8 +65,6 @@ record deltaRecord {
     }
   }
 
-  proc init() {}
-
   proc this(a) ref {
     return this.delta[a];
   }
@@ -99,50 +97,77 @@ record deltaRecord {
     }
   }
 
-  proc writeThis(f /*: Reader or Writer*/) {
-    f <~> new ioLiteral("{size=") <~> this.seeds.size <~> new ioLiteral(" ");
-    f <~> new ioLiteral("to=") <~> this.to <~> new ioLiteral(" ");
-    f <~> new ioLiteral("from=") <~> this.from <~> new ioLiteral(" ");
+
+  proc writeThis(f) {
+    var style = defaultIOStyle();
+    style.string_format = 2;
+    f._set_style(style);
+    f <~> new ioLiteral("{SIZE=");
+    f <~> this.seeds.size;
+    f <~> new ioLiteral(",");
+    f <~> new ioLiteral("TO=");
+    f <~> this.to;
+    //f.write(this.to, style=style);
+    f <~> new ioLiteral(",");
+    f <~> new ioLiteral("FROM=");
+    f <~> this.from;
+    //f.write(this.from, style=style);
+    f <~> new ioLiteral(",");
     var first = true;
     for (s, c) in zip(this.seeds, this.delta) {
       if first {
         first = false;
       } else {
-        f <~> new ioLiteral(", ");
+        f <~> new ioLiteral(",");
       }
-      f <~> new ioLiteral("(") <~> s <~> ", " <~> c <~> new ioLiteral(")");
+      f <~> new ioLiteral("(");
+      f <~> s;
+      f <~> new ioLiteral(",");
+      f <~> c;
+      f <~> new ioLiteral(")");
     }
-    f <~> new ioLiteral("}");
-  }
+    f <~> new ioLiteral("}");  }
 
-  proc readThis(f /*: Reader or Writer*/) {
-    this.seeds.clear();
+  proc readThis(f) {
+    //this.seeds.clear();
     var size: int;
     var first = true;
     var s: int;
     var c: real;
     var to: string;
     var from: string;
-    f <~> new ioLiteral("{size=") <~> size <~> new ioLiteral(" ");
-    writeln(size : string);
-    f <~> new ioLiteral("to=") <~> to <~> new ioLiteral(" ");
-    f <~> new ioLiteral("from=") <~> from <~> new ioLiteral(" ");
+    var style = defaultIOStyle();
+    style.string_format = 2;
+    f._set_style(style);
+    //var style = new iostyle(string_format=2);
+    f <~> new ioLiteral("{SIZE=");
+    f <~> size;
+    f <~> new ioLiteral(",");
+    f <~> new ioLiteral("TO=");
+    // hello problem my old friend
+    f <~> to;
+    //f.readln(to, style=style);
+    f <~> new ioLiteral(",");
+    f <~> new ioLiteral("FROM=");
+    f <~> from;
+    f <~> new ioLiteral(",");
     this.to = to;
     this.from = from;
-    writeln(this.to, ", ", this.from);
     for i in 1..size {
       if first {
         first = false;
       } else {
-        f <~> new ioLiteral(", ");
+        f <~> new ioLiteral(",");
       }
-      f <~> new ioLiteral("(") <~> s <~> new ioLiteral(", ") <~> c <~> new ioLiteral(")");
-      writeln(s : string, ", ", c: string);
+      f <~> new ioLiteral("(");
+      f <~> s;
+      f <~> new ioLiteral(",");
+      f <~> c;
+      f <~> new ioLiteral(")");
       this.seeds.add(s);
       this.delta[s] = c;
     }
     f <~> new ioLiteral("}");
-    writeln(this);
   }
 }
 

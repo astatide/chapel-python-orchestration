@@ -47,17 +47,20 @@ class vSpawner: msgHandler {
     this.initRecvSocket(1, recvPort);
     writeln(this.sendPorts[1], " ", this.recvPorts[1]);
     writeln(this.recvSocket[1]);
-    /*
+
+
     begin {
       // start dumping the stdout.
       var l: string;
       while true {
-        while vp.stdout.readln(l) {
-          writeln(l);
+        vp.stdout.readln(l);
+        if (l != "") {
+          //writeln(l);  
         }
       }
     }
-    */
+
+
     /*
     var c: channel(true,iokind.dynamic,true);
     var z: channel(false,iokind.dynamic,true);
