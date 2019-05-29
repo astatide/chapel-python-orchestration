@@ -364,67 +364,29 @@ class Propagator: msgHandler {
       // also, spin up the tasks.
       var vout: string;
       var recvPort: string;
-      //var vp = spawn(["./valkyrie"], stdout=PIPE, stdin=PIPE);
-      this.log.log("Valkyrie spawned; initializing sockets", hstring=v.header);
+      this.log.log("Initializing sockets", hstring=v.header);
       // set up a ZMQ client/server
       this.initSendSocket(i);
       this.initUnlinkedRecvSocket(i);
+      this.log.log("Spawning Valkyrie", hstring=v.header);
       var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
       this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string, hstring=v.header);
-      //vp.stdin.writeln(this.sendPorts[i]);
-      // don't forget to flush the connection
-      //vp.stdin.flush();
-      //vp.stdout.readln(recvPort);
-      //writeln(recvPort);
-      //vp.stdout.readln(recvPort);
-      //this.initRecvSocket(i, recvPort);
       this.log.log("PORTS:",this.sendPorts[i] : string, this.recvPorts[i] : string, hstring=v.header);
       var newMsg = new messaging.msg(i);
       newMsg.COMMAND = messaging.command.SET_TASK;
       this.log.log("Setting task to", i : string, hstring=v.header);
       SEND(newMsg, i);
-      //writeln("Message sent");
-      // start a logging task.  Who cares.
-      var vHeader: ygglog.yggHeader;
-      vHeader = v.header;
-      vHeader += "valkyriePython";
-      /*
-      begin {
-        // start dumping the stdout.
-        // but like, not that frequently.
-        var l: string;
-        while true {
-          sleep(5);
-          while vp.stdout.readline(l) {
-              this.log.log(l, hstring=vHeader);
-          }
-        }
-      }*/
-
-      // tell it what Valkyrie it is.
-      // VALKYRIE LAUNCHED
-      // okay, we probably need to switch to said interpreter.
-      // initialize the python interpreter.  Only do this once.
-      // will this work?  On a per task basis, I mean.
-      // I want to have multiple of these but also blaaaaah.
-      //writeln("make new gj");
-      //var gj = new owned gjallarbru.Gjallarbru();
-      //writeln("new gj made; get thread");
-      //var p_i = gj.newInterpreter();
-      //var p_i = globalGJ.threads[i];
-      //writeln("thread grabbed");
+      this.log.log("Setting ID to", this.id : string, hstring=v.header);
+      newMsg = new messaging.msg(v.id);
+      newMsg.COMMAND = messaging.command.SET_ID;
+      SEND(newMsg, i);
       v.moveToRoot();
-      //writeln("What's going on?");
-      //var gj = new owned gjallarbru.Gjallarbru();
       for gen in 1..generations {
         v.gen = gen;
-        //writeln("Are you though");
         this.log.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
-        //writeln("so many lies");
         var currToProc: string;
         var toProcess: domain(string);
         var path: network.pathHistory;
-        // Likely not necessary.
         toProcess.clear();
         this.lock.wl(v.header);
         if this.generationTime == 0 : real {
@@ -445,17 +407,9 @@ class Propagator: msgHandler {
           for id in this.nodesToProcess {
               // As this is an atomic variable, we don't need to lock.
               // It's probably best to remove it, if necessary.
-              //if !this.processedArray[id].read() {
-                toProcess.add(id);
-              //}
+              toProcess.add(id);
           }
           if !(v.priorityNodes & toProcess).isEmpty() {
-            // If this isn't an empty set, then prioritize the nodes here.
-            // Note that this always means that if the nodes aren't in the current
-            // generation, we ignore them.
-            // This is probably _not_ the way we'll want to do this, ultimately, but.
-            //this.log.debug('Using the joint of toProcess and priorityNodes:', (v.priorityNodes & toProcess) : string, hstring=v.header);
-            //this.log.debug('Current toProcess:', toProcess : string, 'current priorityNodes:', v.priorityNodes : string, hstring=v.header);
             toProcess = toProcess & v.priorityNodes;
           }
           // Assuming we have some things to process, do it!
@@ -464,20 +418,6 @@ class Propagator: msgHandler {
             var existsInDomainAndCanProcess: bool = false;
             // This function now does the atomic test.
             (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
-            // Still some weird edge cases; this just helps me sort out what things are doing.
-            //this.log.debug(this.nodesToProcess : string, '//', toProcess : string, ':', v.currentNode : string, 'TO', currToProc : string, hstring=v.header);
-            //this.log.debug('Attempting to unlock node:', currToProc, hstring=v.header);
-
-            //try {
-              // returns true if it exists and can be processed.
-            //  existsInDomainAndCanProcess = this.processedArray[currToProc].testAndSet();
-              // When this is done, it means this is OURS.
-            //} catch {
-              // just move on.  Who cares?
-              // This would normally mean an empty.
-            //}
-
-            //if existsInDomainAndCanProcess {
             if currToProc != '' {
               // Actually, reduce the count BEFORE we do this.
               // Otherwise we could have threads stealing focus that should
@@ -492,102 +432,19 @@ class Propagator: msgHandler {
                 v.nPriorityNodesProcessed += 1;
               }
               this.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
-              // rather than moving, we just... don't!  Yay!
               var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
               d.to = currToProc;
               newMsg = new messaging.msg(d);
               newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
-              this.log.debug("Attempting to run TF", hstring=v.header);
+              this.log.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
               this.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
               SEND(newMsg, i);
               this.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
-
-              /*
-              while RECV(newMsg, i) {
-                var l: string;
-                writeln("How many times?");
-                // you're getting one of those, for sure.
-                if vp.stdout.readline(l) {
-                  if l == "VALKYRIE PROCESSED MSG" {
-                    break;
-                  } else {
-                    this.log.log(l, hstring=vHeader);
-                  }
-                }
-              }*/
-              /*
-              begin {
-                // start dumping the stdout.
-                // but like, not that frequently.
-                var l: string;
-                while true {
-                  sleep(5);
-                  while vp.stdout.readline(l) {
-                      this.log.log(l, hstring=vHeader);
-                  }
-                }
-              }*/
               RECV(newMsg, i);
               var score: real;
               newMsg.open(score);
+              this.log.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
 
-              //vp.wait();
-              /*
-              var e: genes.deltaRecord;
-              var c: channel(true,iokind.native,true);
-              var z: channel(false,iokind.native,true);
-              //var lf = open('test.log' : string, iomode.cwr);
-              var seeds: domain(int);
-              var delta: [seeds] real;
-              var po: domain(int);
-              var pk: [po] real;
-              var lf = openmem();
-              var kg: domain(string);
-              var kr: domain(string);
-              kg.add("blah!");
-              seeds.add(1);
-              d += (123232, 10.0);
-              delta[1] = 12;
-              c = lf.writer(kind=ionative);
-              z = lf.reader(kind=ionative);
-              writeln(c.binary() : string);
-              writeln(z.binary() : string);
-              stdout.writef("%jt", d);
-              //writeln(seeds);
-              //c.writef("%jt", kg);
-              c.write(d);
-              c.flush();
-              var l = z.read(genes.deltaRecord);
-              */
-              //var m: int;
-              //var m = z.read(domain(int));
-              //c.close();
-              //lf = open('test.log' : string, iomode.rw);
-              //var l = z.readf("%jt", kr);
-              //stdout.writef("%jt", po);
-              //writeln(pk);
-              //e.readThis(d : string);
-              //e.read(d);
-
-              // okay, so we have the d.  Should we...
-              // we've moved; now score it.
-              // this already IS a string, so remove the cast.
-              //this.scoreDomain.add(currToProc : string);
-              //this.scoreArray[currToProc] = score;
-              // actually, just add it if we're... yeah, why not?
-              //var dims = globalGJ.createDimsArray(mSize, 3);
-              //dims[0] = 3;
-              //dims[1] = 24;
-              //dims[2] = 320;
-              //writeln("Look, are you getting to the stupid score?");
-              //var score: c_double = globalGJ.lockAndRun(globalGJ.threads[i], v.matrixValues, 3 : c_ulonglong, dims);
-              // Can we change the scope here?
-              //this.log.debug('Executing python', hstring=v.header);
-              //var score: real = globalGJ.lockAndRun(v.matrixValues, i, hstring=v.header);
-              this.log.debug('SCORE IS', score : string, hstring=v.header);
-
-              //writeln("Hooray for you.");
-              //var score: c_double;
               this.lock.wl(v.header);
               var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
               if score < maxVal {
@@ -595,19 +452,6 @@ class Propagator: msgHandler {
                 this.idArray[maxLoc] = currToProc;
               }
               this.lock.uwl(v.header);
-              // yay!  Now we have a score!  Fuck yeah broski.
-
-
-              // do a test
-              // Yeah, the interpreter is not thread safe.  Shocking, I know!  Huge shock.
-              // major surprise, even.
-              // call that python shit homefry
-              // this is just a test run.  It isn't really doing much but then again, ISN'T it?!
-              // the score exists now!  Yay!
-              //writeln("What's the score in chapel?");
-              //writeln(score : string);
-              //writeln(v.matrixValues);
-              //this.lock.uwl(v.header);
             }
             // While it seems odd we might try this twice, this helps us keep
             // track of algorithm efficiency by determining whether we're processing
@@ -617,17 +461,11 @@ class Propagator: msgHandler {
             }
           } else {
             // Rest now, my child. Rest, and know your work is done.
-            //this.log.debug('And now, I rest.')
             this.log.debug('And now, I rest.  Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
             while this.inCurrentGeneration.read() != 0 do chpl_task_yield();
             this.log.debug('Waking up!', hstring=v.header);
           }
           this.log.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
-          //for z in this.nodesToProcess {
-          //  this.log.debug('Has the node been processed?  Node: ', z: string, '-', this.processedArray[z].read() : string, hstring=v.header);
-          //}
-          // Here we check if an error condition happened.  We can shut down if that's
-          // the case.
           if this.shutdown {
             this.exitRoutine();
           }
@@ -718,14 +556,7 @@ class Propagator: msgHandler {
             //}
           }
           this.scoreArray = Math.INFINITY;
-          //
 
-          //gj.gc();
-          // To avoid GC problems, what if we shut it down and spin it back up?
-          this.log.debug("Destroying Python", v.header);
-          //gj.final();
-          this.log.debug("Recreating Python", v.header);
-          //gj.pInit();
           this.log.debug('Switching generations', v.header);
           // Clear out the current nodesToProcess domain, and swap it for the
           // ones we've set to process for the next generation.
@@ -755,11 +586,9 @@ class Propagator: msgHandler {
           }
           std = abs(avg - sqrt(std/maxValkyries))/avg;
           eff /= maxValkyries;
-          //std = 1 - (sqrt(std)/avg);
           processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
           this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
           this.yh.printedHeader = true;
-          //this.log.log(stdin.read(string));
           this.generationTime = 0 : real;
           this.lock.uwl(v.header);
           this.valkyriesProcessed.write(0);

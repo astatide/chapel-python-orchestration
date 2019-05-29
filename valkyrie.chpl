@@ -117,53 +117,20 @@ class valkyrieExecutor: msgHandler {
   // this is implemented as part of the messaging class.
   // Don't forget that override!
   override proc PROCESS(m: msg, i: int) {
-    // This is a stub class.  Those inheriting it must
-    // handle it themselves.
-    // does chapel have case/switch?  Hmmmm.
-    //c.writeln("Starting to process a msg");
-    //c.writeln(m);
-    //c.flush();
-    if m.COMMAND == messaging.command.SET_ID {
-      // set the ID.
-      m.open(this.id);
-    }
-    if m.COMMAND == messaging.command.SHUTDOWN {
-      writeln("Die die die");
-      exit(0);
-    }
-    if m.COMMAND == messaging.command.RETURN_STATUS {
-      //SEND(this.STATUS);
-    } else if m.COMMAND == messaging.command.SET_TASK {
-      //RECV(this.currentTask);
-      //this.currentTask = m.open();
-      m.open(this.currentTask);
-      //c.writeln("What is my task?");
-      //c.writeln(this.currentTask);
-      //c.flush();
-    } else if m.COMMAND == messaging.command.RECEIVE_AND_PROCESS_DELTA {
-      var delta: genes.deltaRecord;
-      m.open(delta);
-      //c.writeln(delta);
-      //c.writeln("Attempting to move");
-      //c.flush();
-      this.move(delta);
-      //c.writeln("attempting to start python");
-      //c.flush();
-      var score: c_double = gj.lockAndRun(this.matrixValues, this.currentTask, hstring=this.header);
-      //stdout.flush();
-      //c.writeln("Python done; trying to send message back");
-      //c.writeln(score);
-      //c.flush();
-      // now, return the score.
-      var newMsg = new messaging.msg(score);
-      newMsg.COMMAND = messaging.command.RECEIVE_SCORE;
-      //c.writeln("Sending message...");
-      //c.flush();
-      SEND(newMsg);
-      //c.writeln("Well, I did my job, anyway");
-      //c.flush();
-    } else {
-      SEND_STATUS(messaging.status.IGNORED);
+    // overriden from the messaging class
+    select m.COMMAND {
+      when messaging.command.SET_ID do m.open(this.id);
+      when messaging.command.SHUTDOWN do exit(0);
+      when messaging.command.SET_TASK do m.open(this.currentTask);
+      when messaging.command.RECEIVE_AND_PROCESS_DELTA do {
+        var delta: genes.deltaRecord;
+        m.open(delta);
+        this.move(delta);
+        var score: c_double = gj.lockAndRun(this.matrixValues, this.currentTask, hstring=this.header);
+        var newMsg = new messaging.msg(score);
+        newMsg.COMMAND = messaging.command.RECEIVE_SCORE;
+        SEND(newMsg);
+      }
     }
     writeln("VALKYRIE PROCESSED MSG");
   }
