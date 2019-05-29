@@ -252,8 +252,11 @@ class Propagator: msgHandler {
     this.ygg.log = this.log;
     this.ygg.lock.log = this.log;
     //this.ygg.initializeNetwork(n_seeds=startingSeeds);
+    this.log.debug("Initialising root node", this.yh);
     this.ygg.initializeRoot();
+    this.log.debug("Initialising chromosomes", this.yh);
     this.initChromosomes();
+    this.log.debug("About to add existing nodes to the processing list", this.yh);
     var ids = this.ygg.ids;
     for i in this.ygg.ids {
       if i != 'root' {
@@ -275,37 +278,15 @@ class Propagator: msgHandler {
     for i in 1..nChromosomes {
       // Here, we're going to be given the instructions for generating chromosomes.
       // No reason this can't be parallel, so let's do it.
+      this.log.debug('Spawning chromosome', this.yh);
       var nc = new chromosomes.Chromosome();
+      this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
       nc.prep(startingSeeds, chromosomeSize-startingSeeds);
+      this.log.debug('Genes prepped in Chromosome ID', nc.id, this.yh);
       nc.log = this.log;
-      for i in 1..nc.geneNumbers.size-1 {
-        //this.log.log("GENE ID:", z, "SET:", i, hstring=this.yh);
-        writeln("GENE ID: ", i : string, " SET: ", nc.actualGenes[i] : string);
+      for (id, combo) in nc.geneSets() {
+        writeln(id, " ", combo);
       }
-      for (ctype, nGene, gene_A, gene_B) in nc.generateGeneInstructions() {
-        if ctype == 0 {
-          // this is a new seed, and we'll connect it to gene_A.  Which is
-          // probably root.
-          var node = this.ygg.nextNode(nc[gene_A], this.yh);
-          // We can just add the node to the chromosome like this.
-          // When we're doing things in order, this is fine.
-          nc += node;
-          this.nodesToProcess.add(node);
-        } else if ctype == 1 {
-          var node = this.ygg.mergeNodes(nc[gene_A], nc[gene_B], this.yh);
-          nc += node;
-          this.nodesToProcess.add(node);
-        }
-      }
-      // this is the actual function we need, I guess.
-      //
-      /*
-      var yay = nc.GeneOrderListFix(8);
-      var m = yay[8,1].j;
-      sort(m);
-      for z in m {
-        writeln(z, ' ', nc.DNA(z));
-      }*/
       this.chromosomeDomain.add(nc.id);
       this.chromes[nc.id] = nc;
     }

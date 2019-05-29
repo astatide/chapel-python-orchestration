@@ -75,6 +75,84 @@ record seedSet {
 
 }
 
+record geneCombo {
+  var geneNumbers: domain(int);
+  var actualGenes: [geneNumbers] domain(int);
+  var nSize: int;
+
+  proc init(n: int) {
+    this.nSize = n;
+  }
+
+  proc prep() {
+    var l = this.GeneOrderListFix(nSize);
+    var n: int = 1;
+    for i in 1..nSize {
+      var m = l[nSize,i].j;
+      sort(m);
+      for z in m {
+        geneNumbers.add(n);
+        actualGenes[n] = DNA(z);
+        n += 1;
+      }
+    }
+  }
+
+  proc DNA(a: int) {
+    var q: int;
+    // Can't be longer than that!
+    var code: [1..64] int;
+    var indexSet: domain(int);
+    // by taking the modulo with 2, we generate unique combinations
+    // (that are made non-unique when combined with other combinations)
+    var modulo: int = 2;
+    q = a;
+    var i = 1;
+    if q/modulo > 0 {
+      while q/modulo > 0 {
+        code[i] = q % modulo;
+        q = q/modulo;
+        i += 1;
+      }
+    }
+    code[i] = q % modulo;
+    for j in 1..i {
+      if code[j] > 0 {
+      indexSet.add(j);
+      }
+    }
+    return indexSet;
+  }
+  proc GeneOrderListFix(k: int) {
+    // This is a mapping function that, given an index, returns a set in
+    // a sensible manner.
+    var d1: domain(int);
+    var d2: domain(int);
+    var d3: domain(int);
+    var l: [0..k,0..k] array;
+    var n: int;
+
+    for i in 0..k {
+      for j in 0..k {
+        l[i,j].j.domain.clear();
+      }
+      l[i,0].j.push_back(0);
+    }
+    for i in 1..k {
+      for j in 1..i {
+        for s in l[i - 1, j - 1].j {
+          l[i,j].j.push_back((s * 2) + 1);
+        }
+        for s in l[i - 1, j].j {
+          l[i,j].j.push_back(s * 2);
+        }
+      }
+    }
+    return l;
+  }
+}
+
+
 record Chromosome {
   // Honestly, the chromosome just needs to be a record, with maybe a few methods.
   // who knows, really!
@@ -87,54 +165,34 @@ record Chromosome {
   var currentGenes: int;
   var l: shared spinlock.SpinLock;
   var log: shared ygglog.YggdrasilLogging;
-
-  var geneCombinatorials: [0..propagator.chromosomeSize,0..propagator.chromosomeSize] array;
-
   var lowestIsBest: bool=false;
 
   // these are just the genes
   var geneNumbers: domain(int);
   var geneIDs: [geneNumbers] string;
-  var actualGenes: [geneNumbers] domain(int);
 
   // shadow genes.  These are the nodes that represented the previous state;
   // this is particularly useful for merge operations, as we have _already_
   // done a lot of the work to merge genes.
   var shadowGenes: [geneNumbers] string;
+  var combinations = new geneCombo(propagator.startingSeeds);
 
-  proc init(id='') {
-    if id == '' {
-      this.id = CUUID.UUID4();
-    } else {
-      this.id = id;
-    }
+  proc init() {
+    this.id = CUUID.UUID4();
     this.l = new shared spinlock.SpinLock();
     this.l.t = ' '.join('CHROMOSOME', this.id);
-    //this.nRootGenes = propagator.chromosomeSize;
   }
 
   proc prep(nRootGenes: int, nFunctionGenes: int) {
+    this.combinations.prep();
     this.nRootGenes = nRootGenes;
     this.nFunctionGenes = nFunctionGenes;
     this.totalGenes = this.nRootGenes + this.nFunctionGenes;
     // Add in the root node.
     this.geneNumbers.add(0);
     this.geneIDs[0] = 'root';
-    this.GeneOrderListFix(this.nRootGenes);
-    var n: int = 1;
-    for i in 1..nRootGenes {
-      var m = this.geneCombinatorials[nRootGenes,i].j;
-      sort(m);
-      for z in m {
-        this.geneNumbers.add(n);
-        this.actualGenes[n] = this.DNA(z);
-        //writeln(z, ' ', this.DNA(z));
-        //writeln(n, ' ', this.actualGenes[n]);
-        n += 1;
-      }
-    }
-    for i in 1..this.geneNumbers.size-1 {
-      writeln(i, ' ', this.actualGenes[i]);
+    for i in 1..this.combinations.geneNumbers.size-1 {
+      writeln(i, ' ', this.combinations.actualGenes[i]);
     }
   }
 
@@ -165,31 +223,16 @@ record Chromosome {
     }
   }
 
+  iter geneSets() {
+    for i in 1..totalGenes {
+      yield (this.geneIDs[i], this.combinations.actualGenes[i]);
+    }
+  }
+
   // This is an initialization function; we generate a set of instructions and
   // nodes such that we can generate the appropriate nodes.
   // yields: cType, gene position, and what genes to operate on, if necessary.
   iter generateGeneInstructions() {
-    var alreadyDone: domain(string);
-    for i in 1..nRootGenes {
-      yield (0, i, 0, 0);
-    }
-    // We want combinations of all seeds, including ungenerated ones, until
-    // we have reached the total number of genes.
-    // Since these are merge functions, we want n genes, where n^2 = nFunctionGenes.
-    // Ergo, n = sqrt(nFunctionGenes); this is the number of combinations we can do.
-    // We'll exclude ones that we've already done, however.
-    var z: int = this.nRootGenes;
-    //while z <= this.totalGenes {
-    // ehhhhhh it'll get us there for the moment.  Won't quite produce the right
-    // amount since I'm too lazy.
-    for i in 1..sqrt(this.nFunctionGenes) : int {
-      for j in i+1..sqrt(this.nFunctionGenes) : int {
-        if i != j {
-          z += 1;
-          yield (1, z, i, j);
-        }
-      }
-    }
   }
 
   /*
@@ -198,63 +241,6 @@ record Chromosome {
 
   Generally, don't call this.
   */
-
-  proc DNA(a: int) {
-    var q: int;
-    // Can't be longer than that!
-    var code: [1..64] int;
-    var indexSet: domain(int);
-    // by taking the modulo with 2, we generate unique combinations
-    // (that are made non-unique when combined with other combinations)
-    var modulo: int = 2;
-    q = a;
-    var i = 1;
-    if q/modulo > 0 {
-      while q/modulo > 0 {
-        code[i] = q % modulo;
-        q = q/modulo;
-        i += 1;
-      }
-    }
-    code[i] = q % modulo;
-    for j in 1..i {
-      if code[j] > 0 {
-      indexSet.add(j);
-      }
-    }
-    return indexSet;
-  }
-
-  proc GeneOrderListFix(k: int) {
-    // This is a mapping function that, given an index, returns a set in
-    // a sensible manner.
-    var d1: domain(int);
-    var d2: domain(int);
-    var d3: domain(int);
-    //var l: [0..k,0..k] array;
-    var n: int;
-
-    for i in 0..k {
-      for j in 0..k {
-        this.geneCombinatorials[i,j].j.domain.clear();
-      }
-      this.geneCombinatorials[i,0].j.push_back(0);
-    }
-
-    for i in 1..k {
-      for j in 1..i {
-        for s in this.geneCombinatorials[i - 1, j - 1].j {
-          this.geneCombinatorials[i,j].j.push_back((s * 2) + 1);
-        }
-        for s in this.geneCombinatorials[i - 1, j].j {
-          this.geneCombinatorials[i,j].j.push_back(s * 2);
-        }
-      }
-    }
-    //this.geneCombinatorials = l;
-    //return l;
-  }
-
 
   proc bestGeneInDeme(deme='') {
     var bestNode: string;
