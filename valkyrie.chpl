@@ -133,6 +133,7 @@ class valkyrieExecutor: msgHandler {
       }
     }
     writeln("VALKYRIE PROCESSED MSG");
+    stdout.flush();
   }
 
   iter logo {
