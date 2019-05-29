@@ -278,6 +278,10 @@ class Propagator: msgHandler {
       var nc = new chromosomes.Chromosome();
       nc.prep(startingSeeds, chromosomeSize-startingSeeds);
       nc.log = this.log;
+      for i in 1..nc.geneNumbers.size-1 {
+        //this.log.log("GENE ID:", z, "SET:", i, hstring=this.yh);
+        writeln("GENE ID: ", i : string, " SET: ", nc.actualGenes[i] : string);
+      }
       for (ctype, nGene, gene_A, gene_B) in nc.generateGeneInstructions() {
         if ctype == 0 {
           // this is a new seed, and we'll connect it to gene_A.  Which is
@@ -293,28 +297,15 @@ class Propagator: msgHandler {
           this.nodesToProcess.add(node);
         }
       }
-      writeln('awwww yis');
+      // this is the actual function we need, I guess.
+      //
+      /*
       var yay = nc.GeneOrderListFix(8);
-      var m = yay[8,4].j;
+      var m = yay[8,1].j;
       sort(m);
-      writeln('donezo');
-      //for z in nc.GeneOrderListFix(12)[11,4] {
-      //for z in sort(yay.j, comparator=absComparator) {
       for z in m {
-        writeln(z, ' ');
-      }
-      writeln('m.f.ing bread crumbs');
-      writeln(nc[0]);
-      // Do a little test.
-      var k: int;
-      for z in nc.DNAList() {
-        k += 1;
-        writeln(k, ' -- ', nc.DNA(k), ' : ', z, ' -- ', nc.DNA(z));
-      }
-      //for z in 1..31 {
-        //writeln(z, ' : ', nc.DNASetGenerator[z, true]);
-
-      //}
+        writeln(z, ' ', nc.DNA(z));
+      }*/
       this.chromosomeDomain.add(nc.id);
       this.chromes[nc.id] = nc;
     }
