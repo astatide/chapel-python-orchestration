@@ -369,7 +369,8 @@ class Propagator: msgHandler {
       // set up a ZMQ client/server
       this.initSendSocket(i);
       this.initUnlinkedRecvSocket(i);
-      var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--mSize", mSize : string]);
+      var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
+      this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string, hstring=v.header);
       //vp.stdin.writeln(this.sendPorts[i]);
       // don't forget to flush the connection
       //vp.stdin.flush();
@@ -386,6 +387,7 @@ class Propagator: msgHandler {
       // start a logging task.  Who cares.
       var vHeader: ygglog.yggHeader;
       vHeader = v.header;
+      vHeader += "valkyriePython";
       /*
       begin {
         // start dumping the stdout.
@@ -393,13 +395,12 @@ class Propagator: msgHandler {
         var l: string;
         while true {
           sleep(5);
-          vp.stdout.readline(l);
-          if (l != "") {
-            this.log.log(l, hstring=vHeader);
+          while vp.stdout.readline(l) {
+              this.log.log(l, hstring=vHeader);
           }
         }
-      }
-      */
+      }*/
+
       // tell it what Valkyrie it is.
       // VALKYRIE LAUNCHED
       // okay, we probably need to switch to said interpreter.
@@ -410,11 +411,11 @@ class Propagator: msgHandler {
       //var gj = new owned gjallarbru.Gjallarbru();
       //writeln("new gj made; get thread");
       //var p_i = gj.newInterpreter();
-      var p_i = globalGJ.threads[i];
+      //var p_i = globalGJ.threads[i];
       //writeln("thread grabbed");
       v.moveToRoot();
       //writeln("What's going on?");
-      var gj = new owned gjallarbru.Gjallarbru();
+      //var gj = new owned gjallarbru.Gjallarbru();
       for gen in 1..generations {
         v.gen = gen;
         //writeln("Are you though");
@@ -496,12 +497,37 @@ class Propagator: msgHandler {
               d.to = currToProc;
               newMsg = new messaging.msg(d);
               newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
-              writeln(newMsg);
               this.log.debug("Attempting to run TF", hstring=v.header);
+              this.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
               SEND(newMsg, i);
               this.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
+
+              /*
+              while RECV(newMsg, i) {
+                var l: string;
+                writeln("How many times?");
+                // you're getting one of those, for sure.
+                if vp.stdout.readline(l) {
+                  if l == "VALKYRIE PROCESSED MSG" {
+                    break;
+                  } else {
+                    this.log.log(l, hstring=vHeader);
+                  }
+                }
+              }*/
+              /*
+              begin {
+                // start dumping the stdout.
+                // but like, not that frequently.
+                var l: string;
+                while true {
+                  sleep(5);
+                  while vp.stdout.readline(l) {
+                      this.log.log(l, hstring=vHeader);
+                  }
+                }
+              }*/
               RECV(newMsg, i);
-              this.log.debug("Message received; awaiting score", hstring=v.header);
               var score: real;
               newMsg.open(score);
 

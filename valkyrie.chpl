@@ -12,14 +12,14 @@ VUUID.UUID4();
 
 config var recvPort: string;
 config var sendPort: string;
-config var mSize: int;
+config var vSize: int;
 
 //var lf = open('test.log' : string, iomode.cwr);
 //var c = lf.writer(kind=ionative);
 //var z = lf.reader(kind=ionative);
 
 class valkyrieExecutor: msgHandler {
-  var matrixValues: [0..mSize] c_double;
+  var matrixValues: [0..vSize] c_double;
   var takeAnyPath: bool = false;
   var moved: bool = false;
   var canMove: bool = false;
@@ -165,6 +165,7 @@ class valkyrieExecutor: msgHandler {
     } else {
       SEND_STATUS(messaging.status.IGNORED);
     }
+    writeln("VALKYRIE PROCESSED MSG");
   }
 
   iter logo {

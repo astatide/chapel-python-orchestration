@@ -155,7 +155,7 @@ class msgHandler {
   }
 
   proc receiveLoop(i: int) {
-    
+
   }
 
   proc __receiveMessage__(i: int) {
@@ -222,58 +222,11 @@ class msgHandler {
     //fout[i].flush();
     this.sendSocket[i].send(m);
     this.RECV_STATUS(i);
+    return true;
   }
 
-  proc __SEND__(d: genes.deltaRecord, i: int) {
-    // send the message!
-    //fout[i].writeln(d);
-    //fout[i].flush();
-    var ds = d : string;
-    //writeln(ds);
-    this.sendSocket[i].send(ds);
-    //writeln("blah");
-    // workaround for now...
-    var lf = openmem();
-    var c = lf.writer();
-    var z = lf.reader();
-    var tmp = d : string;
-    c.writeln(tmp);
-    c.flush();
-    var dn: genes.deltaRecord;
-    //var dn: string;
-    dn = z.readln(genes.deltaRecord);
-    //dn = z.readln(string);
-    writeln(dn : string);
-    this.RECV_STATUS(i);
-  }
-
-  proc __SEND__(j: int, i: int) {
-    // send the message!
-    //fout[i].writeln(j);
-    //fout[i].flush();
-    this.sendSocket[i].send(j);
-    this.RECV_STATUS(i);
-  }
-
-  proc __SEND__(j: real, i: int) {
-    // send the message!
-    //fout[i].writeln(j);
-    //fout[i].flush();
-    this.sendSocket[i].send(j);
-    this.RECV_STATUS(i);
-  }
-
-  proc SEND(m: msg, i: int) { this.__SEND__(m, i); }
-  proc SEND(m: msg) { this.__SEND__(m, this.mId); }
-
-  proc SEND(d: genes.deltaRecord, i: int) { this.__SEND__(d, i); }
-  proc SEND(d: genes.deltaRecord) { this.__SEND__(d, this.mId); }
-
-  proc SEND(j: int, i: int) { this.__SEND__(j, i); }
-  proc SEND(j: int) { this.__SEND__(j, this.mId); }
-
-  proc SEND(j: real, i: int) { this.__SEND__(j, i); }
-  proc SEND(j: real) { this.__SEND__(j, this.mId); }
+  proc SEND(m: msg, i: int) { return this.__SEND__(m, i); }
+  proc SEND(m: msg) { return this.__SEND__(m, this.mId); }
 
   // these are functions for receiving.  Essentially, all listen functions
   // must receive a status, or they are blocked.
@@ -283,48 +236,10 @@ class msgHandler {
     //fin[i].readln(m);
     m = this.recvSocket[i].recv(msg);
     OK(i);
+    return true;
   }
 
-  proc __RECV__(ref d: genes.deltaRecord, i: int) {
-    // receive the message!
-    //fin[i].readln(d);
-    var ds: string;
-    ds = this.recvSocket[i].recv(string);
-    OK(i);
-    // workaround for now...
-    var lf = openmem();
-    var c = lf.writer();
-    var z = lf.reader();
-    c.writeln(ds);
-    c.flush();
-    writeln("Oh yeah");
-    writeln(ds);
-    d = z.readln(genes.deltaRecord);
-  }
+  proc RECV(ref m: msg, i: int) { return this.__RECV__(m, i); }
+  proc RECV(ref m: msg) { return this.__RECV__(m, this.mId); }
 
-  proc __RECV__(ref j: int, i: int) {
-    // receive the message!
-    //fin[i].readln(j);
-    j = this.recvSocket[i].recv(int);
-    OK(i);
-  }
-
-  proc __RECV__(ref j: real, i: int) {
-    // receive the message!
-    //fin[i].readln(j);
-    j = this.recvSocket[i].recv(real);
-    OK(i);
-  }
-
-  proc RECV(ref m: msg, i: int) { this.__RECV__(m, i); }
-  proc RECV(ref m: msg) { this.__RECV__(m, this.mId); }
-
-  proc RECV(ref d: genes.deltaRecord, i: int) { this.__RECV__(d, i); }
-  proc RECV(ref d: genes.deltaRecord) { this.__RECV__(d, this.mId); }
-
-  proc RECV(ref j: int, i: int) { this.__RECV__(j, i); }
-  proc RECV(ref j: int) { this.__RECV__(j, this.mId); }
-
-  proc RECV(ref j: real, i: int) { this.__RECV__(j, i); }
-  proc RECV(ref j: real) { this.__RECV__(j, this.mId); }
 }
