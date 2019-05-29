@@ -12,11 +12,11 @@ clean:
 	rm yggdrasil
 
 valkyrie:
-	chpl -I ZMQHelper/ -L /usr/local/lib -I /usr/local/include --warn-unstable --devel -o valkyrie -M src -M python valkyrie.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks
+	chpl -I ZMQHelper/ -L /usr/local/lib -I /usr/local/include --warn-unstable --devel -o valkyrie -M src -M python valkyrie.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks --print-callstack-on-error
 
 yggdrasil:
 	#chpl --warn-unstable --devel -o yggdrasil -M src/ -M python/ main.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks
-	chpl -o yggdrasil -L /usr/local/lib -I /usr/local/include -M src/ -M python/ main.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks  #--target-compiler=$(CCACHE)
+	chpl -o yggdrasil -L /usr/local/lib -I /usr/local/include -M src/ -M python/ main.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks --print-callstack-on-error  #--target-compiler=$(CCACHE)
 
 spawn:
 	env CHPL_DEVELOPER=true chpl -o spawn -L /usr/local/lib -I /usr/local/include -M src/ -M python/ sp.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks

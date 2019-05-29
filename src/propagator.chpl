@@ -146,7 +146,7 @@ class Propagator: msgHandler {
   var processedArray: [nodesToProcess] atomic bool;
   // actually, this should probably be its own thing.
   //var scoreDomain: domain(string);
-  var scoreArray: [1..maxPerGeneration] real = Math.INFINITY;
+  var scoreArray: [1..maxPerGeneration] real = 0; //Math.INFINITY;
   var idArray: [1..maxPerGeneration] string;
   var inCurrentGeneration: atomic int;
   var nextGeneration: domain(string);
@@ -340,6 +340,28 @@ class Propagator: msgHandler {
     this.shutdown = true;
   }
 
+  proc valhalla(i: int, vId: string, vstring: ygglog.yggHeader) {
+    // ha ha, cause Valkyries are in Valhalla, get it?  Get it?
+    // ... no?
+    this.log.log("Initializing sockets", hstring=vstring);
+    // set up a ZMQ client/server
+    this.initSendSocket(i);
+    this.initUnlinkedRecvSocket(i);
+    this.log.log("Spawning Valkyrie", hstring=vstring);
+    var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
+    this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string, hstring=vstring);
+    this.log.log("PORTS:",this.sendPorts[i] : string, this.recvPorts[i] : string, hstring=vstring);
+    var newMsg = new messaging.msg(i);
+    newMsg.COMMAND = messaging.command.SET_TASK;
+    this.log.log("Setting task to", i : string, hstring=vstring);
+    SEND(newMsg, i);
+    return vp;
+    //this.log.log("Setting ID to", vId : string, hstring=vstring);
+    //newMsg = new messaging.msg(vId);
+    //newMsg.COMMAND = messaging.command.SET_ID;
+    //SEND(newMsg, i);
+  }
+
   proc run() {
     // Print out the header, yo.
     this.header();
@@ -362,24 +384,7 @@ class Propagator: msgHandler {
         this.log.header(iL, hstring=v.header);
       }
       // also, spin up the tasks.
-      var vout: string;
-      var recvPort: string;
-      this.log.log("Initializing sockets", hstring=v.header);
-      // set up a ZMQ client/server
-      this.initSendSocket(i);
-      this.initUnlinkedRecvSocket(i);
-      this.log.log("Spawning Valkyrie", hstring=v.header);
-      var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
-      this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string, hstring=v.header);
-      this.log.log("PORTS:",this.sendPorts[i] : string, this.recvPorts[i] : string, hstring=v.header);
-      var newMsg = new messaging.msg(i);
-      newMsg.COMMAND = messaging.command.SET_TASK;
-      this.log.log("Setting task to", i : string, hstring=v.header);
-      SEND(newMsg, i);
-      this.log.log("Setting ID to", v.id : string, hstring=v.header);
-      newMsg = new messaging.msg(v.id);
-      newMsg.COMMAND = messaging.command.SET_ID;
-      SEND(newMsg, i);
+      var vp = this.valhalla(i, v.id, vstring=v.header);
       v.moveToRoot();
       for gen in 1..generations {
         v.gen = gen;
@@ -434,7 +439,7 @@ class Propagator: msgHandler {
               this.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
               var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
               d.to = currToProc;
-              newMsg = new messaging.msg(d);
+              var newMsg = new messaging.msg(d);
               newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
               this.log.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
               this.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
@@ -446,11 +451,19 @@ class Propagator: msgHandler {
               this.log.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
 
               this.lock.wl(v.header);
-              var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
-              if score < maxVal {
-                this.scoreArray[maxLoc] = score;
-                this.idArray[maxLoc] = currToProc;
+              /*if false {
+                var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
+                if score < maxVal {
+                  this.scoreArray[maxLoc] = score;
+                  this.idArray[maxLoc] = currToProc;
+                }
+              } else {*/
+              var (minVal, minLoc) = minloc reduce zip(this.scoreArray, this.scoreArray.domain);
+              if score > minVal {
+                this.scoreArray[minLoc] = score;
+                this.idArray[minLoc] = currToProc;
               }
+              //}
               this.lock.uwl(v.header);
             }
             // While it seems odd we might try this twice, this helps us keep
@@ -513,11 +526,14 @@ class Propagator: msgHandler {
           // we'll just throw this in here for now.
           // Only do the max!
           //var bestInGen: real = this.scoreArray[1];
-          var (bestInGen, minLoc) = minloc reduce zip(this.scoreArray, this.scoreArray.domain);
+          var (bestInGen, minLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
           writeln(this.scoreArray);
           for ij in 1..maxPerGeneration {
             currToProc = this.idArray[ij];
-            if this.scoreArray[ij] == Math.INFINITY {
+            //if this.scoreArray[ij] == Math.INFINITY {
+            //  break;
+            //}
+            if this.scoreArray[ij] == 0 {
               break;
             }
             this.log.debug('Attempting to move ID', currToProc, 'into the next generation.', hstring=v.header);
@@ -555,7 +571,8 @@ class Propagator: msgHandler {
             }
             //}
           }
-          this.scoreArray = Math.INFINITY;
+          //this.scoreArray = Math.INFINITY;
+          this.scoreArray = 0;
 
           this.log.debug('Switching generations', v.header);
           // Clear out the current nodesToProcess domain, and swap it for the
