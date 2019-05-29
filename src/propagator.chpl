@@ -376,7 +376,7 @@ class Propagator: msgHandler {
       newMsg.COMMAND = messaging.command.SET_TASK;
       this.log.log("Setting task to", i : string, hstring=v.header);
       SEND(newMsg, i);
-      this.log.log("Setting ID to", this.id : string, hstring=v.header);
+      this.log.log("Setting ID to", v.id : string, hstring=v.header);
       newMsg = new messaging.msg(v.id);
       newMsg.COMMAND = messaging.command.SET_ID;
       SEND(newMsg, i);
