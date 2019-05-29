@@ -118,12 +118,27 @@ class msgHandler {
     this.sendPorts[i] = this.sendSocket[i].getLastEndpoint();
   }
 
+  proc initPrevSendSocket(i: int, port: string) {
+    this.sendSocket[i] = this.context.socket(ZMQ.PUSH);
+    this.sendSocket[i].connect(port);
+    this.sendPorts[i] = port;
+  }
+
   proc initRecvSocket(i: int, port: string) {
     // so, we're going to set up and use a random port.
 
     this.recvSocket[i] = this.context.socket(ZMQ.PULL);
     this.recvSocket[i].connect(port);
     this.recvPorts[i] = port;
+  }
+
+  proc initUnlinkedRecvSocket(i: int) {
+    // so, we're going to set up and use a random port.
+
+    this.recvSocket[i] = this.context.socket(ZMQ.PULL);
+    this.recvSocket[i].bind("tcp://*:*");
+    this.recvPorts[i] = this.recvSocket[i].getLastEndpoint();
+
   }
 
   proc setChannels(fin, fout, i /* takes a channel as input */) {

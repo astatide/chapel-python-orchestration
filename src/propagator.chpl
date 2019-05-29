@@ -358,17 +358,19 @@ class Propagator: msgHandler {
       // also, spin up the tasks.
       var vout: string;
       var recvPort: string;
-      var vp = spawn(["./valkyrie"], stdout=PIPE, stdin=PIPE);
+      //var vp = spawn(["./valkyrie"], stdout=PIPE, stdin=PIPE);
       this.log.log("Valkyrie spawned; initializing sockets", hstring=v.header);
       // set up a ZMQ client/server
       this.initSendSocket(i);
-      vp.stdin.writeln(this.sendPorts[i]);
+      this.initUnlinkedRecvSocket(i);
+      var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--mSize", mSize : string]);
+      //vp.stdin.writeln(this.sendPorts[i]);
       // don't forget to flush the connection
-      vp.stdin.flush();
-      vp.stdout.readln(recvPort);
+      //vp.stdin.flush();
+      //vp.stdout.readln(recvPort);
       //writeln(recvPort);
       //vp.stdout.readln(recvPort);
-      this.initRecvSocket(i, recvPort);
+      //this.initRecvSocket(i, recvPort);
       this.log.log("PORTS:",this.sendPorts[i] : string, this.recvPorts[i] : string, hstring=v.header);
       var newMsg = new messaging.msg(i);
       newMsg.COMMAND = messaging.command.SET_TASK;
@@ -378,16 +380,20 @@ class Propagator: msgHandler {
       // start a logging task.  Who cares.
       var vHeader: ygglog.yggHeader;
       vHeader = v.header;
-      /*begin {
+      /*
+      begin {
         // start dumping the stdout.
+        // but like, not that frequently.
         var l: string;
         while true {
+          sleep(5);
           vp.stdout.readline(l);
           if (l != "") {
             this.log.log(l, hstring=vHeader);
           }
         }
-      }*/
+      }
+      */
       // tell it what Valkyrie it is.
       // VALKYRIE LAUNCHED
       // okay, we probably need to switch to said interpreter.
@@ -485,14 +491,14 @@ class Propagator: msgHandler {
               newMsg = new messaging.msg(d);
               newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
               writeln(newMsg);
-              writeln("Attempting to run TF");
+              this.log.debug("Attempting to run TF", hstring=v.header);
               SEND(newMsg, i);
-              writeln("Message & delta sent; awaiting instructions");
+              this.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
               RECV(newMsg, i);
-              writeln("Message received; awaiting score");
+              this.log.debug("Message received; awaiting score", hstring=v.header);
               var score: real;
               newMsg.open(score);
-              writeln(score);
+
               //vp.wait();
               /*
               var e: genes.deltaRecord;

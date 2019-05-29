@@ -23,7 +23,7 @@ PyObject *valkyrieID(PyObject *self, PyObject *args);
 static PyObject * gjallarbru_write(PyObject *self, PyObject *args);
 //static PyObject returnNumpyArray();
 
-double **globalArray;
+double *globalArray;
 PyObject * returnList;
 PyObject * prevReturnList;
 PyInterpreterState * mainInterpreterState;
@@ -249,7 +249,8 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
     //return returnList;
     // clear up the memory.
     // This should cause it to fail, which we want.
-    Py_XDECREF(returnList);
+    return returnList;
+    //Py_XDECREF(returnList);
   }
 
   // We're going to go ahead and pull the appropriate thread state
@@ -258,12 +259,12 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
   // So let's add to this dictionary yo!
   unsigned long long valkyrie = PyLong_AsUnsignedLongLong(PyDict_GetItemString(inptDict, "valkyrieID"));
 
-  double * vArray = globalArray[valkyrie];
+  double * vArray = globalArray;
 
   functionRunOnce = true;
 
   PyObject * argList, * tupleValue, * tempTuple;
-  double * cArray = vArray;
+  double * cArray = globalArray;
   unsigned long long *dimArray;
   Py_ssize_t n, m;
   long long cD;
@@ -288,6 +289,7 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
     return NULL;
   }
 
+  printf("STOP 1: args processed");
   n = PyList_Size(argList);
   m = 0;
   // Get the size of the amount of memory we need to malloc
@@ -303,12 +305,13 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
       m += 1;
     }
   }
-
+  printf("STOP 2: array size obtained");
   // probably fucking up the mallocs
   dimArray = malloc(m * sizeof(unsigned long long));
   //unsigned long long * dArray = dimArray;
   returnList = PyList_New(n);
   Py_XINCREF(returnList);
+  printf("STOP 3: returnList created");
 
   for (int i = 0; i < n; i++) {
     elements = 1;
@@ -336,16 +339,17 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
       elements *= tValue;
     }
     // Keep it in scope.
-    PyList_SET_ITEM(returnList, i, (PyArrayObject *)PyArray_SimpleNewFromData(m, dimArray, NPY_FLOAT64, (void *)(cArray)));
+    PyList_SET_ITEM(returnList, i, (PyArrayObject *)PyArray_SimpleNewFromData(m, dimArray, NPY_FLOAT64, (void *)(globalArray)));
     if (PyErr_Occurred()) {
       PyErr_Print();
     }
     // shift the array pointer up by the appropriate number of elements.
     dimArray += m;
     mTotal += m;
-    cArray += elements;
+    globalArray += elements;
     cD += m;
   }
+  printf("STOP 4: arrays built");
   dimArray -= mTotal;
   free(dimArray);
 
@@ -360,6 +364,7 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
   //printf("\nNow, we return!\n");
   //Py_XINCREF(returnList);
   //Py_XDECREF(returnList);
+  printf("STOP 5: return");
   return returnList;
 
 }
@@ -551,7 +556,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
       // ... remember that Chapel doesn't start at 0.
       PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(valkyrie-1));
       //PyDict_SetItemString(inptDict, "logname", PyUnicode_FromString(logname));
-      globalArray[valkyrie-1] = arr;
+      globalArray = arr;
 
       //globalArray = arr;
       functionRunOnce = false;
@@ -653,34 +658,8 @@ double pythonRunpThread(double * arr, unsigned long long valkyrie, double * scor
 
 PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // disable buffering for debugging.
-  //PyGILState_STATE gstate;
-  //gstate = PyGILState_Ensure();
-  //PyThreadState *threads[maxValkyries];
-
-  // set the global variables
-  // we have to do a little thread safety here.
-  //atomic_store(valkyriesDone, 0);
-  globalMaxValkyries = maxValkyries;
-  // man, fuck you apple
-  struct timeval tv;
-  //if (gettimeofday(&tv, NULL) < 0) {
-  //  FATAL1("gettimeofday returned an error (%s)\n", strerror(errno));
-  //}
-  struct tm decomposed;
-  struct tm* error_code = localtime_r(&(tv.tv_sec), &decomposed);
-  //if (error_code == NULL) {
-  //  FATAL1("localtime_r returned an error (%s)\n", strerror(errno));
-  //}
-
-  // this is some stupid apple shit
-
-  // malloc the damn thing.
-  //threads = malloc(sizeof(PyThreadState*)*maxValkyries);
-  //interps = malloc(sizeof(PyThreadState*)*maxValkyries);
-  //threadsInitialized = malloc(sizeof(int)*maxValkyries);
   // we're adding this to the list of builtins in order to export it.
-  // and yet.
-  // this actually nabs the whole time thing, so.
+  setbuf(stdout, NULL);
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
 
 
@@ -695,7 +674,7 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // Why does Python insist on not sandboxing itself?  I don't want to share
   // memory between python interpreters.
   // ugh it's just blah.
-  globalArray = malloc(maxValkyries * sizeof(double*));
+  //globalArray = malloc(maxValkyries * sizeof(double*));
   //mainThreadState = PyThreadState_Get();
   //mainInterpreterState = mainThreadState->interp;
   //for (int i = 0; i < maxValkyries; i++ ) {
@@ -721,8 +700,6 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // Since all that works, I suspect we're going out of scope, somehow.
   // Jesus.
   //PyThreadState_Swap(mainThreadState);
-  returnList = NULL;
-  prevReturnList = NULL;
   return threads;
   // Release the GIL, but swap in the main thread.
   // also fuck off.

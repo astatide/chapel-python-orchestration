@@ -10,12 +10,16 @@ use messaging;
 var VUUID = new owned uuid.UUID();
 VUUID.UUID4();
 
+config var recvPort: string;
+config var sendPort: string;
+config var mSize: int;
+
 //var lf = open('test.log' : string, iomode.cwr);
 //var c = lf.writer(kind=ionative);
 //var z = lf.reader(kind=ionative);
 
 class valkyrieExecutor: msgHandler {
-  var matrixValues: [0..propagator.mSize] c_double;
+  var matrixValues: [0..mSize] c_double;
   var takeAnyPath: bool = false;
   var moved: bool = false;
   var canMove: bool = false;
@@ -192,12 +196,9 @@ proc main {
   v.setChannels(stdin, stdout);
   //v.id = 1;
   //stdout.writeln("Started!");
-  var recvPort = stdin.readln(string);
   //writeln("received port!");
   v.initRecvSocket(1, recvPort);
-  v.initSendSocket(1);
-  writeln(v.sendPorts[1]);
-  stdout.flush();
+  v.initPrevSendSocket(1, sendPort);
   //c.write("So, I've got all that stuff set");
   //c.write(v.sendPorts[1], " ", v.recvPorts[1]);
   //c.flush();
