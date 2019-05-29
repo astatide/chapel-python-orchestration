@@ -284,9 +284,12 @@ class Propagator: msgHandler {
       nc.prep(startingSeeds, chromosomeSize-startingSeeds);
       this.log.debug('Genes prepped in Chromosome ID', nc.id, this.yh);
       nc.log = this.log;
-      for (id, combo) in nc.geneSets() {
-        writeln(id, " ", combo);
-      }
+      var n: int = 1;
+      //for combo in nc.geneSets() {
+      //  var c = combo : string;
+        //this.log.debug('LOC IN GENE:', n : string, 'SET:', hstring=this.yh);
+      //  n += 1;
+      //}
       this.chromosomeDomain.add(nc.id);
       this.chromes[nc.id] = nc;
     }

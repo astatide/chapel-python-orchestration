@@ -191,9 +191,6 @@ record Chromosome {
     // Add in the root node.
     this.geneNumbers.add(0);
     this.geneIDs[0] = 'root';
-    for i in 1..this.combinations.geneNumbers.size-1 {
-      writeln(i, ' ', this.combinations.actualGenes[i]);
-    }
   }
 
   proc add(i: int, geneId: string) {
@@ -225,7 +222,7 @@ record Chromosome {
 
   iter geneSets() {
     for i in 1..totalGenes {
-      yield (this.geneIDs[i], this.combinations.actualGenes[i]);
+      yield this.combinations.actualGenes[i];
     }
   }
 
