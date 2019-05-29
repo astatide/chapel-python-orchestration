@@ -172,6 +172,23 @@ class Propagator: msgHandler {
   var chromosomeDomain: domain(string);
   var chromes: [chromosomeDomain] chromosomes.Chromosome;
 
+  //var sendPorts: [0..maxValkyries] string;
+  //var recvPorts: [0..maxValkyries] string;
+
+  //var sendSocket: [0..maxValkyries] Socket;
+  //var recvSocket: [0..maxValkyries] Socket;
+  //var nChannels: domain(int);
+
+
+  // this is from the msgHandler class.
+  proc init(n: int) {
+    // basically, the inheritance isn't working as I would have expected.
+    // see https://github.com/chapel-lang/chapel/issues/8232
+    super.init(maxValkyries);
+    //this.size = maxValkyries;
+  }
+
+
   proc logo() {
     return '';
   }
@@ -340,14 +357,38 @@ class Propagator: msgHandler {
       }
       // also, spin up the tasks.
       var vout: string;
+      var recvPort: string;
       var vp = spawn(["./valkyrie"], stdout=PIPE, stdin=PIPE);
-      writeln(vp.stdout.readln(vout));
+      this.log.log("Valkyrie spawned; initializing sockets", hstring=v.header);
+      // set up a ZMQ client/server
+      this.initSendSocket(i);
+      vp.stdin.writeln(this.sendPorts[i]);
+      // don't forget to flush the connection
+      vp.stdin.flush();
+      vp.stdout.readln(recvPort);
+      //writeln(recvPort);
+      //vp.stdout.readln(recvPort);
+      this.initRecvSocket(i, recvPort);
+      this.log.log("PORTS:",this.sendPorts[i] : string, this.recvPorts[i] : string, hstring=v.header);
+      var newMsg = new messaging.msg(i);
+      newMsg.COMMAND = messaging.command.SET_TASK;
+      this.log.log("Setting task to", i : string, hstring=v.header);
+      SEND(newMsg, i);
+      //writeln("Message sent");
+      // start a logging task.  Who cares.
+      var vHeader: ygglog.yggHeader;
+      vHeader = v.header;
+      /*begin {
+        // start dumping the stdout.
+        var l: string;
+        while true {
+          vp.stdout.readline(l);
+          if (l != "") {
+            this.log.log(l, hstring=vHeader);
+          }
+        }
+      }*/
       // tell it what Valkyrie it is.
-      vp.stdin.writeln(i);
-
-      vp.stdout.readln(vout);
-      // ABOUT TO RUN
-      vp.stdout.readln(vout);
       // VALKYRIE LAUNCHED
       // okay, we probably need to switch to said interpreter.
       // initialize the python interpreter.  Only do this once.
@@ -441,7 +482,18 @@ class Propagator: msgHandler {
               // rather than moving, we just... don't!  Yay!
               var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
               d.to = currToProc;
-              vp.stdin.writeline(d);
+              newMsg = new messaging.msg(d);
+              newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
+              writeln(newMsg);
+              writeln("Attempting to run TF");
+              SEND(newMsg, i);
+              writeln("Message & delta sent; awaiting instructions");
+              RECV(newMsg, i);
+              writeln("Message received; awaiting score");
+              var score: real;
+              newMsg.open(score);
+              writeln(score);
+              //vp.wait();
               /*
               var e: genes.deltaRecord;
               var c: channel(true,iokind.native,true);
@@ -494,7 +546,6 @@ class Propagator: msgHandler {
               // Can we change the scope here?
               //this.log.debug('Executing python', hstring=v.header);
               //var score: real = globalGJ.lockAndRun(v.matrixValues, i, hstring=v.header);
-              var score = vp.stdout.read(real);
               this.log.debug('SCORE IS', score : string, hstring=v.header);
 
               //writeln("Hooray for you.");

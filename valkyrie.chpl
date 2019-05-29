@@ -10,9 +10,9 @@ use messaging;
 var VUUID = new owned uuid.UUID();
 VUUID.UUID4();
 
-var lf = open('test.log' : string, iomode.cwr);
-var c = lf.writer(kind=ionative);
-var z = lf.reader(kind=ionative);
+//var lf = open('test.log' : string, iomode.cwr);
+//var c = lf.writer(kind=ionative);
+//var z = lf.reader(kind=ionative);
 
 class valkyrieExecutor: msgHandler {
   var matrixValues: [0..propagator.mSize] c_double;
@@ -46,6 +46,7 @@ class valkyrieExecutor: msgHandler {
   proc init(n: int) {
     // basically, the inheritance isn't working as I would have expected.
     // see https://github.com/chapel-lang/chapel/issues/8232
+    super.init(n);
     this.size = n;
   }
 
@@ -89,18 +90,18 @@ class valkyrieExecutor: msgHandler {
     // basically, we want to sit at the read point... and then do something with
     // the input.
     // spawn the Python business.
-    c.writeln("init python");
-    c.flush();
+    //c.writeln("init python");
+    //c.flush();
     gj.pInit();
     // python is initialized.  Yay.
-    c.writeln("python initialized; attempting to receive messages");
-    c.flush();
+    //c.writeln("python initialized; attempting to receive messages");
+    //c.flush();
     var writeOnce: bool = true;
     while true {
       if writeOnce {
         //writeOnce = false;
-        c.writeln("we're in the loop yo");
-        c.flush();
+        //c.writeln("we're in the loop yo");
+        //c.flush();
       }
       // basically, while we're able to read in a record...
       // ... we pretty much read and process.
@@ -115,40 +116,44 @@ class valkyrieExecutor: msgHandler {
     // This is a stub class.  Those inheriting it must
     // handle it themselves.
     // does chapel have case/switch?  Hmmmm.
-    c.writeln("Starting to process a msg");
-    c.writeln(m);
-    c.flush();
+    //c.writeln("Starting to process a msg");
+    //c.writeln(m);
+    //c.flush();
+    if m.COMMAND == messaging.command.SET_ID {
+      // set the ID.
+      m.open(this.id);
+    }
     if m.COMMAND == messaging.command.RETURN_STATUS {
       //SEND(this.STATUS);
     } else if m.COMMAND == messaging.command.SET_TASK {
       //RECV(this.currentTask);
       //this.currentTask = m.open();
       m.open(this.currentTask);
-      c.writeln("What is my task?");
-      c.writeln(this.currentTask);
-      c.flush();
+      //c.writeln("What is my task?");
+      //c.writeln(this.currentTask);
+      //c.flush();
     } else if m.COMMAND == messaging.command.RECEIVE_AND_PROCESS_DELTA {
       var delta: genes.deltaRecord;
       m.open(delta);
-      c.writeln(delta);
-      c.writeln("Attempting to move");
-      c.flush();
+      //c.writeln(delta);
+      //c.writeln("Attempting to move");
+      //c.flush();
       this.move(delta);
-      c.writeln("attempting to start python");
-      c.flush();
+      //c.writeln("attempting to start python");
+      //c.flush();
       var score: c_double = gj.lockAndRun(this.matrixValues, this.currentTask, hstring=this.header);
-      stdout.flush();
-      c.writeln("Python done; trying to send message back");
-      c.writeln(score);
-      c.flush();
+      //stdout.flush();
+      //c.writeln("Python done; trying to send message back");
+      //c.writeln(score);
+      //c.flush();
       // now, return the score.
       var newMsg = new messaging.msg(score);
       newMsg.COMMAND = messaging.command.RECEIVE_SCORE;
-      c.writeln("Sending message...");
-      c.flush();
+      //c.writeln("Sending message...");
+      //c.flush();
       SEND(newMsg);
-      c.writeln("Well, I did my job, anyway");
-      c.flush();
+      //c.writeln("Well, I did my job, anyway");
+      //c.flush();
     } else {
       SEND_STATUS(messaging.status.IGNORED);
     }
@@ -193,9 +198,9 @@ proc main {
   v.initSendSocket(1);
   writeln(v.sendPorts[1]);
   stdout.flush();
-  c.write("So, I've got all that stuff set");
-  c.write(v.sendPorts[1], " ", v.recvPorts[1]);
-  c.flush();
+  //c.write("So, I've got all that stuff set");
+  //c.write(v.sendPorts[1], " ", v.recvPorts[1]);
+  //c.flush();
   //writeln("Hey, so, I can be chatty now, yeah?");
   //stdout.flush();
   //writeln("Hey, am I working?");

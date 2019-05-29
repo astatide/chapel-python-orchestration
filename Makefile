@@ -1,6 +1,7 @@
 NUMPY:=`python3 -c 'import numpy.distutils.misc_util as m; print(m.get_numpy_include_dirs()[0])'`
 PYTHONC:=`python3-config --cflags`
 PYTHONL:=`python3-config --ldflags`
+CCACHE:="/usr/local/bin/ccache clang"
 
 all:
 	make valkyrie
@@ -14,7 +15,8 @@ valkyrie:
 	chpl -I ZMQHelper/ -L /usr/local/lib -I /usr/local/include --warn-unstable --devel -o valkyrie -M src -M python valkyrie.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks
 
 yggdrasil:
-	chpl --warn-unstable --devel -o yggdrasil -M src/ -M python/ main.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks
+	#chpl --warn-unstable --devel -o yggdrasil -M src/ -M python/ main.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks
+	chpl -o yggdrasil -L /usr/local/lib -I /usr/local/include -M src/ -M python/ main.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks  #--target-compiler=$(CCACHE)
 
 spawn:
 	env CHPL_DEVELOPER=true chpl -o spawn -L /usr/local/lib -I /usr/local/include -M src/ -M python/ sp.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks

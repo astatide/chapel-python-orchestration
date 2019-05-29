@@ -15,6 +15,8 @@ record commandRecord {
   var SET_TASK: int = 1;
   var RECEIVE_AND_PROCESS_DELTA: int = 2;
   var RECEIVE_SCORE: int = 3;
+  var SET_ID: int = 4;
+  var SHUTDOWN: int = 5;
 }
 
 var status: statusRecord;
@@ -91,19 +93,26 @@ class msgHandler {
   var fout: [0..size] channel(true,iokind.dynamic,true);
   var STATUS: int;
   var context: Context;
+  //var nChannels: domain(int);
+  //var sendPorts: [nChannels] string;
+  //var recvPorts: [nChannels] string;
+
+  //var sendSocket: [nChannels] Socket;
+  //var recvSocket: [nChannels] Socket;
   var sendPorts: [0..size] string;
   var recvPorts: [0..size] string;
 
   var sendSocket: [0..size] Socket;
   var recvSocket: [0..size] Socket;
 
+  // not in use yet.
+  var blocking: bool = true;
 
-  //var c: Context;
-  //var s = c.socket(ZMQ.REP);
-  //var socket = [0..size] Socket;
+  proc init(n: int) {
+    this.size = n;
+  }
 
   proc initSendSocket(i: int) {
-    // so, we're going to set up and use a random port.
     this.sendSocket[i] = this.context.socket(ZMQ.PUSH);
     this.sendSocket[i].bind("tcp://*:*");
     this.sendPorts[i] = this.sendSocket[i].getLastEndpoint();
@@ -111,6 +120,7 @@ class msgHandler {
 
   proc initRecvSocket(i: int, port: string) {
     // so, we're going to set up and use a random port.
+
     this.recvSocket[i] = this.context.socket(ZMQ.PULL);
     this.recvSocket[i].connect(port);
     this.recvPorts[i] = port;
