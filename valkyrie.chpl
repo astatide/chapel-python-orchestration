@@ -127,6 +127,10 @@ class valkyrieExecutor: msgHandler {
       // set the ID.
       m.open(this.id);
     }
+    if m.COMMAND == messaging.command.SHUTDOWN {
+      writeln("Die die die");
+      exit(0);
+    }
     if m.COMMAND == messaging.command.RETURN_STATUS {
       //SEND(this.STATUS);
     } else if m.COMMAND == messaging.command.SET_TASK {

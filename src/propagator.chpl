@@ -324,6 +324,12 @@ class Propagator: msgHandler {
     // command the logger to shut down, then exit.
     this.lock.wl(this.yh);
     // NEVER LET GO.
+    for i in 1..maxValkyries {
+      // tell the Valkyries to quit their shit.
+      var m = new messaging.msg(0);
+      m.COMMAND = messaging.command.SHUTDOWN;
+      SEND(m, i);
+    }
     this.log.critical('SHUTDOWN INITIATED');
     this.log.exitRoutine();
     this.lock.uwl(this.yh);

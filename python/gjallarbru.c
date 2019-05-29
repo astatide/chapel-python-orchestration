@@ -76,7 +76,7 @@ PyMODINIT_FUNC PyInit_gjallarbru(void) {
   m = PyModule_Create(&moduledef);
   import_array();
   // This is necessary for the numpy bits to work.
-  //printf("\nIMPORTING NUMPY API\n");
+  ////printf("\nIMPORTING NUMPY API\n");
   if (!m) {
     return NULL;
   }
@@ -129,7 +129,7 @@ static PyObject * gjallarbru_write(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "s", &what))
         return NULL;
     // this right here is the stdout.
-    printf("==%s==", what);
+    //printf("==%s==", what);
     return Py_BuildValue("");
 }
 
@@ -226,7 +226,7 @@ static PyObject *returnManyNumpyArrays(double *arr, unsigned long long *dims, Py
   PyArrayObject *pArray;
 
   pArray = (PyArrayObject *)PyArray_SimpleNewFromData(nd, dims, NPY_FLOAT64, (void *)(arr));
-  //printf("\npArray pointer %p\n", pArray);
+  ////printf("\npArray pointer %p\n", pArray);
   //PyArrayObject *np_arr = (PyArrayObject*)(pArray);
 
   // These ones are sort of unbounded...
@@ -289,7 +289,7 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
     return NULL;
   }
 
-  printf("STOP 1: args processed");
+  //printf("STOP 1: args processed");
   n = PyList_Size(argList);
   m = 0;
   // Get the size of the amount of memory we need to malloc
@@ -305,13 +305,13 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
       m += 1;
     }
   }
-  printf("STOP 2: array size obtained");
+  //printf("STOP 2: array size obtained");
   // probably fucking up the mallocs
   dimArray = malloc(m * sizeof(unsigned long long));
   //unsigned long long * dArray = dimArray;
   returnList = PyList_New(n);
   Py_XINCREF(returnList);
-  printf("STOP 3: returnList created");
+  //printf("STOP 3: returnList created");
 
   for (int i = 0; i < n; i++) {
     elements = 1;
@@ -349,7 +349,7 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
     globalArray += elements;
     cD += m;
   }
-  printf("STOP 4: arrays built");
+  //printf("STOP 4: arrays built");
   dimArray -= mTotal;
   free(dimArray);
 
@@ -357,14 +357,14 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
     PyErr_Print();
   }
 
-  //printf("\nDecref on args\n");
+  ////printf("\nDecref on args\n");
   // If I call this on the args in this case, they die.
   //Py_XDECREF(args);
   Py_XDECREF(argList);
-  //printf("\nNow, we return!\n");
+  ////printf("\nNow, we return!\n");
   //Py_XINCREF(returnList);
   //Py_XDECREF(returnList);
-  printf("STOP 5: return");
+  //printf("STOP 5: return");
   return returnList;
 
 }
@@ -373,13 +373,13 @@ PyObject* loadPythonModule(char * module) {
   PyObject *pName, *pMod;
 
   // This should allow us to actually add to the stupid path.
-  //printf("can we import sys?");
+  ////printf("can we import sys?");
   PyRun_SimpleString("import sys");
-  //printf("Okay; can we add our path to the path?");
+  ////printf("Okay; can we add our path to the path?");
   PyRun_SimpleString("sys.path.append('/Users/apratt/work/yggdrasil/python/')");
-  //printf("Good; what about the actual import module command?");
+  ////printf("Good; what about the actual import module command?");
   pMod = PyImport_ImportModule(module);
-  //printf("hey, that worked.  So what gives?");
+  ////printf("hey, that worked.  So what gives?");
   if (PyErr_Occurred()) {
     PyErr_Print();
   }
@@ -402,7 +402,7 @@ double run(char * function) {
   PyObject* inptDict = PyThreadState_GetDict();
   unsigned long long valkyrie = PyLong_AsUnsignedLongLong(PyDict_GetItemString(inptDict, "valkyrieID"));
 
-  //printf("Wait, so is it just this?");
+  ////printf("Wait, so is it just this?");
   // Multiple calls to this may only produce shallow copies; we want to make
   // sure we don't destroy it in between calls, maybe?
   //if (!moduleImportedOnce) {
@@ -410,7 +410,7 @@ double run(char * function) {
     //Py_XINCREF(pModule);
   //}
   //Py_XINCREF(pModule);
-  //printf("Okay, so that loaded...");
+  ////printf("Okay, so that loaded...");
   pFunc = PyObject_GetAttrString(pModule, function);
   if (PyErr_Occurred()) {
     PyErr_Print();
@@ -420,34 +420,34 @@ double run(char * function) {
     // Oh, so we're a fancy lad, eh.
     // Here, garbage collection can occur.
     pValue = PyObject_CallObject(pFunc, NULL);
-    printf("Valkyrie ID: %i We have left CallObject\n", valkyrie);
+    //printf("Valkyrie ID: %i We have left CallObject\n", valkyrie);
     //Py_XINCREF(pValue);
   } else {
     PyErr_Print();
   }
   if (pValue != NULL) {
     PyObject* repr = PyObject_Repr(pValue);
-      printf("Valkyrie ID: %i Converted to repr\n", valkyrie);
+      //printf("Valkyrie ID: %i Converted to repr\n", valkyrie);
     //Py_XINCREF(repr);
     PyObject* str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
-    printf("Valkyrie ID: %i Converted to str\n", valkyrie);
+    //printf("Valkyrie ID: %i Converted to str\n", valkyrie);
     //Py_XINCREF(str);
     const char *bytes = PyBytes_AS_STRING(str);
-    printf("Valkyrie ID: %i Converted to double\n", valkyrie);
+    //printf("Valkyrie ID: %i Converted to double\n", valkyrie);
     score = atof(bytes);
-    printf("Valkyrie ID: %i Called atof\n", valkyrie);
-    //printf("Hey, the score is %f", score);
+    //printf("Valkyrie ID: %i Called atof\n", valkyrie);
+    ////printf("Hey, the score is %f", score);
     //Py_XDECREF(pValue);
     Py_XDECREF(str);
     Py_XDECREF(repr);
-    printf("Valkyrie ID: %i Decremented references\n", valkyrie);
+    //printf("Valkyrie ID: %i Decremented references\n", valkyrie);
     if (PyErr_Occurred()) {
       PyErr_Print();
     }
   } else {
     PyErr_Print();
   }
-  printf("Valkyrie ID: %i We have left formatted the score\n", valkyrie);
+  //printf("Valkyrie ID: %i We have left formatted the score\n", valkyrie);
   Py_XDECREF(pFunc);
   Py_XDECREF(pValue);
   // this MIGHT be a borrowed reference
@@ -497,7 +497,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
                 MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
   //for (int i = 0; i < 1; i++) {
-  printf("Valkyrie ID: %i About to call fork\n", valkyrie-1);
+  //printf("Valkyrie ID: %i About to call fork\n", valkyrie-1);
   //pid = fork();
   pid = 0;
 
@@ -505,16 +505,16 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
     case 0:
       // sometimes, this is as far as we get.  WHY?
       // We successfully fork, but...
-      printf("Valkyrie ID: %i Child proc; importing gjallarbru\n", valkyrie-1);
-      //setbuf(stdout, NULL);
+      //printf("Valkyrie ID: %i Child proc; importing gjallarbru\n", valkyrie-1);
+      setbuf(stdout, NULL);
       //PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
-      //printf("Valkyrie ID: %i gj imported; initializing Python\n", valkyrie-1);
+      ////printf("Valkyrie ID: %i gj imported; initializing Python\n", valkyrie-1);
       //Py_Initialize();
-      //printf("Valkyrie ID: %i python initialized; getting thread dict\n", valkyrie-1);
+      ////printf("Valkyrie ID: %i python initialized; getting thread dict\n", valkyrie-1);
       // maybe this is the asshole.
       //PyEval_InitThreads();
       // child process
-      //printf("I'm child %d, my pid is %d\n", i, getpid());
+      ////printf("I'm child %d, my pid is %d\n", i, getpid());
       //close(pipefd[0]);    // close reading end in the child
 
       //dup2(pipefd[1], 1);  // send stdout to the pipe
@@ -551,7 +551,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
 
       // This little item could allow us to maybe send info in.
       PyObject* inptDict = PyThreadState_GetDict();
-      printf("Valkyrie ID: %i thread dict obtained; inserting valkyrie id\n", valkyrie-1);
+      //printf("Valkyrie ID: %i thread dict obtained; inserting valkyrie id\n", valkyrie-1);
       // So let's add to this dictionary yo!
       // ... remember that Chapel doesn't start at 0.
       PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(valkyrie-1));
@@ -560,10 +560,10 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
 
       //globalArray = arr;
       functionRunOnce = false;
-      printf("Valkyrie ID: %i id inserted; running run function\n", valkyrie-1);
+      //printf("Valkyrie ID: %i id inserted; running run function\n", valkyrie-1);
       *score = run("run");
       // if we can get here, then we're getting in and out of python quickly enough...
-      printf("Valkyrie ID: %i Score from run is %f\n", valkyrie-1, *score);
+      //printf("Valkyrie ID: %i Score from run is %f\n", valkyrie-1, *score);
       functionRunOnce = false;
       Py_CLEAR(returnList);
       returnList = NULL;
@@ -571,28 +571,28 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
       //PyEval_ReleaseThread(ts);
       //PyThreadState_Delete(ts);
       //PyGILState_Release(gstate);
-      printf("Valkyrie ID: %i Release the GIL, shut it down\n", valkyrie-1);
+      //printf("Valkyrie ID: %i Release the GIL, shut it down\n", valkyrie-1);
       moduleImportedOnce = true;
       //close(pipefd[1]);
       //Py_Finalize();
-      printf("Valkyrie ID: %i Exiting\n", valkyrie-1);
+      //printf("Valkyrie ID: %i Exiting\n", valkyrie-1);
       //exit(0);
       break;
 
     case -1:
-      printf("Fork Error");
+      //printf("Fork Error");
       break;
 
     default: {
       char buffer2[1024];
-      printf("Valkyrie ID: %i Parent proc\n", valkyrie-1);
+      //printf("Valkyrie ID: %i Parent proc\n", valkyrie-1);
 
       //close(pipefd[1]);  // close the write end of the pipe in the parent
 
       //while (read(pipefd[0], buffer2, 1024) != 0)
       //{
-        //printf("READING YALL");
-        //printf("FROM PYTHON: %s\n", buffer2);
+        ////printf("READING YALL");
+        ////printf("FROM PYTHON: %s\n", buffer2);
       //  buffer = buffer2;
       //}
       //wait(0);
@@ -603,16 +603,16 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
       if (WIFEXITED(stat)) {
         // this happens if everything is good and such.  Yay!;
       } else {
-        printf("Valkyrie ID: %i SOMETHING HAPPENED\n", valkyrie-1);
+        //printf("Valkyrie ID: %i SOMETHING HAPPENED\n", valkyrie-1);
         if (WIFSTOPPED(stat)) {
           // this happens if we just freeze up.  Bit hacky, but hey.
           // for now, just try again...
-          printf("Valkyrie ID: %i FORK FAILED; TRY AGAIN\n", valkyrie-1);
+          //printf("Valkyrie ID: %i FORK FAILED; TRY AGAIN\n", valkyrie-1);
           pythonRun(arr,valkyrie,score2,buffer);
 
         }
       }
-      printf("Valkyrie ID: %i Returning to Chapel\n", valkyrie-1);
+      //printf("Valkyrie ID: %i Returning to Chapel\n", valkyrie-1);
     }
   }
   //}
@@ -625,7 +625,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
     // until we're actually done.
 
   }
-  //printf("Score from child proc is %f", *score);
+  ////printf("Score from child proc is %f", *score);
   *score2 = *score;
   return *score;
 }
@@ -642,13 +642,13 @@ double pythonRunpThread(double * arr, unsigned long long valkyrie, double * scor
 
   if(pthread_create(&thread_id, NULL, pythonRunInThread, (void *)&args)) {
 
-    fprintf(stderr, "Error creating thread\n");
+    f//printf(stderr, "Error creating thread\n");
     return 1;
 
   }
   if(pthread_join(thread_id, NULL)) {
 
-    fprintf(stderr, "Error joining thread\n");
+    f//printf(stderr, "Error joining thread\n");
     return 2;
 
   }
@@ -688,13 +688,13 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   //}
   //PyEval_ReleaseLock();
   //PyEval_SaveThread();
-  ////printf("swap the fucking threads asshole");
+  //////printf("swap the fucking threads asshole");
   //PyThreadState_Swap(mainThreadState);
-  ////printf("Make a new goddamn thread");
+  //////printf("Make a new goddamn thread");
   //PyThreadState *ts = PyThreadState_New(threads[0]->interp);
-  ////printf("Now fucking swap it");
+  //////printf("Now fucking swap it");
   //PyThreadState_Swap(ts);
-  ////printf("Good for you you fucking asshole");
+  //////printf("Good for you you fucking asshole");
   //Py_BEGIN_ALLOW_THREADS
   //PyRun_SimpleString("print(134342)");
   // Since all that works, I suspect we're going out of scope, somehow.
@@ -740,7 +740,7 @@ int main(int argc, char *argv[])
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
   run();
-  ////printf("stupid");
+  //////printf("stupid");
 
 }
 */

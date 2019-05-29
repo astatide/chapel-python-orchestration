@@ -108,6 +108,8 @@ class msgHandler {
   // not in use yet.
   var blocking: bool = true;
 
+  var msgQueue: [1..0] msg;
+
   proc init(n: int) {
     this.size = n;
   }
@@ -150,6 +152,10 @@ class msgHandler {
     var i: int;
     this.fin[i] = fin;
     this.fout[i] = fout;
+  }
+
+  proc receiveLoop(i: int) {
+    
   }
 
   proc __receiveMessage__(i: int) {
