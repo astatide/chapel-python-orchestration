@@ -155,13 +155,13 @@ class msgHandler {
   }
 
   proc receiveLoop(i: int) {
-
   }
 
   proc __receiveMessage__(i: int) {
     // listen for a message.
     //var m: msg;
     //fin[i].readln(m);
+    // this is a wee loop.
     var m = this.recvSocket[i].recv(msg);
     this.__PROCESS__(m, i);
   }

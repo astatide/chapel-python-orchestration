@@ -448,16 +448,17 @@ class Propagator: msgHandler {
               //RECV(newMsg, i);
               var vheader = v.header;
               vheader += "ValkyriePython";
-              while RECV(newMsg, i) {
-                var l: string;
-                vp.stdout.readline(l);
-                if l == "VALKYRIE PROCESSED MSG" {
+              var l: string;
+              while vp.stdout.readline(l) {
+                if l == "VALKYRIE PROCESSED MSG\n" {
                   // Do nothing.  Don't read again, that's for sure.
                   // probably have a race condition here, so.
+                  break;
                 } else {
-                  this.log.log(l, hstring=v.header);
+                  this.log.log(l, hstring=vheader);
                 }
               }
+              RECV(newMsg, i);
               var score: real;
               newMsg.open(score);
               this.log.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);

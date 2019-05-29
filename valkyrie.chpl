@@ -94,12 +94,8 @@ class valkyrieExecutor: msgHandler {
     // basically, we want to sit at the read point... and then do something with
     // the input.
     // spawn the Python business.
-    //c.writeln("init python");
-    //c.flush();
     gj.pInit();
     // python is initialized.  Yay.
-    //c.writeln("python initialized; attempting to receive messages");
-    //c.flush();
     var writeOnce: bool = true;
     while true {
       if writeOnce {
@@ -118,6 +114,7 @@ class valkyrieExecutor: msgHandler {
   // Don't forget that override!
   override proc PROCESS(m: msg, i: int) {
     // overriden from the messaging class
+    writeln("STARTING TO PROCESS");
     select m.COMMAND {
       when messaging.command.SET_ID do m.open(this.id);
       when messaging.command.SHUTDOWN do exit(0);
