@@ -343,23 +343,26 @@ class Propagator: msgHandler {
   proc valhalla(i: int, vId: string, vstring: ygglog.yggHeader) {
     // ha ha, cause Valkyries are in Valhalla, get it?  Get it?
     // ... no?
-    this.log.log("Initializing sockets", hstring=vstring);
     // set up a ZMQ client/server
+    this.log.log("Initializing sockets", hstring=vstring);
     this.initSendSocket(i);
     this.initUnlinkedRecvSocket(i);
+
     this.log.log("Spawning Valkyrie", hstring=vstring);
     var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
     this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string, hstring=vstring);
     this.log.log("PORTS:",this.sendPorts[i] : string, this.recvPorts[i] : string, hstring=vstring);
+
     var newMsg = new messaging.msg(i);
     newMsg.COMMAND = messaging.command.SET_TASK;
     this.log.log("Setting task to", i : string, hstring=vstring);
     SEND(newMsg, i);
+
+    this.log.log("Setting ID to", vId : string, hstring=vstring);
+    newMsg = new messaging.msg(vId);
+    newMsg.COMMAND = messaging.command.SET_ID;
+    SEND(newMsg, i);
     return vp;
-    //this.log.log("Setting ID to", vId : string, hstring=vstring);
-    //newMsg = new messaging.msg(vId);
-    //newMsg.COMMAND = messaging.command.SET_ID;
-    //SEND(newMsg, i);
   }
 
   proc run() {
@@ -371,10 +374,6 @@ class Propagator: msgHandler {
     // should probably do this for each task but hey whatever.
     // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
-    var nnodes: atomic int;
-    var globalGJ = new owned gjallarbru.Gjallarbru();
-    globalGJ.pInit();
-    //writeln("gjallblahladg");
     coforall i in 1..maxValkyries {
       // spin up the Valkyries!
       var v = new valkyrie();
@@ -386,7 +385,9 @@ class Propagator: msgHandler {
       // also, spin up the tasks.
       var vp = this.valhalla(i, v.id, vstring=v.header);
       v.moveToRoot();
+
       for gen in 1..generations {
+
         v.gen = gen;
         this.log.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
         var currToProc: string;

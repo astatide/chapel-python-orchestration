@@ -88,7 +88,7 @@ record Chromosome {
   var l: shared spinlock.SpinLock;
   var log: shared ygglog.YggdrasilLogging;
 
-  var lowestIsBest: bool=true;
+  var lowestIsBest: bool=false;
 
   // these are just the genes
   var geneNumbers: domain(int);
