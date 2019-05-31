@@ -188,7 +188,8 @@ record Chromosome {
     this.combinations.prep();
     this.nRootGenes = nRootGenes;
     this.nFunctionGenes = nFunctionGenes;
-    this.totalGenes = this.nRootGenes + this.nFunctionGenes;
+    //this.totalGenes = this.nRootGenes + this.nFunctionGenes;
+    this.totalGenes = this.combinations.geneNumbers.size;
     // Add in the root node.
     this.geneNumbers.add(0);
     this.geneIDs[0] = 'root';
@@ -239,19 +240,22 @@ record Chromosome {
     var n: int;
     for c in this.geneSets() {
       select n {
-        when n == 0 do {}
+        when n == 0 do {} // yeah, go home!  No one likes you!
         when n > 0 && n <= this.nRootGenes do {
           // prep the root seeds.
+          this.geneNumbers.add(n);
           this.geneIDs[n] = ygg.newSeedGene();
         }
         when n > this.nRootGenes do {
           // now we use the combo.  We should pack it into a list and send it.
+          // is there a better way?  I'm sure.
           var idList: [1..c.size] string;
           var i: int = 1;
           for id in c {
             idList[i] = this.geneIDs[id];
             i += 1;
           }
+          this.geneNumbers.add(n);
           this.geneIDs[n] = ygg.mergeNodeList(idList);
         }
       }
