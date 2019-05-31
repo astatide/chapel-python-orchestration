@@ -5,6 +5,7 @@ use Random;
 use spinlock;
 use genes;
 use Sort;
+use network;
 
 // Global UUID, with an entropy lock, guarantees unique IDs for chromosomes.
 // Keep in mind, it's possible that since we're using two UUID generators
@@ -232,7 +233,7 @@ record Chromosome {
   iter generateGeneInstructions() {
   }
 
-  proc generateNodes(ref ygg: network.GeneNetwork) {
+  proc generateNodes(ygg: network.GeneNetwork) {
     // chromosomes should build nodes according to their desires.
     // first, prep all the initial nodes.
     var n: int;
@@ -245,10 +246,16 @@ record Chromosome {
         }
         when n > this.nRootGenes do {
           // now we use the combo.  We should pack it into a list and send it.
-          this.geneIDs[n] = ygg.mergeNodes(c)
+          var idList: [1..c.size] string;
+          var i: int = 1;
+          for id in c {
+            idList[i] = this.geneIDs[id];
+            i += 1;
+          }
+          this.geneIDs[n] = ygg.mergeNodeList(idList);
         }
-        n += 1;
       }
+      n += 1;
     }
   }
   /*

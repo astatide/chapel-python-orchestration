@@ -190,7 +190,7 @@ class GeneNetwork {
     // as 'blow away the matrix', then ... or should I?
     for seed in seeds {
       var node = new shared genes.GeneNode(seed);
-      this.add_nodes(node);
+      this.add_node(node, new ygglog.yggHeader() + 'initializeSeedGenes');
     }
   }
 
@@ -200,7 +200,7 @@ class GeneNetwork {
     var delta = new genes.deltaRecord();
     delta += (seed, 1.0);
     this.rootNode.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
-    this.add_nodes(node);
+    this.add_node(node, new ygglog.yggHeader() + 'newSeedGene');
     return node.id;
   }
 
@@ -495,36 +495,53 @@ class GeneNetwork {
     return node.id;
   }
 
-  proc __mergeNodeList__(id : [] string;, hstring: ygglog.yggHeader) {
+  proc mergeNodeList(ref idList : [] string, hstring: ygglog.yggHeader) {
+    return this.__mergeNodeList__(idList, hstring=ygglog.yggHeader);
+  }
+
+  proc mergeNodeList(ref idList : [] string) {
+    var yh = new ygglog.yggHeader();
+    return this.__mergeNodeList__(idList, hstring=yh);
+  }
+
+  proc __mergeNodeList__(ref idList : [] string, hstring: ygglog.yggHeader) {
     // we're getting a list of nodes, so we need to calculate
     var vstring: ygglog.yggHeader;
-    vstring = hstring + '__mergeNodes__';
-    var deltaA = this.calculateHistory(id_A, vstring);
-    var deltaB = this.calculateHistory(id_B, vstring);
-    this.log.debug('deltaA:', deltaA : string, 'deltaB:', deltaB : string, hstring=vstring);
-    var nId: string;
-    if propagator.unitTestMode {
-      // Remember, this is a MERGE function.  Dumbass.
-      nId = ((id_A : real + id_B : real)/2) : string;
+    vstring = hstring + '__mergeNodeList__';
+    var deltaDomain: domain(string);
+    var deltaList: [deltaDomain] genes.deltaRecord;
+    for id in idList {
+      deltaDomain.add(id);
+      deltaList[id] = this.calculateHistory(id, vstring);
     }
-    var node = new shared genes.GeneNode(id=nId, ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
+
+    //this.log.debug('deltaA:', deltaA : string, 'deltaB:', deltaB : string, hstring=vstring);
+    // spawn the node; we're making arbitrary decisions.
+    var node = new shared genes.GeneNode(id='', ctype='merge', parentSeedNode=this.nodes[idList[1]].parentSeedNode, parent=idList[1]);
     // Remember that we're sending in logging capabilities for debug purposes.
     node.log = this.log;
     node.l.log = this.log;
     // Why is it in the reverse, you ask?  Because the calculateHistory method
     // returns the information necessary to go BACK to the seed node from the id given.
     // So this delta allows us to go from node A to the new node.
-    var delta = ((deltaA*-1) + deltaB)/2;
-    this.log.debug('Delta to move from', id_A : string, 'to', node.id : string, '-', (delta*-1) : string, hstring=vstring);
-    node.join(this.nodes[id_A], delta, vstring);
-    // Now, reverse the delta to join B.  I love the records in Chapel.
-    node.join(this.nodes[id_B], delta*-1, vstring);
+    for i in idList {
+      var delta: genes.deltaRecord;
+      for j in idList {
+        if i != j {
+          delta += deltaList[j];
+        } else {
+          delta += deltaList[i]*-1;
+        }
+      }
+      delta /= idList.size;
+      node.join(this.nodes[i], delta, vstring);
+      // Now, don't forget to connect it to the existing nodes.
+      this.lock.wl(vstring);
+      this.edges[i].add(node.id);
+      this.lock.uwl(vstring);
+    }
+    // this function locks, so.
     this.add_node(node, vstring);
-    // Now, don't forget to connect it to the existing nodes.
-    this.lock.wl(vstring);
-    this.edges[id_A].add(node.id);
-    this.edges[id_B].add(node.id);
-    this.lock.uwl(vstring);
     // Return the id, as that's all we need.
     return node.id;
   }
