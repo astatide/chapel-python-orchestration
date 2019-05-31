@@ -12,7 +12,7 @@ extern type PyThreadState;
 extern proc returnNumpyArray(ref arr: c_float, ref dims: npy_intp) : PyObject;
 extern proc weights(ref self: PyObject, ref args: PyObject): PyObject;
 extern proc run();
-extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong, ref score : c_double, ref buffer : c_string) : real;
+extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong, deme : c_ulonglong, ref score : c_double, ref buffer : c_string) : real;
 extern proc pythonInit(n: c_ulonglong): c_void_ptr;
 extern proc pythonFinal();
 extern proc newThread() : c_void_ptr;
@@ -59,7 +59,7 @@ class Gjallarbru {
   }
 
 
-  proc lockAndRun(matrix, valkyrie, hstring) {
+  proc lockAndRun(matrix, valkyrie, deme, hstring) {
     // We're sending in a pointer and then writing to it.  Seems to work more cleanly.
     // or that's the hope.  Who fucking knows anymore.
     // We're gonna pass in the file object.
@@ -69,7 +69,7 @@ class Gjallarbru {
     var moveOn: [0..1] bool = false;
 
     var score: c_double;
-    pythonRun(matrix, valkyrie : c_ulonglong, score, buffer[0]);
+    pythonRun(matrix, valkyrie : c_ulonglong, deme: c_ulonglong, score, buffer[0]);
     var a: string;
     for i in 0..1023 {
       a += buffer[i] : string;

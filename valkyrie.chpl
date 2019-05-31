@@ -123,7 +123,7 @@ class valkyrieExecutor: msgHandler {
         var delta: genes.deltaRecord;
         m.open(delta);
         this.move(delta);
-        var score: c_double = gj.lockAndRun(this.matrixValues, this.currentTask, hstring=this.header);
+        var score: c_double = gj.lockAndRun(this.matrixValues, this.currentTask, m.i, hstring=this.header);
         var newMsg = new messaging.msg(score);
         newMsg.COMMAND = messaging.command.RECEIVE_SCORE;
         SEND(newMsg);

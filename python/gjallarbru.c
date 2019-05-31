@@ -20,6 +20,7 @@ static PyObject *returnNumpyArray(double *arr, unsigned long long *dims);
 static PyObject *weights(PyObject *self, PyObject *args);
 PyObject *weights_multi(PyObject *self, PyObject *args);
 PyObject *valkyrieID(PyObject *self, PyObject *args);
+PyObject *demeID(PyObject *self, PyObject *args);
 static PyObject * gjallarbru_write(PyObject *self, PyObject *args);
 //static PyObject returnNumpyArray();
 
@@ -51,6 +52,7 @@ static PyMethodDef methods[] = {
   { "weights", weights, METH_VARARGS, "Descriptions"},
   { "weights_multi", weights_multi, METH_VARARGS, "Descriptions"},
   { "valkyrieID", valkyrieID, METH_VARARGS, "Descriptions"},
+  { "demeID", valkyrieID, METH_VARARGS, "Descriptions"},
   { "write", gjallarbru_write, METH_VARARGS, "Descriptions"},
   { NULL, NULL, 0, NULL }
 };
@@ -115,6 +117,17 @@ PyObject *valkyrieID(PyObject *self, PyObject *args) {
   PyObject* valkyrie = PyDict_GetItemString(inptDict, "valkyrieID");
 
   return valkyrie;
+
+}
+
+PyObject *demeID(PyObject *self, PyObject *args) {
+  // this just returns the thread ID so we can use it
+  // from within Python.
+
+  PyObject* inptDict = PyThreadState_GetDict();
+  PyObject* deme = PyDict_GetItemString(inptDict, "demeID");
+
+  return deme;
 
 }
 
@@ -375,7 +388,7 @@ struct threadArgs {
 };
 
 
-double pythonRun(double * arr, unsigned long long valkyrie, double * score2, char * buffer)
+double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long deme, double * score2, char * buffer)
 //void *pythonRunInThread(void * arguments)
 
 {
@@ -397,6 +410,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, double * score2, cha
   PyObject* inptDict = PyThreadState_GetDict();
   // ... remember that Chapel doesn't start at 0.
   PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(valkyrie-1));
+  PyDict_SetItemString(inptDict, "demeID", PyLong_FromUnsignedLongLong(deme));
   globalArray = arr;
 
   functionRunOnce = false;

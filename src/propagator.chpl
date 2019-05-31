@@ -538,23 +538,30 @@ class Propagator: msgHandler {
           }
           // clear the domain of our losers.
           for chrome in this.chromosomeDomain {
-            if !chromosomesToAdvance.contain(chrome) {
-              chromosomesToAdvance.remove(chrome);
+            if !chromosomesToAdvance.contains(chrome) {
+              this.chromosomeDomain.remove(chrome);
             }
           }
+          var vheader = v.header;
           coforall chrome in chromosomesToAdvance {
             var nc = this.chromes[chrome];
+            for node in nc.geneIDs {
+              this.lock.wl(vheader);
+              this.nextGeneration.add(node);
+              this.lock.uwl(vheader);
+            }
             for i in 1..nDuplicates {
               var cc = nc;
               cc.advanceNodes(this.ygg);
               for node in cc.geneIDs {
-                this.lock.wl(v.header);
+                this.lock.wl(vheader);
                 this.nextGeneration.add(node);
-                this.lock.uwl(v.header);
+                this.lock.uwl(vheader);
               }
-              this.lock.wl(v.header);
+              this.lock.wl(vheader);
               this.chromosomeDomain.add(cc.id);
-              this.chromosomes[cc.id] = cc;
+              this.chromes[cc.id] = cc;
+              this.lock.uwl(vheader);
             }
           }
           /*
