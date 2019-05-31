@@ -194,11 +194,12 @@ class GeneNetwork {
     }
   }
 
-  proc newSeedGene() {
+  proc newSeedGene(deme: int) {
     var seed = this.newSeed();
     var node = new shared genes.GeneNode(id='', ctype='seed', parentSeedNode='', parent='root');
     var delta = new genes.deltaRecord();
     delta += (seed, 1.0);
+    node.demeDomain.add(deme);
     node.log = this.log;
     node.l.log = this.log;
     this.rootNode.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
@@ -497,16 +498,16 @@ class GeneNetwork {
     return node.id;
   }
 
-  proc mergeNodeList(ref idList : [] string, hstring: ygglog.yggHeader) {
-    return this.__mergeNodeList__(idList, hstring=ygglog.yggHeader);
+  proc mergeNodeList(ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
+    return this.__mergeNodeList__(idList, deme, hstring=ygglog.yggHeader);
   }
 
-  proc mergeNodeList(ref idList : [] string) {
+  proc mergeNodeList(ref idList : [] string, deme: int) {
     var yh = new ygglog.yggHeader();
-    return this.__mergeNodeList__(idList, hstring=yh);
+    return this.__mergeNodeList__(idList, deme, hstring=yh);
   }
 
-  proc __mergeNodeList__(ref idList : [] string, hstring: ygglog.yggHeader) {
+  proc __mergeNodeList__(ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
     // we're getting a list of nodes, so we need to calculate
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__mergeNodeList__';
@@ -523,6 +524,7 @@ class GeneNetwork {
     // Remember that we're sending in logging capabilities for debug purposes.
     node.log = this.log;
     node.l.log = this.log;
+    node.demeDomain.add(deme);
     // Why is it in the reverse, you ask?  Because the calculateHistory method
     // returns the information necessary to go BACK to the seed node from the id given.
     // So this delta allows us to go from node A to the new node.
@@ -548,15 +550,21 @@ class GeneNetwork {
     return node.id;
   }
 
+  proc nextNode(id: string, deme: int) {
+    return this.__nextNode__(id, deme, hstring='');
+  }
   proc nextNode(id: string) {
-    return this.__nextNode__(id, hstring='');
+    return this.__nextNode__(id, 0, hstring='');
   }
 
+  proc nextNode(id: string, deme: int, hstring: ygglog.yggHeader) {
+    return this.__nextNode__(id, deme, hstring);
+  }
   proc nextNode(id: string, hstring: ygglog.yggHeader) {
-    return this.__nextNode__(id, hstring);
+    return this.__nextNode__(id, 0, hstring);
   }
 
-  proc __nextNode__(id: string, hstring: ygglog.yggHeader) throws {
+  proc __nextNode__(id: string, deme: int, hstring: ygglog.yggHeader) throws {
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__nextNode__';
     this.log.debug('Adding a seed on to ID', id : string, hstring);
@@ -580,6 +588,7 @@ class GeneNetwork {
     // Again, send the logger to both the lock and the node.
     node.log = this.log;
     node.l.log = this.log;
+    node.demeDomain.add(deme);
     // Add to current node!  I can't believe you forgot this.
     this.lock.wl(hstring);
     this.edges[id].add(node.id);

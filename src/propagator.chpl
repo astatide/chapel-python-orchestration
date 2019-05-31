@@ -402,61 +402,66 @@ class Propagator: msgHandler {
             var existsInDomainAndCanProcess: bool = false;
             // This function now does the atomic test.
             (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
-            if currToProc != '' {
-              // Actually, reduce the count BEFORE we do this.
-              // Otherwise we could have threads stealing focus that should
-              // actually be idle.
-              this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
-              this.inCurrentGeneration.sub(1);
-              this.log.debug('inCurrentGeneration successfully reduced', hstring=v.header);
-              // If this node is one of the ones in our priority queue, remove it
-              // as we clearly processing it now.
-              if v.priorityNodes.contains(currToProc) {
-                v.priorityNodes.remove(currToProc);
-                v.nPriorityNodesProcessed += 1;
-              }
-              this.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
-              var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
-              d.to = currToProc;
-              var newMsg = new messaging.msg(d);
-              newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
-              this.log.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
-              this.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
-              SEND(newMsg, i);
-              this.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
-              //RECV(newMsg, i);
-              var vheader = v.header;
-              vheader += "ValkyriePython";
-              var l: string;
-              while vp.stdout.readline(l) {
-                if l == "VALKYRIE PROCESSED MSG\n" {
-                  // Do nothing.  Don't read again, that's for sure.
-                  // probably have a race condition here, so.
-                  break;
-                } else {
-                  this.log.log(l, hstring=vheader);
+            for deme in this.ygg.nodes[currToProc].demeDomain {
+              if currToProc != '' {
+                // Actually, reduce the count BEFORE we do this.
+                // Otherwise we could have threads stealing focus that should
+                // actually be idle.
+                this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
+                this.inCurrentGeneration.sub(1);
+                this.log.debug('inCurrentGeneration successfully reduced', hstring=v.header);
+                // If this node is one of the ones in our priority queue, remove it
+                // as we clearly processing it now.
+                if v.priorityNodes.contains(currToProc) {
+                  v.priorityNodes.remove(currToProc);
+                  v.nPriorityNodesProcessed += 1;
                 }
-              }
-              RECV(newMsg, i);
-              var score: real;
-              newMsg.open(score);
-              this.log.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
+                this.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
+                var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
+                d.to = currToProc;
+                var newMsg = new messaging.msg(d);
+                //newMsg.i =
+                newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
+                this.log.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
+                this.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
+                SEND(newMsg, i);
+                this.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
+                //RECV(newMsg, i);
+                var vheader = v.header;
+                vheader += "ValkyriePython";
+                var l: string;
+                while vp.stdout.readline(l) {
+                  if l == "VALKYRIE PROCESSED MSG\n" {
+                    // Do nothing.  Don't read again, that's for sure.
+                    // probably have a race condition here, so.
+                    break;
+                  } else {
+                    this.log.log(l, hstring=vheader);
+                  }
+                }
+                RECV(newMsg, i);
+                var score: real;
+                newMsg.open(score);
+                this.log.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
 
-              this.lock.wl(v.header);
-              /*if false {
-                var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
-                if score < maxVal {
-                  this.scoreArray[maxLoc] = score;
-                  this.idArray[maxLoc] = currToProc;
+                this.lock.wl(v.header);
+                /*if false {
+                  var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
+                  if score < maxVal {
+                    this.scoreArray[maxLoc] = score;
+                    this.idArray[maxLoc] = currToProc;
+                  }
+                } else {*/
+                // set the score on the node.
+                this.ygg.nodes[currToProc].scores[deme] = score;
+                var (minVal, minLoc) = minloc reduce zip(this.scoreArray, this.scoreArray.domain);
+                if score > minVal {
+                  this.scoreArray[minLoc] = score;
+                  this.idArray[minLoc] = currToProc;
                 }
-              } else {*/
-              var (minVal, minLoc) = minloc reduce zip(this.scoreArray, this.scoreArray.domain);
-              if score > minVal {
-                this.scoreArray[minLoc] = score;
-                this.idArray[minLoc] = currToProc;
+                //}
+                this.lock.uwl(v.header);
               }
-              //}
-              this.lock.uwl(v.header);
             }
             // While it seems odd we might try this twice, this helps us keep
             // track of algorithm efficiency by determining whether we're processing

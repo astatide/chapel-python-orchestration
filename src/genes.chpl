@@ -85,6 +85,15 @@ record deltaRecord {
     this.seeds.remove(s);
   }
 
+  proc prune() {
+    // remove it.
+    for (s, c) in zip(this.seeds, this.delta) do {
+      if c == 0.0 {
+        this.seeds.remove(s);
+      }
+    }
+  }
+
   proc express(ref matrix) {
     var m: [0..matrix.size] c_double;
     for (s, c) in zip(this.seeds, this.delta) do {
@@ -296,7 +305,7 @@ class GeneNode {
   var log: shared ygglog.YggdrasilLogging;
 
   // We want to hold scores on the nodes.
-  var demeDomain: domain(string);
+  var demeDomain: domain(int);
   var scores: [demeDomain] real;
 
   proc init(id='', ctype='', parent='', parentSeedNode='') {
