@@ -245,7 +245,7 @@ record Chromosome {
         when n > 0 && n <= this.nRootGenes do {
           // prep the root seeds.
           this.geneNumbers.add(n);
-          this.geneIDs[n] = ygg.newSeedGene(this.currentDeme);
+          this.geneIDs[n] = ygg.newSeedGene(this.id, this.currentDeme);
         }
         when n > this.nRootGenes do {
           // now we use the combo.  We should pack it into a list and send it.
@@ -257,7 +257,7 @@ record Chromosome {
             i += 1;
           }
           this.geneNumbers.add(n);
-          this.geneIDs[n] = ygg.mergeNodeList(idList, this.currentDeme);
+          this.geneIDs[n] = ygg.mergeNodeList(this.id, idList, this.currentDeme);
         }
       }
       n += 1;
@@ -274,7 +274,7 @@ record Chromosome {
         when n > 0 && n <= this.nRootGenes do {
           // Further the nodes!
           //this.geneNumbers.add(n);
-          this.geneIDs[n] = ygg.nextNode(this.geneIDs[n], this.currentDeme, '');
+          this.geneIDs[n] = ygg.nextNode(cId=this.id, id=this.geneIDs[n], deme=this.currentDeme);
         }
         when n > this.nRootGenes do {
           // now we use the combo.  We should pack it into a list and send it.
@@ -287,7 +287,7 @@ record Chromosome {
           }
           // it's fine for now.
           //this.geneNumbers.add(n);
-          this.geneIDs[n] = ygg.mergeNodeList(idList, this.currentDeme);
+          this.geneIDs[n] = ygg.mergeNodeList(this.id, idList, this.currentDeme);
         }
       }
       n += 1;

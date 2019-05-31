@@ -524,7 +524,26 @@ class Propagator: msgHandler {
           // Only do the max!
           //var bestInGen: real = this.scoreArray[1];
           var (bestInGen, minLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
-          writeln(this.scoreArray);
+          var chromosomesToAdvance: domain(string);
+          for node in this.idArray {
+            // these are the best nodes, so work em!
+            for nc in this.ygg.nodes[node].chromosomes {
+              if !chromosomesToAdvance.contains(nc) {
+                chromosomesToAdvance.add(nc);
+              }
+            }
+          }
+          coforall chrome in chromosomesToAdvance {
+            var nc = this.chromes[chrome];
+            nc.advanceNodes(this.ygg);
+          }
+          for chrome in chromosomesToAdvance {
+            var nc = this.chromes[chrome];
+            for node in nc.geneIDs {
+              this.nextGeneration.add(node);
+            }
+          }
+          /*
           for ij in 1..maxPerGeneration {
             currToProc = this.idArray[ij];
             //if this.scoreArray[ij] == Math.INFINITY {
@@ -567,7 +586,7 @@ class Propagator: msgHandler {
               this.nextGeneration.add(mergeTest);
             }
             //}
-          }
+          }*/
           //this.scoreArray = Math.INFINITY;
           this.scoreArray = 0;
 

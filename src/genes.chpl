@@ -306,6 +306,7 @@ class GeneNode {
 
   // We want to hold scores on the nodes.
   var demeDomain: domain(int);
+  var chromosomes: domain(string);
   var scores: [demeDomain] real;
 
   proc init(id='', ctype='', parent='', parentSeedNode='') {

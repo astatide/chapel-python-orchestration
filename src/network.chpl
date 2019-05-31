@@ -194,7 +194,7 @@ class GeneNetwork {
     }
   }
 
-  proc newSeedGene(deme: int) {
+  proc newSeedGene(cId: string, deme: int) {
     var seed = this.newSeed();
     var node = new shared genes.GeneNode(id='', ctype='seed', parentSeedNode='', parent='root');
     var delta = new genes.deltaRecord();
@@ -202,6 +202,7 @@ class GeneNetwork {
     node.demeDomain.add(deme);
     node.log = this.log;
     node.l.log = this.log;
+    node.chromosomes.add(cId);
     this.rootNode.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
     this.add_node(node, new ygglog.yggHeader() + 'newSeedGene');
     return node.id;
@@ -498,16 +499,16 @@ class GeneNetwork {
     return node.id;
   }
 
-  proc mergeNodeList(ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
-    return this.__mergeNodeList__(idList, deme, hstring=ygglog.yggHeader);
+  proc mergeNodeList(cId: string, ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
+    return this.__mergeNodeList__(cId, idList, deme, hstring=ygglog.yggHeader);
   }
 
-  proc mergeNodeList(ref idList : [] string, deme: int) {
+  proc mergeNodeList(cId: string, ref idList : [] string, deme: int) {
     var yh = new ygglog.yggHeader();
-    return this.__mergeNodeList__(idList, deme, hstring=yh);
+    return this.__mergeNodeList__(cId, idList, deme, hstring=yh);
   }
 
-  proc __mergeNodeList__(ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
+  proc __mergeNodeList__(cId: string, ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
     // we're getting a list of nodes, so we need to calculate
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__mergeNodeList__';
@@ -525,6 +526,7 @@ class GeneNetwork {
     node.log = this.log;
     node.l.log = this.log;
     node.demeDomain.add(deme);
+    node.chromosomes.add(cId);
     // Why is it in the reverse, you ask?  Because the calculateHistory method
     // returns the information necessary to go BACK to the seed node from the id given.
     // So this delta allows us to go from node A to the new node.
@@ -550,21 +552,24 @@ class GeneNetwork {
     return node.id;
   }
 
-  proc nextNode(id: string, deme: int) {
-    return this.__nextNode__(id, deme, hstring='');
-  }
-  proc nextNode(id: string) {
-    return this.__nextNode__(id, 0, hstring='');
-  }
 
-  proc nextNode(id: string, deme: int, hstring: ygglog.yggHeader) {
-    return this.__nextNode__(id, deme, hstring);
+  proc nextNode(cId: string, id: string, deme: int, hstring: ygglog.yggHeader) {
+    return this.__nextNode__(cId, id, deme, hstring);
   }
   proc nextNode(id: string, hstring: ygglog.yggHeader) {
-    return this.__nextNode__(id, 0, hstring);
+    return this.__nextNode__('', id, 0, hstring);
   }
 
-  proc __nextNode__(id: string, deme: int, hstring: ygglog.yggHeader) throws {
+  proc nextNode(cId: string, id: string, deme: int) {
+    var yh = new ygglog.yggHeader();
+    return this.__nextNode__(cId, id, deme, hstring=yh);
+  }
+  proc nextNode(id: string) {
+    var yh = new ygglog.yggHeader();
+    return this.__nextNode__('', id, 0, hstring=yh);
+  }
+
+  proc __nextNode__(cId: string, id: string, deme: int, hstring: ygglog.yggHeader) throws {
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__nextNode__';
     this.log.debug('Adding a seed on to ID', id : string, hstring);
@@ -589,6 +594,7 @@ class GeneNetwork {
     node.log = this.log;
     node.l.log = this.log;
     node.demeDomain.add(deme);
+    node.chromosomes.add(cId);
     // Add to current node!  I can't believe you forgot this.
     this.lock.wl(hstring);
     this.edges[id].add(node.id);
