@@ -252,12 +252,13 @@ class Propagator: msgHandler {
     this.ygg.log = this.log;
     this.ygg.lock.log = this.log;
     //this.ygg.initializeNetwork(n_seeds=startingSeeds);
-    this.log.debug("Initialising root node", this.yh);
-    this.ygg.initializeRoot();
     this.log.debug("Initialising chromosomes", this.yh);
     this.initChromosomes();
+    this.log.debug("Initialising root node", this.yh);
+    this.ygg.initializeRoot();
     this.log.debug("About to add existing nodes to the processing list", this.yh);
     var ids = this.ygg.ids;
+    this.log.debug(this.ygg.ids : string, this.yh);
     for i in this.ygg.ids {
       if i != 'root' {
         if i != this.ygg.testNodeId {
@@ -268,6 +269,7 @@ class Propagator: msgHandler {
         }
       }
     }
+    this.log.debug(this.nodesToProcess: string, this.yh);
     this.log.debug('INITIALIZED', this.inCurrentGeneration.read() : string, 'seeds.', this.yh);
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'Ragnarok';

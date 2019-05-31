@@ -167,6 +167,7 @@ record Chromosome {
   var l: shared spinlock.SpinLock;
   var log: shared ygglog.YggdrasilLogging;
   var lowestIsBest: bool=false;
+  var currentDeme: int = 0;
 
   // these are just the genes
   var geneNumbers: domain(int);
@@ -262,12 +263,58 @@ record Chromosome {
       n += 1;
     }
   }
+
+  proc advanceNodes(ygg: network.GeneNetwork) {
+    // chromosomes should build nodes according to their desires.
+    // first, prep all the initial nodes.
+    var n: int;
+    for c in this.geneSets() {
+      select n {
+        when n == 0 do {} // yeah, go home!  No one likes you! (this is always root)
+        when n > 0 && n <= this.nRootGenes do {
+          // Further the nodes!
+          //this.geneNumbers.add(n);
+          this.geneIDs[n] = ygg.nextNode(this.geneIDs[n], '');
+        }
+        when n > this.nRootGenes do {
+          // now we use the combo.  We should pack it into a list and send it.
+          // is there a better way?  I'm sure.
+          var idList: [1..c.size] string;
+          var i: int = 1;
+          for id in c {
+            idList[i] = this.geneIDs[id];
+            i += 1;
+          }
+          // it's fine for now.
+          //this.geneNumbers.add(n);
+          this.geneIDs[n] = ygg.mergeNodeList(idList);
+        }
+      }
+      n += 1;
+    }
+  }
+
   /*
   Generates a unique set of combinations.  Given an index, will return the gene
   IDs that correspond to this particular combination.
 
   Generally, don't call this.
   */
+
+  proc bestGene(ygg: network.GeneNetwork) {
+    var bestNode: string;
+    var bestScore: real = 0;
+    if true {
+      for i in 1..totalGenes {
+        var score = this.geneIDs[i]].scores[this.currentDeme];
+        if score > bestScore {
+          bestScore = var;
+          bestNode = this.geneIDs[i];
+        }
+      }
+    }
+    return (bestNode, bestScore);
+  }
 
   proc bestGeneInDeme(deme='') {
     var bestNode: string;

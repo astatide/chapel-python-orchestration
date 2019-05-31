@@ -199,6 +199,8 @@ class GeneNetwork {
     var node = new shared genes.GeneNode(id='', ctype='seed', parentSeedNode='', parent='root');
     var delta = new genes.deltaRecord();
     delta += (seed, 1.0);
+    node.log = this.log;
+    node.l.log = this.log;
     this.rootNode.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
     this.add_node(node, new ygglog.yggHeader() + 'newSeedGene');
     return node.id;
