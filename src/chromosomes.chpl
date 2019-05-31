@@ -232,6 +232,25 @@ record Chromosome {
   iter generateGeneInstructions() {
   }
 
+  proc generateNodes(ref ygg: network.GeneNetwork) {
+    // chromosomes should build nodes according to their desires.
+    // first, prep all the initial nodes.
+    var n: int;
+    for c in this.geneSets() {
+      select n {
+        when n == 0 do {}
+        when n > 0 && n <= this.nRootGenes do {
+          // prep the root seeds.
+          this.geneIDs[n] = ygg.newSeedGene();
+        }
+        when n > this.nRootGenes do {
+          // now we use the combo.  We should pack it into a list and send it.
+          this.geneIDs[n] = ygg.mergeNodes(c)
+        }
+        n += 1;
+      }
+    }
+  }
   /*
   Generates a unique set of combinations.  Given an index, will return the gene
   IDs that correspond to this particular combination.

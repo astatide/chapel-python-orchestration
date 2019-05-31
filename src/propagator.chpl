@@ -282,9 +282,10 @@ class Propagator: msgHandler {
       var nc = new chromosomes.Chromosome();
       this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
       nc.prep(startingSeeds, chromosomeSize-startingSeeds);
-      this.log.debug('Genes prepped in Chromosome ID', nc.id, this.yh);
+      this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, this.yh);
       nc.log = this.log;
       var n: int = 1;
+      nc.generateNodes(this.ygg);
       //for combo in nc.geneSets() {
       //  var c = combo : string;
         //this.log.debug('LOC IN GENE:', n : string, 'SET:', hstring=this.yh);

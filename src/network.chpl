@@ -194,6 +194,16 @@ class GeneNetwork {
     }
   }
 
+  proc newSeedGene() {
+    var seed = this.newSeed();
+    var node = new shared genes.GeneNode(id='', ctype='seed', parentSeedNode='', parent='root');
+    var delta = new genes.deltaRecord();
+    delta += (seed, 1.0);
+    this.rootNode.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
+    this.add_nodes(node);
+    return node.id;
+  }
+
   proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, processedArray) {
     var vstring = hstring + 'returnNearestUnprocessed';
     return this.__calculatePath__(id_A, id_B, hstring=vstring, processedArray=processedArray, checkArray=true);
@@ -453,6 +463,40 @@ class GeneNetwork {
   }
 
   proc __mergeNodes__(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
+    var vstring: ygglog.yggHeader;
+    vstring = hstring + '__mergeNodes__';
+    var deltaA = this.calculateHistory(id_A, vstring);
+    var deltaB = this.calculateHistory(id_B, vstring);
+    this.log.debug('deltaA:', deltaA : string, 'deltaB:', deltaB : string, hstring=vstring);
+    var nId: string;
+    if propagator.unitTestMode {
+      // Remember, this is a MERGE function.  Dumbass.
+      nId = ((id_A : real + id_B : real)/2) : string;
+    }
+    var node = new shared genes.GeneNode(id=nId, ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
+    // Remember that we're sending in logging capabilities for debug purposes.
+    node.log = this.log;
+    node.l.log = this.log;
+    // Why is it in the reverse, you ask?  Because the calculateHistory method
+    // returns the information necessary to go BACK to the seed node from the id given.
+    // So this delta allows us to go from node A to the new node.
+    var delta = ((deltaA*-1) + deltaB)/2;
+    this.log.debug('Delta to move from', id_A : string, 'to', node.id : string, '-', (delta*-1) : string, hstring=vstring);
+    node.join(this.nodes[id_A], delta, vstring);
+    // Now, reverse the delta to join B.  I love the records in Chapel.
+    node.join(this.nodes[id_B], delta*-1, vstring);
+    this.add_node(node, vstring);
+    // Now, don't forget to connect it to the existing nodes.
+    this.lock.wl(vstring);
+    this.edges[id_A].add(node.id);
+    this.edges[id_B].add(node.id);
+    this.lock.uwl(vstring);
+    // Return the id, as that's all we need.
+    return node.id;
+  }
+
+  proc __mergeNodeList__(id : [] string;, hstring: ygglog.yggHeader) {
+    // we're getting a list of nodes, so we need to calculate
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__mergeNodes__';
     var deltaA = this.calculateHistory(id_A, vstring);
