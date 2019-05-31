@@ -47,6 +47,7 @@ config var flushToLog = false;
 
 config var nChromosomes = 6;
 config var chromosomeSize = 36;
+config var nDuplicates = 4;
 
 // Empty record serves as comparator
 record Comparator { }
@@ -525,22 +526,35 @@ class Propagator: msgHandler {
           //var bestInGen: real = this.scoreArray[1];
           var (bestInGen, minLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
           var chromosomesToAdvance: domain(string);
+          var c: [chromosomesToAdvance] chromosomes.Chromosome;
           for node in this.idArray {
             // these are the best nodes, so work em!
             for nc in this.ygg.nodes[node].chromosomes {
               if !chromosomesToAdvance.contains(nc) {
                 chromosomesToAdvance.add(nc);
+                //c[nc] = this.chromes[nc];
               }
+            }
+          }
+          // clear the domain of our losers.
+          for chrome in this.chromosomeDomain {
+            if !chromosomesToAdvance.contain(chrome) {
+              chromosomesToAdvance.remove(chrome);
             }
           }
           coforall chrome in chromosomesToAdvance {
             var nc = this.chromes[chrome];
-            nc.advanceNodes(this.ygg);
-          }
-          for chrome in chromosomesToAdvance {
-            var nc = this.chromes[chrome];
-            for node in nc.geneIDs {
-              this.nextGeneration.add(node);
+            for i in 1..nDuplicates {
+              var cc = nc;
+              cc.advanceNodes(this.ygg);
+              for node in cc.geneIDs {
+                this.lock.wl(v.header);
+                this.nextGeneration.add(node);
+                this.lock.uwl(v.header);
+              }
+              this.lock.wl(v.header);
+              this.chromosomeDomain.add(cc.id);
+              this.chromosomes[cc.id] = cc;
             }
           }
           /*
