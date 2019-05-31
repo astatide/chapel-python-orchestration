@@ -402,8 +402,8 @@ class Propagator: msgHandler {
             var existsInDomainAndCanProcess: bool = false;
             // This function now does the atomic test.
             (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
-            for deme in this.ygg.nodes[currToProc].demeDomain {
-              if currToProc != '' {
+            if currToProc != '' {
+              for deme in this.ygg.nodes[currToProc].demeDomain {
                 // Actually, reduce the count BEFORE we do this.
                 // Otherwise we could have threads stealing focus that should
                 // actually be idle.
