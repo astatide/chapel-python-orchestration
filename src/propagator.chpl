@@ -147,8 +147,8 @@ class Propagator: msgHandler {
   var processedArray: [nodesToProcess] atomic bool;
   // actually, this should probably be its own thing.
   //var scoreDomain: domain(string);
-  var scoreArray: [1..maxPerGeneration] real = 0; //Math.INFINITY;
-  var idArray: [1..maxPerGeneration] string;
+  var scoreArray: [0..4,1..maxPerGeneration] real = -1; //Math.INFINITY;
+  var idArray: [0..4,1..maxPerGeneration] string;
   var inCurrentGeneration: atomic int;
   var nextGeneration: domain(string);
 
@@ -278,24 +278,27 @@ class Propagator: msgHandler {
   }
 
   proc initChromosomes() {
-    for i in 1..nChromosomes {
-      // Here, we're going to be given the instructions for generating chromosomes.
-      // No reason this can't be parallel, so let's do it.
-      this.log.debug('Spawning chromosome', this.yh);
-      var nc = new chromosomes.Chromosome();
-      this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
-      nc.prep(startingSeeds, chromosomeSize-startingSeeds);
-      this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, this.yh);
-      nc.log = this.log;
-      var n: int = 1;
-      nc.generateNodes(this.ygg);
-      //for combo in nc.geneSets() {
-      //  var c = combo : string;
-        //this.log.debug('LOC IN GENE:', n : string, 'SET:', hstring=this.yh);
-      //  n += 1;
-      //}
-      this.chromosomeDomain.add(nc.id);
-      this.chromes[nc.id] = nc;
+    for deme in 0..4 {
+      for i in 1..nChromosomes {
+        // Here, we're going to be given the instructions for generating chromosomes.
+        // No reason this can't be parallel, so let's do it.
+        this.log.debug('Spawning chromosome', this.yh);
+        var nc = new chromosomes.Chromosome();
+        this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
+        nc.prep(startingSeeds, chromosomeSize-startingSeeds);
+        nc.currentDeme = deme;
+        this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, this.yh);
+        nc.log = this.log;
+        var n: int = 1;
+        nc.generateNodes(this.ygg);
+        //for combo in nc.geneSets() {
+        //  var c = combo : string;
+          //this.log.debug('LOC IN GENE:', n : string, 'SET:', hstring=this.yh);
+        //  n += 1;
+        //}
+        this.chromosomeDomain.add(nc.id);
+        this.chromes[nc.id] = nc;
+      }
     }
   }
 
@@ -421,7 +424,7 @@ class Propagator: msgHandler {
                 var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
                 d.to = currToProc;
                 var newMsg = new messaging.msg(d);
-                //newMsg.i =
+                newMsg.i = deme;
                 newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
                 this.log.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
                 this.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
@@ -455,10 +458,11 @@ class Propagator: msgHandler {
                 } else {*/
                 // set the score on the node.
                 this.ygg.nodes[currToProc].scores[deme] = score;
-                var (minVal, minLoc) = minloc reduce zip(this.scoreArray, this.scoreArray.domain);
+                var sA = this.scoreArray[deme, 1..maxPerGeneration];
+                var (minVal, minLoc) = minloc reduce zip(sA, sA.domain);
                 if score >= minVal {
-                  this.scoreArray[minLoc] = score;
-                  this.idArray[minLoc] = currToProc;
+                  this.scoreArray[deme,minLoc] = score;
+                  this.idArray[deme, minLoc] = currToProc;
                 }
                 //}
                 this.lock.uwl(v.header);
@@ -613,7 +617,7 @@ class Propagator: msgHandler {
             //}
           }*/
           //this.scoreArray = Math.INFINITY;
-          this.scoreArray = 0;
+          this.scoreArray = -1;
 
           this.log.debug('Switching generations', v.header);
           // Clear out the current nodesToProcess domain, and swap it for the
