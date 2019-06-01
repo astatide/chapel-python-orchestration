@@ -52,7 +52,7 @@ static PyMethodDef methods[] = {
   { "weights", weights, METH_VARARGS, "Descriptions"},
   { "weights_multi", weights_multi, METH_VARARGS, "Descriptions"},
   { "valkyrieID", valkyrieID, METH_VARARGS, "Descriptions"},
-  { "demeID", valkyrieID, METH_VARARGS, "Descriptions"},
+  { "demeID", demeID, METH_VARARGS, "Descriptions"},
   { "write", gjallarbru_write, METH_VARARGS, "Descriptions"},
   { NULL, NULL, 0, NULL }
 };

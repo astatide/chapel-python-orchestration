@@ -456,7 +456,7 @@ class Propagator: msgHandler {
                 // set the score on the node.
                 this.ygg.nodes[currToProc].scores[deme] = score;
                 var (minVal, minLoc) = minloc reduce zip(this.scoreArray, this.scoreArray.domain);
-                if score > minVal {
+                if score >= minVal {
                   this.scoreArray[minLoc] = score;
                   this.idArray[minLoc] = currToProc;
                 }
@@ -529,10 +529,14 @@ class Propagator: msgHandler {
           var c: [chromosomesToAdvance] chromosomes.Chromosome;
           for node in this.idArray {
             // these are the best nodes, so work em!
-            for nc in this.ygg.nodes[node].chromosomes {
-              if !chromosomesToAdvance.contains(nc) {
-                chromosomesToAdvance.add(nc);
-                //c[nc] = this.chromes[nc];
+            if node != '' {
+              // this is in the event that all of our genes suck.
+              // do we really care about saving genes if the entire set sucks?
+              for nc in this.ygg.nodes[node].chromosomes {
+                if !chromosomesToAdvance.contains(nc) {
+                  chromosomesToAdvance.add(nc);
+                  //c[nc] = this.chromes[nc];
+                }
               }
             }
           }
