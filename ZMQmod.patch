@@ -1,0 +1,40 @@
+diff --git a/modules/packages/ZMQ.chpl b/modules/packages/ZMQ.chpl
+index 71855cb2ef..de7953bac6 100755
+--- a/modules/packages/ZMQ.chpl
++++ b/modules/packages/ZMQ.chpl
+@@ -605,7 +605,7 @@ module ZMQ {
+ 
+     pragma "no doc"
+     proc init() {
+-      compilerError("Cannot create Socket directly; try Context.socket()");
++      //compilerError("Cannot create Socket directly; try Context.socket()");
+     }
+ 
+     pragma "no doc"
+@@ -816,7 +816,7 @@ module ZMQ {
+     pragma "no doc"
+     inline proc isZMQSerializable(type T) param: bool {
+       return isNumericType(T) || isEnumType(T) ||
+-        isString(T) || isRecordType(T);
++        isString(T) || isRecordType(T) || isDomainType(T) || isArrayType(T);
+     }
+ 
+     /*
+@@ -893,6 +893,17 @@ module ZMQ {
+       try send(chpl__enumToOrder(data), flags);
+     }
+ 
++    // send, domain types
++    pragma "no doc"
++    proc send(data: ?T, flags: int = 0) throws where isDomainType(T) {
++      on classRef.home {
++        var copy = data;
++        for d in copy {
++          try send(d, ZMQ_SNDMORE | flags);
++        }
++      }
++    }
++
+     // send, records (of other supported things)
+     pragma "no doc"
+     proc send(data: ?T, flags: int = 0) throws where (isRecordType(T) &&
