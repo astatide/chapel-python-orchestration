@@ -15,6 +15,7 @@ record yggHeader {
   var id: string = 'stdout';
   var sendTo: string;
   var currentTask: int;
+  var currentLocale;
   // header should actually be sendTo
   var header: string;
   var time: string;
@@ -223,7 +224,7 @@ class YggdrasilLogging {
           wc = stdout;
         }
       } else {
-        lf = open('logs/V-' + hstring.currentTask + '.log' : string, iomode.cw);
+        lf = open('logs/V-L' + hstring.currentLocale + '-T' + hstring.currentTask + '.log' : string, iomode.cw);
         this.filesOpened.add(id);
         this.channelsOpened[id] = lf.writer();
         this.fileHandles[id] = lf;
@@ -232,7 +233,7 @@ class YggdrasilLogging {
           wc = stdout;
         }
         // First Valkyrie!
-        wc.writeln('VALKYRIE TASK: ' + hstring.currentTask : string + ' ID: ' + id : string);
+        wc.writeln('VALKYRIE LOCALE: ' + hstring.currentLocale : string + ' TASK: ' + hstring.currentTask : string + ' ID: ' + id : string);
         wc.writeln('');
       }
       useStdout = false;

@@ -79,6 +79,7 @@ record valkyrie {
   var nMoves: int;
   var nProcessed: int;
   var gen: int;
+  var currentLocale: int;
 
   var id = UUIDP.UUID4();
 
@@ -115,6 +116,7 @@ record valkyrie {
     //return ' '.join(this.sendToFile, 'V', '%05i'.format(this.currentTask) : string, 'M', '%05i'.format(this.nMoves), 'G', '%05i'.format(this.gen));
     this.yh.header = 'VALKYRIE';
     this.yh.id = this.id;
+    this.yh.currentLocale = this.currentLocale;
     this.yh.currentTask = this.currentTask;
     return this.yh;
   }
@@ -361,6 +363,7 @@ class Propagator: msgHandler {
         // spin up the Valkyries!
         var v = new valkyrie();
         v.currentTask = i;
+        v.currentLocale = L;
         v.yh += 'run';
         for iL in v.logo {
           this.log.header(iL, hstring=v.header);
@@ -662,7 +665,7 @@ class Propagator: msgHandler {
             this.moveOn[gen] = true;
           }
         }
-      }  
+      }
     }
   }
 }
