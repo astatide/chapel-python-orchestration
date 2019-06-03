@@ -23,6 +23,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# Update it.
+RUN apt-get update
+#RUN apt-get install -y valgrind
+RUN apt-get install -y python3-dev python3
+RUN apt-get install -y python3-numpy
+RUN apt-get install -y python3-scipy
+RUN apt-get install -y python3-pip
+RUN pip3 install tensorflow keras
+ENV CHPL_TASKS=fifo CHPL_MEM=cstdlib CHPL_COMM=none
+# build yggdrasil, ya big bitch.
+
+RUN apt-get install -y libzmq3-dev
+
 ENV CHPL_VERSION 1.20.0
 ENV CHPL_HOME    /opt/chapel/$CHPL_VERSION
 ENV CHPL_GMP     system
@@ -52,14 +65,3 @@ RUN git config --global user.email "noreply@example.com" && \
     git config --global user.name  "Chapel user"
 
 ENV PATH $PATH:$CHPL_HOME/bin/linux64:$CHPL_HOME/util
-
-# Update it.
-RUN apt-get update
-#RUN apt-get install -y valgrind
-RUN apt-get install -y python3-dev python3
-RUN apt-get install -y python3-numpy
-RUN apt-get install -y python3-scipy
-RUN apt-get install -y python3-pip
-RUN pip3 install tensorflow keras
-ENV CHPL_TASKS=fifo CHPL_MEM=cstdlib CHPL_COMM=none
-# build yggdrasil, ya big bitch.
