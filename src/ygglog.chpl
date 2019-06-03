@@ -15,7 +15,7 @@ record yggHeader {
   var id: string = 'stdout';
   var sendTo: string;
   var currentTask: int;
-  var currentLocale;
+  var currentLocale: int;
   // header should actually be sendTo
   var header: string;
   var time: string;
