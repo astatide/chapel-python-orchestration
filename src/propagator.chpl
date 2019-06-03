@@ -79,7 +79,7 @@ record valkyrie {
   var nMoves: int;
   var nProcessed: int;
   var gen: int;
-  var currentLocale: int;
+  var currentLocale: string;
 
   var id = UUIDP.UUID4();
 
@@ -363,7 +363,7 @@ class Propagator: msgHandler {
         // spin up the Valkyries!
         var v = new valkyrie();
         v.currentTask = i;
-        v.currentLocale = L;
+        v.currentLocale = L : string;
         v.yh += 'run';
         for iL in v.logo {
           this.log.header(iL, hstring=v.header);
