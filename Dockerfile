@@ -31,7 +31,8 @@ RUN apt-get install -y python3-numpy
 RUN apt-get install -y python3-scipy
 RUN apt-get install -y python3-pip
 RUN pip3 install tensorflow keras
-ENV CHPL_TASKS=fifo CHPL_MEM=cstdlib CHPL_COMM=none
+#ENV CHPL_TASKS=fifo CHPL_MEM=cstdlib CHPL_COMM=none
+ENV CHPL_TASKS=fifo CHPL_MEM=cstdlib CHPL_COMM=ugni
 # build yggdrasil, ya big bitch.
 
 RUN apt-get install -y libzmq3-dev
