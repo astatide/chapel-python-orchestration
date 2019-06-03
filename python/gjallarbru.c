@@ -1,9 +1,9 @@
 #include <Python.h>
-#include <longobject.h>
+/*#include <longobject.h>
 #include <pylifecycle.h>
 #include <dictobject.h>
 #include <listobject.h>
-#include <pythonrun.h>
+#include <pythonrun.h>*/
 #include <numpy/arrayobject.h>
 #include <math.h>
 #include <stdlib.h>
