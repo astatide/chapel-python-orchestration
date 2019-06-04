@@ -439,7 +439,7 @@ class Propagator {
                         v.nPriorityNodesProcessed += 1;
                       }
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
-                      var d = yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
+                      var d = yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
                       d.to = currToProc;
                       var newMsg = new messaging.msg(d);
                       newMsg.i = deme;
@@ -507,7 +507,7 @@ class Propagator {
               // if we haven't moved, we should move our valkyrie to something in the current generation.  It makes searching substantially easier.
               if !v.moved {
                 if currToProc != '' {
-                  yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
+                  yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
                   // Get rid of the priority nodes; we've moved, after all.
                   v.priorityNodes.clear();
                   // We just need to make the current priorityNodes the intersection
