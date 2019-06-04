@@ -374,7 +374,7 @@ class Propagator {
           v.currentLocale = L : string;
           v.yh += 'run';
           for iL in v.logo {
-            vLog.log.header(iL, hstring=v.header);
+            vLog.header(iL, hstring=v.header);
           }
           // also, spin up the tasks.
           //this.lock.wl(v.header);
@@ -385,7 +385,7 @@ class Propagator {
           for gen in 1..generations {
 
             v.gen = gen;
-            vLog.log.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
+            vLog.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
             var currToProc: string;
             var toProcess: domain(string);
             var path: network.pathHistory;
@@ -395,8 +395,8 @@ class Propagator {
               this.generationTime = Time.getCurrentTime();
             }
             this.lock.uwl(v.header);
-            vLog.log.debug('Beginning processing', hstring=v.header);
-            vLog.log.debug(this.nodesToProcess : string, hstring=v.header);
+            vLog.debug('Beginning processing', hstring=v.header);
+            vLog.debug(this.nodesToProcess : string, hstring=v.header);
             var prioritySize = v.priorityNodes.size;
             while this.inCurrentGeneration.read() > 0 {
               // We clear this out because it is faster to just re-enumerate the
@@ -425,25 +425,25 @@ class Propagator {
                     // Actually, reduce the count BEFORE we do this.
                     // Otherwise we could have threads stealing focus that should
                     // actually be idle.
-                    vLog.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
+                    vLog.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
                     this.inCurrentGeneration.sub(1);
-                    vLog.log.debug('inCurrentGeneration successfully reduced', hstring=v.header);
+                    vLog.debug('inCurrentGeneration successfully reduced', hstring=v.header);
                     // If this node is one of the ones in our priority queue, remove it
                     // as we clearly processing it now.
                     if v.priorityNodes.contains(currToProc) {
                       v.priorityNodes.remove(currToProc);
                       v.nPriorityNodesProcessed += 1;
                     }
-                    vLog.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
+                    vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
                     var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
                     d.to = currToProc;
                     var newMsg = new messaging.msg(d);
                     newMsg.i = deme;
                     newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
-                    vLog.log.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
-                    vLog.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
+                    vLog.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
+                    vLog.debug("Sending the following msg:", newMsg : string, hstring=v.header);
                     SEND(newMsg, i+(maxValkyries*here.id));
-                    vLog.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
+                    vLog.debug("Message & delta sent; awaiting instructions", hstring=v.header);
                     //RECV(newMsg, i);
                     /*
                     var vheader = v.header;
@@ -461,7 +461,7 @@ class Propagator {
                     RECV(newMsg, i+(maxValkyries*here.id));
                     var score: real;
                     newMsg.open(score);
-                    vLog.log.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
+                    vLog.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
 
                     this.lock.wl(v.header);
                     /*if false {
@@ -491,11 +491,11 @@ class Propagator {
                 }
               } else {
                 // Rest now, my child. Rest, and know your work is done.
-                vLog.log.debug('And now, I rest.  Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+                vLog.debug('And now, I rest.  Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
                 while this.inCurrentGeneration.read() != 0 do chpl_task_yield();
-                vLog.log.debug('Waking up!', hstring=v.header);
+                vLog.debug('Waking up!', hstring=v.header);
               }
-              vLog.log.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+              vLog.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
               if this.shutdown {
                 this.exitRoutine();
               }
@@ -522,17 +522,17 @@ class Propagator {
               // some statistics of how well we're running.
               // Then wait on the sync variable.
               v.moved = false;
-              vLog.log.debug('Waiting in gen', gen : string, v.header);
+              vLog.debug('Waiting in gen', gen : string, v.header);
               this.valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
               this.priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
-              vLog.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
+              vLog.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
               v.nProcessed = 0;
               v.nPriorityNodesProcessed = 0;
               // moveOn is an array of sync variables.  We're blocked from reading
               // until that's set to true.
               this.moveOn[gen];
               this.lock.rl(v.header);
-              vLog.log.debug('MOVING ON in gen', gen : string, this.nodesToProcess : string, v.header);
+              vLog.debug('MOVING ON in gen', gen : string, this.nodesToProcess : string, v.header);
               this.lock.url(v.header);
             } else {
               // Same stuff here, but as this is the last Valkyrie, we also
@@ -634,7 +634,7 @@ class Propagator {
               //this.scoreArray = Math.INFINITY;
               this.scoreArray = -1;
 
-              vLog.log.debug('Switching generations', v.header);
+              vLog.debug('Switching generations', v.header);
               // Clear out the current nodesToProcess domain, and swap it for the
               // ones we've set to process for the next generation.
               this.nodesToProcess.clear();
@@ -648,7 +648,7 @@ class Propagator {
               this.valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
               // Compute some rough stats.  Buggy.
               this.priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
-              vLog.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
+              vLog.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
               var processedString: string;
               // this is really an IDEAL average.
               var avg = startingSeeds : real / maxValkyries : real ;
