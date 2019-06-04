@@ -328,25 +328,26 @@ class Propagator: msgHandler {
     // ha ha, cause Valkyries are in Valhalla, get it?  Get it?
     // ... no?
     // set up a ZMQ client/server
+    var iM: int = i+(maxValkyries*here.id);
     this.log.log("Initializing sockets", hstring=vstring);
-    this.initSendSocket(i+(maxValkyries*here.id));
-    this.initUnlinkedRecvSocket(i+(maxValkyries*here.id));
+    this.initSendSocket(iM);
+    this.initUnlinkedRecvSocket(iM);
 
     this.log.log("Spawning Valkyrie", hstring=vstring);
     //var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
-    var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD);
-    this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string, hstring=vstring);
-    this.log.log("PORTS:",this.sendPorts[i] : string, this.recvPorts[i] : string, hstring=vstring);
+    var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[iM], "--sendPort", this.recvPorts[iM], "--vSize", mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD);
+    this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[iM], "--sendPort", this.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
+    this.log.log("PORTS:",this.sendPorts[iM] : string, this.recvPorts[i] : string, hstring=vstring);
 
     var newMsg = new messaging.msg(i);
     newMsg.COMMAND = messaging.command.SET_TASK;
     this.log.log("Setting task to", i : string, hstring=vstring);
-    SEND(newMsg, i+(maxValkyries*here.id));
+    SEND(newMsg, iM);
 
     this.log.log("Setting ID to", vId : string, hstring=vstring);
     newMsg = new messaging.msg(vId);
     newMsg.COMMAND = messaging.command.SET_ID;
-    SEND(newMsg, i+(maxValkyries*here.id));
+    SEND(newMsg, iM);
     return vp;
   }
 
@@ -361,7 +362,7 @@ class Propagator: msgHandler {
     // start up the main procedure by creating some valkyries.
     forall L in Locales {
       on L do {
-        coforall i in 1..maxValkyries {
+        forall i in 1..maxValkyries {
           // spin up the Valkyries!
           var v = new valkyrie();
           v.currentTask = i;
