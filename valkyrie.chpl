@@ -170,7 +170,7 @@ proc main {
   //for iL in v.logo {
   //  writeln(iL);
   //}
-  writeln('VALKYRIE %s on locale %i, running task %i : recvPort %s, sendPort %s'.format(this.id, here.id, this.currentTask, recvPort, sendPort));
+  writeln('VALKYRIE %s on locale %i, running task %i : recvPort %s, sendPort %s'.format(v.id, here.id, v.currentTask, recvPort, sendPort));
 
 
   v.initRecvSocket(1, recvPort);
