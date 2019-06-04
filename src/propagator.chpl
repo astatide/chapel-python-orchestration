@@ -681,7 +681,7 @@ class Propagator {
           }
         }
       } else {
-        while this.moveOn[generations].read() == false do chpl_task_yield();
+        this.moveOn[generations];
         // wait, you damn fool.
         //  var moveOn: [1..generations] single bool;
       }
