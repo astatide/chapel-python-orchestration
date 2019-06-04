@@ -154,6 +154,7 @@ class valkyrieExecutor: msgHandler {
 
 proc main {
   // first, register the sigint handler.
+  writeln("VALKYRIE on locale %i, spawned.".format(here.id));
   extern proc signal(sigNum : c_int, handler : c_fn_ptr) : c_fn_ptr;
   proc handler(x : int) : void {
       //ragnarok.setShutdown();
@@ -164,6 +165,7 @@ proc main {
   // get the information necessary.  We need a currentTask, for instance.
   var v = new owned valkyrieExecutor(1);
   v.setChannels(stdin, stdout);
+  //writeln("VALKYRIE on locale %i, spawned.".format(here.id));
   //v.id = 1;
   //stdout.writeln("Started!");
   //writeln("received port!");
