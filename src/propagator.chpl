@@ -24,8 +24,8 @@ record scoreComparator {
 }
 
 
-var UUIDP = new owned uuid.UUID();
-UUIDP.UUID4();
+//var UUIDP = new owned uuid.UUID();
+//UUIDP.UUID4();
 
 config const mSize = 20;
 config const maxPerGeneration = 10;
@@ -81,6 +81,7 @@ record valkyrie {
   var gen: int;
   var currentLocale: string;
 
+  var UUIDP = new owned uuid.UUID();
   var id = UUIDP.UUID4();
 
   var yh = new ygglog.yggHeader();
