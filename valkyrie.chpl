@@ -52,6 +52,8 @@ class valkyrieExecutor: msgHandler {
     // see https://github.com/chapel-lang/chapel/issues/8232
     super.init(n);
     this.size = n;
+    this.complete();
+    gj.pInit();
   }
 
   proc moveToRoot() {
@@ -94,7 +96,6 @@ class valkyrieExecutor: msgHandler {
     // basically, we want to sit at the read point... and then do something with
     // the input.
     // spawn the Python business.
-    gj.pInit();
     // python is initialized.  Yay.
     var writeOnce: bool = true;
     while true {

@@ -371,7 +371,9 @@ class Propagator: msgHandler {
             this.log.header(iL, hstring=v.header);
           }
           // also, spin up the tasks.
+          this.lock.wl(v.header);
           var vp = this.valhalla(i, v.id, vstring=v.header);
+          this.lock.uwl(v.header);
           v.moveToRoot();
 
           for gen in 1..generations {

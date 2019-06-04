@@ -441,6 +441,7 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   setbuf(stdout, NULL);
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
+  PyRun_SimpleString("import tensorflow as tf");
   initializedAlready = true;
   return threads;
 }
