@@ -397,6 +397,7 @@ class Propagator {
               if this.generationTime == 0 : real {
                 this.generationTime = Time.getCurrentTime();
               }
+              var yggLocalCopy = this.ygg;
               this.lock.uwl(v.header);
               vLog.debug('Beginning processing', hstring=v.header);
               vLog.debug(this.nodesToProcess : string, hstring=v.header);
@@ -422,9 +423,9 @@ class Propagator {
                   // We can remove nodes from the domain processedArray is built on, which means we need to catch and process.
                   var existsInDomainAndCanProcess: bool = false;
                   // This function now does the atomic test.
-                  (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
+                  (currToProc, path) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
                   if currToProc != '' {
-                    for deme in this.ygg.nodes[currToProc].demeDomain {
+                    for deme in yggLocalCopy.nodes[currToProc].demeDomain {
                       // Actually, reduce the count BEFORE we do this.
                       // Otherwise we could have threads stealing focus that should
                       // actually be idle.
@@ -438,7 +439,7 @@ class Propagator {
                         v.nPriorityNodesProcessed += 1;
                       }
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
-                      var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
+                      var d = yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
                       d.to = currToProc;
                       var newMsg = new messaging.msg(d);
                       newMsg.i = deme;
@@ -506,7 +507,7 @@ class Propagator {
               // if we haven't moved, we should move our valkyrie to something in the current generation.  It makes searching substantially easier.
               if !v.moved {
                 if currToProc != '' {
-                  this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
+                  yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
                   // Get rid of the priority nodes; we've moved, after all.
                   v.priorityNodes.clear();
                   // We just need to make the current priorityNodes the intersection
