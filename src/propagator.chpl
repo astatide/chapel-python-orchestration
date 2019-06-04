@@ -362,8 +362,8 @@ class Propagator {
     // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
     coforall L in Locales {
-      if here.id != 0 {
-        on L do {
+      on L do {
+        if here.id != 0 {
           //super.init(maxValkyries*Locales.size);
           var mH = new messaging.msgHandler(maxValkyries);
           // create a logger, just for us!
@@ -679,9 +679,9 @@ class Propagator {
               }
             }
           }
-        }
-      } else {
-        this.moveOn[generations];
+        } else {
+          this.moveOn[generations];
+      }
         // wait, you damn fool.
         //  var moveOn: [1..generations] single bool;
       }
