@@ -133,7 +133,7 @@ record valkyrie {
     logo[6] = '███    ███   ███    ███ ███▌    ▄   ███ ▀███▄ ███   ███   ███    ███ ███    ███    ███ ';
     logo[7] = '▀██████▀    ███    █▀  █████▄▄██   ███   ▀█▀  ▀█████▀    ███    ███ █▀     ██████████ ';
     logo[8] = '                       ▀           ▀                     ███    ███                   ';
-    logo[9] = 'VALKYRIE %s on locale %i, running task %i'.format(this.id, 0, this.currentTask);
+    logo[9] = 'VALKYRIE %s on locale %i, running task %i'.format(this.id, here.id, this.currentTask);
     for i in 0..9 {
       yield logo[i];
     }
@@ -335,7 +335,7 @@ class Propagator: msgHandler {
     this.log.log("Spawning Valkyrie", hstring=vstring);
     //var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
     var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string]);
-    this.log.log("SPAWN COMMAND:", "./valkyrie", "-nl 1 --recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string, hstring=vstring);
+    this.log.log("SPAWN COMMAND:", "./valkyrie", "-nl",  1, "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string, hstring=vstring);
     this.log.log("PORTS:",this.sendPorts[i] : string, this.recvPorts[i] : string, hstring=vstring);
 
     var newMsg = new messaging.msg(i);
