@@ -360,8 +360,8 @@ class Propagator: msgHandler {
     // should probably do this for each task but hey whatever.
     // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
-    coforall L in Locales on L do {
-      if true {
+    coforall L in Locales {
+      on L do {
         forall i in 1..maxValkyries {
           // spin up the Valkyries!
           var v = new valkyrie();
