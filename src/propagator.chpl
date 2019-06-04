@@ -564,7 +564,7 @@ class Propagator {
                   }
                 }
                 // clear the domain of our losers.
-                on Locale[0] do {
+                on Locales[0] do {
                   for chrome in this.chromosomeDomain {
                     if !chromosomesToAdvance.contains(chrome) {
                       this.chromosomeDomain.remove(chrome);
