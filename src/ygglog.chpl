@@ -209,7 +209,7 @@ class YggdrasilLogging {
       id = hstring.id;
       // First, check to see whether we've created the file.
       if this.filesOpened.contains(id) {
-        if (propagator.unitTestMode | propagator.flushToLog) {
+        if (propagator.unitTestMode | propagator.flushToLog) & (here.id == 0) {
           // if we're in debug mode, we close the channels.
           // Otherwise, we leave them open.  It's for exception handling.
           try {
