@@ -438,7 +438,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
 PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // disable buffering for debugging.
   // we're adding this to the list of builtins in order to export it.
-  //setbuf(stdout, NULL);
+  setbuf(stdout, NULL);
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
   initializedAlready = true;
