@@ -169,6 +169,7 @@ class Propagator {
   // I guess this is protected or important in Chapel, in some way?
   //var release: string; // alpha
   var shutdown: bool = false;
+  //var currentGe
 
   // Because the chromosomes are an abstraction of the gene network, and are
   // in many respects related more to the movement rather than graph problems,
@@ -675,12 +676,14 @@ class Propagator {
                 v.nPriorityNodesProcessed = 0;
                 v.nProcessed = 0;
                 // time to move the fuck on.
+                this.generation = gen + 1;
                 this.moveOn[gen] = true;
               }
             }
           }
         } else {
-          this.moveOn[generations];
+          while this.generation < generations do chpl_task_yield();
+          writeln("fin.");
       }
         // wait, you damn fool.
         //  var moveOn: [1..generations] single bool;
