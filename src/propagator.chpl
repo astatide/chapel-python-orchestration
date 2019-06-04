@@ -187,7 +187,7 @@ class Propagator: msgHandler {
   proc init(n: int) {
     // basically, the inheritance isn't working as I would have expected.
     // see https://github.com/chapel-lang/chapel/issues/8232
-    super.init(maxValkyries);
+    super.init(maxValkyries*Locales.size);
     //this.size = maxValkyries;
   }
 
@@ -312,7 +312,7 @@ class Propagator: msgHandler {
       // tell the Valkyries to quit their shit.
       var m = new messaging.msg(0);
       m.COMMAND = messaging.command.SHUTDOWN;
-      SEND(m, i);
+      SEND(m, i+(maxValkyries*here.id));
     }
     this.log.critical('SHUTDOWN INITIATED');
     this.log.exitRoutine();
@@ -341,12 +341,12 @@ class Propagator: msgHandler {
     var newMsg = new messaging.msg(i);
     newMsg.COMMAND = messaging.command.SET_TASK;
     this.log.log("Setting task to", i : string, hstring=vstring);
-    SEND(newMsg, i);
+    SEND(newMsg, i+(maxValkyries*here.id));
 
     this.log.log("Setting ID to", vId : string, hstring=vstring);
     newMsg = new messaging.msg(vId);
     newMsg.COMMAND = messaging.command.SET_ID;
-    SEND(newMsg, i);
+    SEND(newMsg, i+(maxValkyries*here.id));
     return vp;
   }
 
@@ -434,7 +434,7 @@ class Propagator: msgHandler {
                     newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
                     this.log.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
                     this.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
-                    SEND(newMsg, i);
+                    SEND(newMsg, i+(maxValkyries*here.id));
                     this.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
                     //RECV(newMsg, i);
                     var vheader = v.header;
@@ -449,7 +449,7 @@ class Propagator: msgHandler {
                         this.log.log(l, hstring=vheader);
                       }
                     }
-                    RECV(newMsg, i);
+                    RECV(newMsg, i+(maxValkyries*here.id));
                     var score: real;
                     newMsg.open(score);
                     this.log.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
