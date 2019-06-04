@@ -622,4 +622,5 @@ proc =(a : GeneNetwork, b : GeneNetwork) {
   a.ids = b.ids;
   a.edges = b.edges;
   // we don't need nodes.
+  a.nodes = b.nodes;
 }

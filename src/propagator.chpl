@@ -396,8 +396,8 @@ class Propagator {
               var path: network.pathHistory;
               toProcess.clear();
               this.lock.wl(v.header);
-              if generationTime == 0 : real {
-                generationTime = Time.getCurrentTime();
+              if this.generationTime == 0 : real {
+                this.generationTime = Time.getCurrentTime();
               }
               yggLocalCopy = this.ygg;
               this.lock.uwl(v.header);
@@ -670,9 +670,9 @@ class Propagator {
                 std = abs(avg - sqrt(std/maxValkyries))/avg;
                 eff /= maxValkyries;
                 processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
-                this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
+                this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
                 this.yh.printedHeader = true;
-                generationTime = 0 : real;
+                this.generationTime = 0 : real;
                 this.lock.uwl(v.header);
                 this.valkyriesProcessed.write(0);
                 this.priorityValkyriesProcessed.write(0);
