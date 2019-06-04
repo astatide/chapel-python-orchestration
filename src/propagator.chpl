@@ -437,6 +437,7 @@ class Propagator: msgHandler {
                     SEND(newMsg, i+(maxValkyries*here.id));
                     this.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
                     //RECV(newMsg, i);
+                    /*
                     var vheader = v.header;
                     vheader += "ValkyriePython";
                     var l: string;
@@ -448,7 +449,7 @@ class Propagator: msgHandler {
                       } else {
                         this.log.log(l, hstring=vheader);
                       }
-                    }
+                    }*/
                     RECV(newMsg, i+(maxValkyries*here.id));
                     var score: real;
                     newMsg.open(score);
