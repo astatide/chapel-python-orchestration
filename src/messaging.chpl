@@ -5,6 +5,8 @@ use genes;
 use ZMQ;
 
 extern proc chpl_nodeName(): c_string;
+config const awaitResponse = false;
+
 
 record statusRecord {
   var OK: int = 0;
@@ -223,7 +225,9 @@ class msgHandler {
     //fout[i].writeln(m);
     //fout[i].flush();
     this.sendSocket[i].send(m);
-    this.RECV_STATUS(i);
+    if awaitResponse {
+      this.RECV_STATUS(i);
+    }
     return true;
   }
 
@@ -237,7 +241,9 @@ class msgHandler {
     // receive the message!
     //fin[i].readln(m);
     m = this.recvSocket[i].recv(msg);
-    OK(i);
+    if awaitResponse {
+      OK(i);
+    }
     return true;
   }
 
