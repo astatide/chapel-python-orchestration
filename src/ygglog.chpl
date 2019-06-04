@@ -224,7 +224,7 @@ class YggdrasilLogging {
           wc = stdout;
         }
       } else {
-        lf = open('logs/V-L' + hstring.currentLocale + '-T' + hstring.currentTask + '.log' : string, iomode.cw);
+        lf = open('logs/' + hstring.currentLocale + '-V' + hstring.currentTask + '.log' : string, iomode.cw);
         this.filesOpened.add(id);
         this.channelsOpened[id] = lf.writer();
         this.fileHandles[id] = lf;
