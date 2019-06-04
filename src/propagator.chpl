@@ -329,8 +329,8 @@ class Propagator: msgHandler {
     // ... no?
     // set up a ZMQ client/server
     this.log.log("Initializing sockets", hstring=vstring);
-    this.initSendSocket(i);
-    this.initUnlinkedRecvSocket(i);
+    this.initSendSocket(i+(maxValkyries*here.id));
+    this.initUnlinkedRecvSocket(i+(maxValkyries*here.id));
 
     this.log.log("Spawning Valkyrie", hstring=vstring);
     //var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
