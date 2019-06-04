@@ -330,6 +330,7 @@ PyObject* loadPythonModule(char * module) {
   PyRun_SimpleString("sys.path.append('/lus/snx11254/apratt/yggdrasil/python/')");
   PyRun_SimpleString("sys.path.append('/opt/python/3.6.5.7')");
   PyRun_SimpleString("sys.path.append('/opt/cray/llm/21.4.570-7.0.0.1_5.9__ge50c6aa.ari/lib64/python')");
+  PyRun_SimpleString("sys.path.append('/opt/python/3.6.5.7/lib/python3.6/site-packages')");
   pMod = PyImport_ImportModule(module);
   if (PyErr_Occurred()) {
     PyErr_Print();
