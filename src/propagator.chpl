@@ -334,7 +334,7 @@ class Propagator: msgHandler {
 
     this.log.log("Spawning Valkyrie", hstring=vstring);
     //var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
-    var vp = spawn(["./valkyrie", "-nl 1", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD);
+    var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD);
     this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string, hstring=vstring);
     this.log.log("PORTS:",this.sendPorts[i] : string, this.recvPorts[i] : string, hstring=vstring);
 
