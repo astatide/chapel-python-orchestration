@@ -327,7 +327,7 @@ PyObject* loadPythonModule(char * module) {
   // This should allow us to actually add to the stupid path.
   // blah blah, stupid hacks.
   PyRun_SimpleString("import sys");
-  PyRun_SimpleString("sys.path.append('/yggdrasil/python/')");
+  PyRun_SimpleString("sys.path.append('/lus/snx11254/apratt/yggdrasil/')");
   pMod = PyImport_ImportModule(module);
   if (PyErr_Occurred()) {
     PyErr_Print();
