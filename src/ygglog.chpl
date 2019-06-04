@@ -302,7 +302,7 @@ class YggdrasilLogging {
     }
     if id != 'stdout' {
       //writeln(wc.type : string);
-      if propagator.unitTestMode | propagator.flushToLog {
+      if (propagator.unitTestMode | propagator.flushToLog) & (here.id == 0) {
         // If we're in debug mode, sync the file every time.
         // This ensures that if/when we fail out, our logs are complete.
         //if !propagator.stdoutOnly {

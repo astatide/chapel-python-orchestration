@@ -160,8 +160,8 @@ class Propagator: msgHandler {
   var lock: shared spinlock.SpinLock;
   var valkyriesDone: [1..generations] atomic int;
   var moveOn: [1..generations] single bool;
-  var valkyriesProcessed: [1..maxValkyries] atomic int;
-  var priorityValkyriesProcessed: [1..maxValkyries] atomic real;
+  var valkyriesProcessed: [1..maxValkyries*Locales.size] atomic int;
+  var priorityValkyriesProcessed: [1..maxValkyries*Locales.size] atomic real;
   var generationTime: real;
   var authors: domain(string) = ['Audrey Pratt', 'Benjamin Robbins'];
   var version: real = 0.1;
@@ -506,7 +506,7 @@ class Propagator: msgHandler {
                 // We're not doing any processing; just moving.
               }
             }
-            if this.valkyriesDone[gen].fetchAdd(1) < (maxValkyries-1) {
+            if this.valkyriesDone[gen].fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
               // Reset a lot of the variables for the Valkyrie while we're idle.
               // Then wait until all the other Valkyries have finished.
               // In addition, add to some global variables so that we can compute
@@ -514,8 +514,8 @@ class Propagator: msgHandler {
               // Then wait on the sync variable.
               v.moved = false;
               this.log.debug('Waiting in gen', gen : string, v.header);
-              this.valkyriesProcessed[i].write(v.nProcessed);
-              this.priorityValkyriesProcessed[i].write(v.nPriorityNodesProcessed : real / prioritySize : real);
+              this.valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
+              this.priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
               this.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
               v.nProcessed = 0;
               v.nPriorityNodesProcessed = 0;
@@ -636,16 +636,16 @@ class Propagator: msgHandler {
               this.nextGeneration.clear();
               // Set the count variable.
               this.inCurrentGeneration.write(this.nodesToProcess.size);
-              this.valkyriesProcessed[i].write(v.nProcessed);
+              this.valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
               // Compute some rough stats.  Buggy.
-              this.priorityValkyriesProcessed[i].write(v.nPriorityNodesProcessed : real / prioritySize : real);
+              this.priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
               this.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
               var processedString: string;
               // this is really an IDEAL average.
               var avg = startingSeeds : real / maxValkyries : real ;
               var std: real;
               var eff: real;
-              for y in 1..maxValkyries {
+              for y in 1..maxValkyries*Locales.size {
                 var diff = this.valkyriesProcessed[y].read() - avg;
                 std += diff**2;
                 if this.valkyriesProcessed[y].read() != 0 {
