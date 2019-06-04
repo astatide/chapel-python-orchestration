@@ -119,12 +119,12 @@ class msgHandler {
   proc initSendSocket(i: int) {
     this.sendSocket[i] = this.context.socket(ZMQ.PUSH);
     this.sendSocket[i].bind("tcp://*:*");
-    this.sendPorts[i] = this.sendSocket[i].getLastEndpoint();
+    this.sendPorts[i] = this.sendSocket[i].getLastEndpoint().replace("0.0.0.0",chpl_nodeName():string);
   }
 
   proc initPrevSendSocket(i: int, port: string) {
     this.sendSocket[i] = this.context.socket(ZMQ.PUSH);
-    this.sendSocket[i].connect(port.replace("0.0.0.0",chpl_nodeName():string));
+    this.sendSocket[i].connect(port);
     this.sendPorts[i] = port;
   }
 
@@ -132,7 +132,7 @@ class msgHandler {
     // so, we're going to set up and use a random port.
 
     this.recvSocket[i] = this.context.socket(ZMQ.PULL);
-    this.recvSocket[i].connect(port.replace("0.0.0.0",chpl_nodeName():string));
+    this.recvSocket[i].connect(port);
     this.recvPorts[i] = port;
   }
 
@@ -141,7 +141,7 @@ class msgHandler {
 
     this.recvSocket[i] = this.context.socket(ZMQ.PULL);
     this.recvSocket[i].bind("tcp://*:*");
-    this.recvPorts[i] = this.recvSocket[i].getLastEndpoint();
+    this.recvPorts[i] = this.recvSocket[i].getLastEndpoint().replace("0.0.0.0",chpl_nodeName():string);
 
   }
 

@@ -145,7 +145,7 @@ class valkyrieExecutor: msgHandler {
     logo[6] = '███    ███   ███    ███ ███▌    ▄   ███ ▀███▄ ███   ███   ███    ███ ███    ███    ███ ';
     logo[7] = '▀██████▀    ███    █▀  █████▄▄██   ███   ▀█▀  ▀█████▀    ███    ███ █▀     ██████████ ';
     logo[8] = '                       ▀           ▀                     ███    ███                   ';
-    logo[9] = 'VALKYRIE %s on locale %i, running task %i'.format(this.id, 0, this.currentTask);
+    logo[9] = 'VALKYRIE %s on locale %i, running task %i'.format(this.id, here.id, this.currentTask);
     for i in 0..9 {
       yield logo[i];
     }
@@ -167,6 +167,12 @@ proc main {
   //v.id = 1;
   //stdout.writeln("Started!");
   //writeln("received port!");
+  //for iL in v.logo {
+  //  writeln(iL);
+  //}
+  //writeln('VALKYRIE %s on locale %i, running task %i : recvPort %s, sendPort %s'.format(this.id, here.id, this.currentTask));
+
+
   v.initRecvSocket(1, recvPort);
   v.initPrevSendSocket(1, sendPort);
   //c.write("So, I've got all that stuff set");
