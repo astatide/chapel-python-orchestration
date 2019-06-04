@@ -140,7 +140,7 @@ record valkyrie {
   }
 }
 
-class Propagator: msgHandler {
+class Propagator {
   // this is going to actually hold all the logic for running EvoCap.
   var generation: int;
 
@@ -184,12 +184,12 @@ class Propagator: msgHandler {
 
 
   // this is from the msgHandler class.
-  proc init(n: int) {
+  //proc init(n: int) {
     // basically, the inheritance isn't working as I would have expected.
     // see https://github.com/chapel-lang/chapel/issues/8232
-    super.init(maxValkyries*Locales.size);
+    //super.init(maxValkyries*Locales.size);
     //this.size = maxValkyries;
-  }
+  //}
 
 
   proc logo() {
@@ -324,30 +324,30 @@ class Propagator: msgHandler {
     this.shutdown = true;
   }
 
-  proc valhalla(i: int, vId: string, vstring: ygglog.yggHeader) {
+  proc valhalla(i: int, vId: string, mH: messaging.msgHandler, vstring: ygglog.yggHeader) {
     // ha ha, cause Valkyries are in Valhalla, get it?  Get it?
     // ... no?
     // set up a ZMQ client/server
-    var iM: int = i+(maxValkyries*here.id);
+    var iM: int = i; //+(maxValkyries*here.id);
     this.log.log("Initializing sockets", hstring=vstring);
-    this.initSendSocket(iM);
-    this.initUnlinkedRecvSocket(iM);
+    mH.initSendSocket(iM);
+    mH.initUnlinkedRecvSocket(iM);
 
     this.log.log("Spawning Valkyrie", hstring=vstring);
     //var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
-    var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[iM], "--sendPort", this.recvPorts[iM], "--vSize", mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD);
-    this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[iM], "--sendPort", this.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
-    this.log.log("PORTS:",this.sendPorts[iM] : string, this.recvPorts[i] : string, hstring=vstring);
+    var vp = spawn(["./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD);
+    this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
+    //this.log.log("PORTS:",this.sendPorts[iM] : string, this.recvPorts[i] : string, hstring=vstring);
 
     var newMsg = new messaging.msg(i);
     newMsg.COMMAND = messaging.command.SET_TASK;
     this.log.log("Setting task to", i : string, hstring=vstring);
-    SEND(newMsg, iM);
+    mH.SEND(newMsg, iM);
 
     this.log.log("Setting ID to", vId : string, hstring=vstring);
     newMsg = new messaging.msg(vId);
     newMsg.COMMAND = messaging.command.SET_ID;
-    SEND(newMsg, iM);
+    mH.SEND(newMsg, iM);
     return vp;
   }
 
@@ -362,6 +362,11 @@ class Propagator: msgHandler {
     // start up the main procedure by creating some valkyries.
     coforall L in Locales {
       on L do {
+        //super.init(maxValkyries*Locales.size);
+        var mH = new messaging.msgHandler(maxValkyries);
+        // create a logger, just for us!
+        var vLog = new shared ygglog.YggdrasilLogging();
+        vLog.currentDebugLevel = debug;
         forall i in 1..maxValkyries {
           // spin up the Valkyries!
           var v = new valkyrie();
@@ -369,18 +374,18 @@ class Propagator: msgHandler {
           v.currentLocale = L : string;
           v.yh += 'run';
           for iL in v.logo {
-            this.log.header(iL, hstring=v.header);
+            vLog.log.header(iL, hstring=v.header);
           }
           // also, spin up the tasks.
           //this.lock.wl(v.header);
-          var vp = this.valhalla(i, v.id, vstring=v.header);
+          var vp = this.valhalla(i, v.id, mH, vstring=v.header);
           //this.lock.uwl(v.header);
           v.moveToRoot();
 
           for gen in 1..generations {
 
             v.gen = gen;
-            this.log.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
+            vLog.log.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
             var currToProc: string;
             var toProcess: domain(string);
             var path: network.pathHistory;
@@ -390,8 +395,8 @@ class Propagator: msgHandler {
               this.generationTime = Time.getCurrentTime();
             }
             this.lock.uwl(v.header);
-            this.log.debug('Beginning processing', hstring=v.header);
-            this.log.debug(this.nodesToProcess : string, hstring=v.header);
+            vLog.log.debug('Beginning processing', hstring=v.header);
+            vLog.log.debug(this.nodesToProcess : string, hstring=v.header);
             var prioritySize = v.priorityNodes.size;
             while this.inCurrentGeneration.read() > 0 {
               // We clear this out because it is faster to just re-enumerate the
@@ -420,25 +425,25 @@ class Propagator: msgHandler {
                     // Actually, reduce the count BEFORE we do this.
                     // Otherwise we could have threads stealing focus that should
                     // actually be idle.
-                    this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
+                    vLog.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
                     this.inCurrentGeneration.sub(1);
-                    this.log.debug('inCurrentGeneration successfully reduced', hstring=v.header);
+                    vLog.log.debug('inCurrentGeneration successfully reduced', hstring=v.header);
                     // If this node is one of the ones in our priority queue, remove it
                     // as we clearly processing it now.
                     if v.priorityNodes.contains(currToProc) {
                       v.priorityNodes.remove(currToProc);
                       v.nPriorityNodesProcessed += 1;
                     }
-                    this.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
+                    vLog.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
                     var d = this.ygg.move(v, currToProc, path, createEdgeOnMove=true, edgeDistance);
                     d.to = currToProc;
                     var newMsg = new messaging.msg(d);
                     newMsg.i = deme;
                     newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
-                    this.log.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
-                    this.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
+                    vLog.log.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
+                    vLog.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
                     SEND(newMsg, i+(maxValkyries*here.id));
-                    this.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
+                    vLog.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
                     //RECV(newMsg, i);
                     /*
                     var vheader = v.header;
@@ -456,7 +461,7 @@ class Propagator: msgHandler {
                     RECV(newMsg, i+(maxValkyries*here.id));
                     var score: real;
                     newMsg.open(score);
-                    this.log.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
+                    vLog.log.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
 
                     this.lock.wl(v.header);
                     /*if false {
@@ -486,11 +491,11 @@ class Propagator: msgHandler {
                 }
               } else {
                 // Rest now, my child. Rest, and know your work is done.
-                this.log.debug('And now, I rest.  Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+                vLog.log.debug('And now, I rest.  Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
                 while this.inCurrentGeneration.read() != 0 do chpl_task_yield();
-                this.log.debug('Waking up!', hstring=v.header);
+                vLog.log.debug('Waking up!', hstring=v.header);
               }
-              this.log.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+              vLog.log.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
               if this.shutdown {
                 this.exitRoutine();
               }
@@ -517,17 +522,17 @@ class Propagator: msgHandler {
               // some statistics of how well we're running.
               // Then wait on the sync variable.
               v.moved = false;
-              this.log.debug('Waiting in gen', gen : string, v.header);
+              vLog.log.debug('Waiting in gen', gen : string, v.header);
               this.valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
               this.priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
-              this.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
+              vLog.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
               v.nProcessed = 0;
               v.nPriorityNodesProcessed = 0;
               // moveOn is an array of sync variables.  We're blocked from reading
               // until that's set to true.
               this.moveOn[gen];
               this.lock.rl(v.header);
-              this.log.debug('MOVING ON in gen', gen : string, this.nodesToProcess : string, v.header);
+              vLog.log.debug('MOVING ON in gen', gen : string, this.nodesToProcess : string, v.header);
               this.lock.url(v.header);
             } else {
               // Same stuff here, but as this is the last Valkyrie, we also
@@ -629,7 +634,7 @@ class Propagator: msgHandler {
               //this.scoreArray = Math.INFINITY;
               this.scoreArray = -1;
 
-              this.log.debug('Switching generations', v.header);
+              vLog.log.debug('Switching generations', v.header);
               // Clear out the current nodesToProcess domain, and swap it for the
               // ones we've set to process for the next generation.
               this.nodesToProcess.clear();
@@ -643,7 +648,7 @@ class Propagator: msgHandler {
               this.valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
               // Compute some rough stats.  Buggy.
               this.priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
-              this.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
+              vLog.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
               var processedString: string;
               // this is really an IDEAL average.
               var avg = startingSeeds : real / maxValkyries : real ;
