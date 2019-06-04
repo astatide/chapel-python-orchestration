@@ -326,27 +326,27 @@ class Propagator {
     this.shutdown = true;
   }
 
-  proc valhalla(i: int, vId: string, mH: messaging.msgHandler, vstring: ygglog.yggHeader) {
+  proc valhalla(i: int, vId: string, mH: messaging.msgHandler, vLog: ygglog.YggdrasilLogging, vstring: ygglog.yggHeader) {
     // ha ha, cause Valkyries are in Valhalla, get it?  Get it?
     // ... no?
     // set up a ZMQ client/server
     var iM: int = i; //+(maxValkyries*here.id);
-    this.log.log("Initializing sockets", hstring=vstring);
+    vLog.log("Initializing sockets", hstring=vstring);
     mH.initSendSocket(iM);
     mH.initUnlinkedRecvSocket(iM);
 
-    this.log.log("Spawning Valkyrie", hstring=vstring);
+    vLog.log("Spawning Valkyrie", hstring=vstring);
     //var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
     var vp = spawn(["./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD);
-    this.log.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
+    vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
     //this.log.log("PORTS:",this.sendPorts[iM] : string, this.recvPorts[i] : string, hstring=vstring);
 
     var newMsg = new messaging.msg(i);
     newMsg.COMMAND = messaging.command.SET_TASK;
-    this.log.log("Setting task to", i : string, hstring=vstring);
+    vLog.log("Setting task to", i : string, hstring=vstring);
     mH.SEND(newMsg, iM);
 
-    this.log.log("Setting ID to", vId : string, hstring=vstring);
+    vLog.log("Setting ID to", vId : string, hstring=vstring);
     newMsg = new messaging.msg(vId);
     newMsg.COMMAND = messaging.command.SET_ID;
     mH.SEND(newMsg, iM);
@@ -370,6 +370,7 @@ class Propagator {
           // create a logger, just for us!
           var vLog = new shared ygglog.YggdrasilLogging();
           vLog.currentDebugLevel = debug;
+          var generationTime: real;
           forall i in 1..maxValkyries {
             // spin up the Valkyries!
             var v = new valkyrie();
@@ -381,9 +382,10 @@ class Propagator {
             }
             // also, spin up the tasks.
             //this.lock.wl(v.header);
-            var vp = this.valhalla(i, v.id, mH, vstring=v.header);
+            var vp = this.valhalla(i, v.id, mH, vLog, vstring=v.header);
             //this.lock.uwl(v.header);
             v.moveToRoot();
+            var yggLocalCopy = new shared network.GeneNetwork();
 
             for gen in 1..generations {
 
@@ -394,10 +396,10 @@ class Propagator {
               var path: network.pathHistory;
               toProcess.clear();
               this.lock.wl(v.header);
-              if this.generationTime == 0 : real {
-                this.generationTime = Time.getCurrentTime();
+              if generationTime == 0 : real {
+                generationTime = Time.getCurrentTime();
               }
-              var yggLocalCopy = this.ygg;
+              yggLocalCopy = this.ygg;
               this.lock.uwl(v.header);
               vLog.debug('Beginning processing', hstring=v.header);
               vLog.debug(this.nodesToProcess : string, hstring=v.header);
@@ -411,8 +413,6 @@ class Propagator {
                 currToProc = '';
                 toProcess.clear();
                 for id in this.nodesToProcess {
-                    // As this is an atomic variable, we don't need to lock.
-                    // It's probably best to remove it, if necessary.
                     toProcess.add(id);
                 }
                 if !(v.priorityNodes & toProcess).isEmpty() {
@@ -564,31 +564,33 @@ class Propagator {
                   }
                 }
                 // clear the domain of our losers.
-                for chrome in this.chromosomeDomain {
-                  if !chromosomesToAdvance.contains(chrome) {
-                    this.chromosomeDomain.remove(chrome);
+                on Locale[0] do {
+                  for chrome in this.chromosomeDomain {
+                    if !chromosomesToAdvance.contains(chrome) {
+                      this.chromosomeDomain.remove(chrome);
+                    }
                   }
-                }
-                var vheader = v.header;
-                coforall chrome in chromosomesToAdvance {
-                  var nc = this.chromes[chrome];
-                  for node in nc.geneIDs {
-                    this.lock.wl(vheader);
-                    this.nextGeneration.add(node);
-                    this.lock.uwl(vheader);
-                  }
-                  for i in 1..nDuplicates {
-                    var cc = nc;
-                    cc.advanceNodes(this.ygg);
-                    for node in cc.geneIDs {
+                  var vheader = v.header;
+                  forall chrome in chromosomesToAdvance {
+                    var nc = this.chromes[chrome];
+                    for node in nc.geneIDs {
                       this.lock.wl(vheader);
                       this.nextGeneration.add(node);
                       this.lock.uwl(vheader);
                     }
-                    this.lock.wl(vheader);
-                    this.chromosomeDomain.add(cc.id);
-                    this.chromes[cc.id] = cc;
-                    this.lock.uwl(vheader);
+                    for i in 1..nDuplicates {
+                      var cc = nc;
+                      cc.advanceNodes(this.ygg);
+                      for node in cc.geneIDs {
+                        this.lock.wl(vheader);
+                        this.nextGeneration.add(node);
+                        this.lock.uwl(vheader);
+                      }
+                      this.lock.wl(vheader);
+                      this.chromosomeDomain.add(cc.id);
+                      this.chromes[cc.id] = cc;
+                      this.lock.uwl(vheader);
+                    }
                   }
                 }
                 /*
@@ -668,9 +670,9 @@ class Propagator {
                 std = abs(avg - sqrt(std/maxValkyries))/avg;
                 eff /= maxValkyries;
                 processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
-                this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
+                this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
                 this.yh.printedHeader = true;
-                this.generationTime = 0 : real;
+                generationTime = 0 : real;
                 this.lock.uwl(v.header);
                 this.valkyriesProcessed.write(0);
                 this.priorityValkyriesProcessed.write(0);
