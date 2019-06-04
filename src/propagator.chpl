@@ -312,7 +312,7 @@ class Propagator {
       // tell the Valkyries to quit their shit.
       var m = new messaging.msg(0);
       m.COMMAND = messaging.command.SHUTDOWN;
-      SEND(m, i+(maxValkyries*here.id));
+      //SEND(m, i+(maxValkyries*here.id));
     }
     this.log.critical('SHUTDOWN INITIATED');
     this.log.exitRoutine();
