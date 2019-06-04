@@ -4,7 +4,7 @@
 use genes;
 use ZMQ;
 
-extern proc chpl_nodeName(): c_string
+extern proc chpl_nodeName(): c_string;
 
 record statusRecord {
   var OK: int = 0;
