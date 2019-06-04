@@ -132,7 +132,7 @@ class msgHandler {
     // so, we're going to set up and use a random port.
 
     this.recvSocket[i] = this.context.socket(ZMQ.PULL);
-    this.recvSocket[i].connect(portreplace("0.0.0.0",chpl_nodeName()));
+    this.recvSocket[i].connect(port.replace("0.0.0.0",chpl_nodeName()));
     this.recvPorts[i] = port;
   }
 
