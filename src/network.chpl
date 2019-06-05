@@ -252,7 +252,7 @@ class GeneNetwork {
     paths[id_A].node[0] = id_A;
     // catch an empty id_B!
     if id_B.isEmpty() {
-      this.log.debug('id_B is empty; is this okay?', hstring=vstring);
+      //this.log.debug('id_B is empty; is this okay?', hstring=vstring);
       return (id_A, paths[id_A]);
     }
     while true {
@@ -264,11 +264,11 @@ class GeneNetwork {
       if !thisIsACopy {
         this.lock.rl(vstring);
       }
-      this.log.debug('Attempting to pass through node', currentNode, 'does it exist?', this.ids.contains(currentNode) : string, vstring);
+      //this.log.debug('Attempting to pass through node', currentNode, 'does it exist?', this.ids.contains(currentNode) : string, vstring);
       if this.ids.contains(currentNode) {
         //assert(this.ids.contains(currentNode));
       } else {
-        this.log.critical('NODE', currentNode : string, 'NOT IN LIST.  WHAT.  Existing nodes:', this.ids : string, hstring=vstring);
+        //this.log.critical('NODE', currentNode : string, 'NOT IN LIST.  WHAT.  Existing nodes:', this.ids : string, hstring=vstring);
       }
       for edge in this.edges[currentNode] do {
         if !nodes.contains(edge) {
@@ -300,7 +300,7 @@ class GeneNetwork {
         }
       }
       if !thisIsACopy {
-        this.lock.url(vstring);        
+        this.lock.url(vstring);
       }
       visited[currentNode] = true;
       // Doing it like this means we never have a race condition.
