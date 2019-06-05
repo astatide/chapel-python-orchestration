@@ -338,7 +338,7 @@ class Propagator {
     vLog.log("Spawning Valkyrie", hstring=vstring);
     //var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
     //var vp = spawn(["./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string, " &> /dev/null"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD);
-    var vp = spawn(["./v.sh", mH.sendPorts[iM], mH.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD);
+    var vp = spawn(["./v.sh", mH.sendPorts[iM], mH.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
 
     //var vp = spawn(["./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
     vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
