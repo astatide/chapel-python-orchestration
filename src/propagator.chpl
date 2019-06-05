@@ -367,7 +367,7 @@ class Propagator {
     // start up the main procedure by creating some valkyries.
     coforall L in Locales {
       on L do {
-        if here.id != 0 {
+        if true {
           //super.init(maxValkyries*Locales.size);
           var mH = new messaging.msgHandler(maxValkyries);
           // create a logger, just for us!
