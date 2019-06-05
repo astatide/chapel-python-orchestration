@@ -161,6 +161,8 @@ class Propagator {
   var lock: shared spinlock.SpinLock;
   var valkyriesDone: [1..generations] atomic int;
   var moveOn: [1..generations] single bool;
+  var areSpawned: single bool;
+  var numSpawned: atomic int;
   var valkyriesProcessed: [1..maxValkyries*Locales.size] atomic int;
   var priorityValkyriesProcessed: [1..maxValkyries*Locales.size] atomic real;
   var generationTime: real;
@@ -397,6 +399,12 @@ class Propagator {
             // also, spin up the tasks.
             //this.lock.wl(v.header);
             var vp = this.valhalla(1, v.id, mH, vLog, vstring=v.header);
+            if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
+              // we want to wait so that we spin up all processes.
+              this.areSpawned;
+            } else {
+              this.areSpawned = true;
+            }
             //this.lock.uwl(v.header);
             v.moveToRoot();
 
