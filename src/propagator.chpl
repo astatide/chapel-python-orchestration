@@ -383,7 +383,8 @@ class Propagator {
             vLog.currentDebugLevel = debug;
             var vLock = new shared spinlock.SpinLock();
             vLock.t = 'Valkyrie';
-            var yggLocalCopy = new shared network.GeneNetwork();
+            var yggLocalCopy = this.ygg.clone();
+            // ?? This doesn't seem to actually be working.
             yggLocalCopy.log = vLog;
             yggLocalCopy.lock.log = vLog;
             var v = new valkyrie();
@@ -412,7 +413,8 @@ class Propagator {
               //  this.generationTime = Time.getCurrentTime();
               //}
               //if !localeUpdated[gen].testAndSet() {
-              yggLocalCopy = this.ygg;
+              //yggLocalCopy = this.ygg;
+              yggLocalCopy = this.ygg.clone();
               //this.ygg.update(yggLocalCopy);
               //}
               //this.lock.uwl(v.header);

@@ -448,7 +448,7 @@ class GeneNode {
     node.parentSeedNode = this.parentSeedNode;
     for n in this.nodes {
       node.nodes.add(n);
-      nodes.edges[n] = this.edges[n].clone();
+      node.edges[n] = this.edges[n].clone();
     }
     for deme in this.demeDomain {
       node.demeDomain.add(deme);

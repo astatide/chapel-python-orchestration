@@ -621,9 +621,11 @@ class GeneNetwork {
 
   proc clone() {
     var networkCopy = new shared GeneNetwork();
-    networkCopy.ids = this.ids;
-    networkCopy.edges = this.edges;
-    networkCopy.nodes = this.nodes;
+    for i in this.ids {
+      networkCopy.ids.add(i);
+      networkCopy.edges[i] = this.edges[i];
+      networkCopy.nodes[i] = this.nodes[i].clone();
+    }
     return networkCopy;
   }
 
