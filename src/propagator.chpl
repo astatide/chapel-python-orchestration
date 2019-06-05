@@ -494,7 +494,7 @@ class Propagator {
                       var minVal : real = Math.INFINITY;
                       var minLoc : int;
                       for (v,l) in zip(sA, sA.domain) {
-                        if v <= minVAL {
+                        if v <= minVal {
                           minVal = v;
                           minLoc = l;
                         }
