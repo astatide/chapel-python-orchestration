@@ -158,10 +158,11 @@ class YggdrasilLogging {
   //var l: [filesOpened] spinlock.SpinLock;
 
   proc init() {
+    this.complete();
     //this.filesOpened = new domain(string);
     //this.channelsOpened = [filesOpened] channel(true,iokind.dynamic,true);
-    //this.filesOpened.add('stdout');
-    //this.channelsOpened['stdout'] = stdout;
+    this.filesOpened.add('stdout');
+    this.channelsOpened['stdout'] = stdout;
   }
 
   proc exitRoutine() throws {
