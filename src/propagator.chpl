@@ -369,7 +369,6 @@ class Propagator {
       on L do {
         if true {
           //super.init(maxValkyries*Locales.size);
-          var mH = new messaging.msgHandler(maxValkyries);
           // create a logger, just for us!
           //var vLog = new shared ygglog.YggdrasilLogging();
           //vLog.currentDebugLevel = debug;
@@ -381,6 +380,7 @@ class Propagator {
           coforall i in 1..maxValkyries {
             // spin up the Valkyries!
             //var yggLocalCopy = this.ygg.clone();
+            var mH = new messaging.msgHandler(maxValkyries);
             var vLog = new shared ygglog.YggdrasilLogging();
             vLog.currentDebugLevel = debug;
             var yggLocalCopy = new shared network.GeneNetwork();
