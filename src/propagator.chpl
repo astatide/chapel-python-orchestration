@@ -385,8 +385,8 @@ class Propagator {
             vLock.t = 'Valkyrie';
             var yggLocalCopy = this.ygg.clone();
             // ?? This doesn't seem to actually be working.
-            yggLocalCopy.log = vLog;
-            yggLocalCopy.lock.log = vLog;
+            //yggLocalCopy.log = vLog;
+            //yggLocalCopy.lock.log = vLog;
             var v = new valkyrie();
             v.currentTask = i;
             v.currentLocale = L : string;

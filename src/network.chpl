@@ -244,6 +244,7 @@ class GeneNetwork {
     var i: int;
     var completed: [id_B] bool = false;
     var vstring: ygglog.yggHeader;
+    var thisIsACopy: bool = true;
     vstring = hstring + '__calculatePath__';
     nodes.add[id_A];
     dist[id_A] = 0;
@@ -260,7 +261,9 @@ class GeneNetwork {
       // Is this from thread switching, I wonder?
       // AH!  I think it was from thread switching at the OS level, maybe.
       // I should apparently speak with Elliot about this, if I'm curious.
-      this.lock.rl(vstring);
+      if !thisIsACopy {
+        this.lock.rl(vstring);
+      }
       this.log.debug('Attempting to pass through node', currentNode, 'does it exist?', this.ids.contains(currentNode) : string, vstring);
       if this.ids.contains(currentNode) {
         //assert(this.ids.contains(currentNode));
@@ -296,7 +299,9 @@ class GeneNetwork {
           }
         }
       }
-      this.lock.url(vstring);
+      if !thisIsACopy {
+        this.lock.url(vstring);        
+      }
       visited[currentNode] = true;
       // Doing it like this means we never have a race condition.
       // Should help with load balancing and efficiency.
