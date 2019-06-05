@@ -378,7 +378,8 @@ class Propagator {
           //var yggLocalCopy = new shared network.GeneNetwork();
           forall i in 1..maxValkyries {
             // spin up the Valkyries!
-            var yggLocalCopy = this.ygg.clone();
+            //var yggLocalCopy = this.ygg.clone();
+            var yggLocalCopy = new shared network.GeneNetwork();
             var v = new valkyrie();
             v.currentTask = i;
             v.currentLocale = L : string;
@@ -405,8 +406,8 @@ class Propagator {
               //  this.generationTime = Time.getCurrentTime();
               //}
               //if !localeUpdated[gen].testAndSet() {
-                //yggLocalCopy = this.ygg;
-              this.ygg.update(yggLocalCopy);
+              yggLocalCopy = this.ygg;
+              //this.ygg.update(yggLocalCopy);
               //}
               //this.lock.uwl(v.header);
               vLog.debug('Beginning processing', hstring=v.header);
