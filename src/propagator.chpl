@@ -368,7 +368,7 @@ class Propagator {
             }
             // also, spin up the tasks.
             //this.lock.wl(v.header);
-            var vp = mH.valhalla(1, v.id, mH, vLog, vstring=v.header);
+            var vp = mH.valhalla(1, v.id, mSize, mH, vLog, vstring=v.header);
             if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
               this.areSpawned;

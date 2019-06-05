@@ -4,6 +4,7 @@
 use genes;
 use ZMQ;
 use ygglog;
+use Spawn;
 
 extern proc chpl_nodeName(): c_string;
 config const awaitResponse = false;
@@ -251,7 +252,7 @@ class msgHandler {
   proc RECV(ref m: msg, i: int) { return this.__RECV__(m, i); }
   proc RECV(ref m: msg) { return this.__RECV__(m, this.mId); }
 
-  proc valhalla(i: int, vId: string, vLog: ygglog.YggdrasilLogging, vstring: ygglog.yggHeader) {
+  proc valhalla(i: int, vId: string, mSize : string vLog: ygglog.YggdrasilLogging, vstring: ygglog.yggHeader) {
     // ha ha, cause Valkyries are in Valhalla, get it?  Get it?
     // ... no?
     // set up a ZMQ client/server
