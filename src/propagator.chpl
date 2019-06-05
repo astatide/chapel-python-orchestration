@@ -380,7 +380,7 @@ class Propagator {
           coforall i in 1..maxValkyries {
             // spin up the Valkyries!
             //var yggLocalCopy = this.ygg.clone();
-            var mH = new messaging.msgHandler(maxValkyries);
+            var mH = new messaging.msgHandler(1);
             var vLog = new shared ygglog.YggdrasilLogging();
             vLog.currentDebugLevel = debug;
             var yggLocalCopy = new shared network.GeneNetwork();
@@ -393,7 +393,7 @@ class Propagator {
             }
             // also, spin up the tasks.
             //this.lock.wl(v.header);
-            var vp = this.valhalla(i, v.id, mH, vLog, vstring=v.header);
+            var vp = this.valhalla(1, v.id, mH, vLog, vstring=v.header);
             //this.lock.uwl(v.header);
             v.moveToRoot();
 
@@ -459,7 +459,7 @@ class Propagator {
                       newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
                       vLog.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
                       vLog.debug("Sending the following msg:", newMsg : string, hstring=v.header);
-                      mH.SEND(newMsg, i);
+                      mH.SEND(newMsg);
                       vLog.debug("Message & delta sent; awaiting instructions", hstring=v.header);
                       //RECV(newMsg, i);
                       /*
@@ -475,7 +475,7 @@ class Propagator {
                           this.log.log(l, hstring=vheader);
                         }
                       }*/
-                      mH.RECV(newMsg, i);
+                      mH.RECV(newMsg);
                       var score: real;
                       newMsg.open(score);
                       vLog.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
