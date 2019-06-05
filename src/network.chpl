@@ -643,8 +643,14 @@ class GeneNetwork {
 }
 
 proc =(a : GeneNetwork, b : GeneNetwork) {
-  a.ids = b.ids;
-  a.edges = b.edges;
+  // make this serial.
+  for i in b.ids {
+    a.ids.add(i);
+    a.edges[i] = b.edges[i];
+    a.nodes[i] = b.nodes[i].clone();
+  }
+  //a.ids = b.ids;
+  //a.edges = b.edges;
   // we don't need nodes.
-  a.nodes = b.nodes;
+  //a.nodes = b.nodes;
 }

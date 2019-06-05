@@ -292,6 +292,16 @@ class GeneEdge {
     return rEdge;
   }
 
+  proc clone() {
+    var rEdge = new shared GeneEdge();
+    rEdge.delta = (this.delta);
+    rEdge.direction = (this.direction[1], this.direction[2]);
+    rEdge.mu = this.mu;
+    rEdge.sigma = this.sigma;
+    rEdge.noise_function = this.noise_function;
+    return rEdge;
+  }
+
 }
 
 class GeneNode {
@@ -425,6 +435,28 @@ class GeneNode {
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__newNode__';
     this.join(node, delta, vstring);
+    return node;
+  }
+
+  proc clone() {
+    var node = new shared GeneNode();
+    node.id = this.id;
+    node.debugOrderOfCreation = this.debugOrderOfCreation;
+    node.ctype = this.ctype;
+    node.parent = this.parent;
+    node.generation = this.generation;
+    node.parentSeedNode = this.parentSeedNode;
+    for n in this.nodes {
+      node.nodes.add(n);
+      nodes.edges[n] = this.edges[n].clone();
+    }
+    for deme in this.demeDomain {
+      node.demeDomain.add(deme);
+      node.scores[deme] = this.scores[deme];
+    }
+    for c in this.chromosomes {
+      node.chromosomes.add(c);
+    }
     return node;
   }
 }
