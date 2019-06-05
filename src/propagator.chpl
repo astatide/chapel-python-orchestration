@@ -373,8 +373,6 @@ class Propagator {
           //var vLog = new shared ygglog.YggdrasilLogging();
           //vLog.currentDebugLevel = debug;
           var localeUpdated: [1..generations] atomic bool;
-          var vLock = new shared spinlock.SpinLock();
-          vLock.t = 'Valkyrie';
           //vLock.log = vLog;
           //var yggLocalCopy = new shared network.GeneNetwork();
           coforall i in 1..maxValkyries {
@@ -383,7 +381,11 @@ class Propagator {
             var mH = new messaging.msgHandler(1);
             var vLog = new shared ygglog.YggdrasilLogging();
             vLog.currentDebugLevel = debug;
+            var vLock = new shared spinlock.SpinLock();
+            vLock.t = 'Valkyrie';
             var yggLocalCopy = new shared network.GeneNetwork();
+            yggLocalCopy.log = vLog;
+            yggLocalCopy.lock.log = vLog;
             var v = new valkyrie();
             v.currentTask = i;
             v.currentLocale = L : string;
