@@ -425,6 +425,7 @@ class Propagator {
                 // the path towards every node.  Particularly as that results in tasks
                 // performing a lot of unnecessary computations once a lot of nodes
                 // have been processed.
+                vLog.debug('Assessing nodes that must be handled', hstring=v.header);
                 currToProc = '';
                 toProcess.clear();
                 for id in this.nodesToProcess {
@@ -434,11 +435,14 @@ class Propagator {
                   toProcess = toProcess & v.priorityNodes;
                 }
                 // Assuming we have some things to process, do it!
+                vLog.debug('toProcess created', hstring=v.header);
                 if !toProcess.isEmpty() {
                   // We can remove nodes from the domain processedArray is built on, which means we need to catch and process.
                   var existsInDomainAndCanProcess: bool = false;
                   // This function now does the atomic test.
+                  vLog.debug('Returning nearest unprocessed', hstring=v.header);
                   (currToProc, path) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
+                  vLog.debug('Unprocessed found.', hstring=v.header);
                   if currToProc != '' {
                     for deme in yggLocalCopy.nodes[currToProc].demeDomain {
                       // Actually, reduce the count BEFORE we do this.
