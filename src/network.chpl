@@ -368,8 +368,8 @@ class GeneNetwork {
     // This is a overloaded move function if we already have a path.
     // The other move function is for if we DON'T have a path.
     var vstring = v.header + '__move__';
-    this.log.debug('Attempting to move from', path.key(0), 'to', id : string, hstring=vstring);
-    this.log.debug('PATH', path : string, hstring=vstring);
+    //this.log.debug('Attempting to move from', path.key(0), 'to', id : string, hstring=vstring);
+    //this.log.debug('PATH', path : string, hstring=vstring);
     // Now we just process the path into a delta, and confirm that it is valid.
     // this is node we're moving FROM, not to, by the way.
     var d = this.deltaFromPath(path, path.key(0), hstring=vstring);
@@ -387,7 +387,7 @@ class GeneNetwork {
       }
     }
     if propagator.unitTestMode {
-      this.log.debug('Delta to move to is:', d : string, hstring=vstring);
+      //this.log.debug('Delta to move to is:', d : string, hstring=vstring);
     }
     // this is actually the command that moves us.
     // rather than actually handling the move, let's just send the delta back.
