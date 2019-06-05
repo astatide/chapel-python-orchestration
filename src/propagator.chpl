@@ -328,36 +328,6 @@ class Propagator {
     this.shutdown = true;
   }
 
-  proc valhalla(i: int, vId: string, mH: messaging.msgHandler, vLog: ygglog.YggdrasilLogging, vstring: ygglog.yggHeader) {
-    // ha ha, cause Valkyries are in Valhalla, get it?  Get it?
-    // ... no?
-    // set up a ZMQ client/server
-    var iM: int = i; //+(maxValkyries*here.id);
-    vLog.log("Initializing sockets", hstring=vstring);
-    mH.initSendSocket(iM);
-    mH.initUnlinkedRecvSocket(iM);
-
-    vLog.log("Spawning Valkyrie", hstring=vstring);
-    //var vp = spawn(["./valkyrie", "--recvPort", this.sendPorts[i], "--sendPort", this.recvPorts[i], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
-    //var vp = spawn(["./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string, " &> /dev/null"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD);
-    var vp = spawn(["./v.sh", mH.sendPorts[iM], mH.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
-
-    //var vp = spawn(["./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string], stdout=BUFFERED_PIPE, stderr=STDOUT);
-    vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", mH.sendPorts[iM], "--sendPort", mH.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
-    //this.log.log("PORTS:",this.sendPorts[iM] : string, this.recvPorts[i] : string, hstring=vstring);
-
-    var newMsg = new messaging.msg(i);
-    newMsg.COMMAND = messaging.command.SET_TASK;
-    vLog.log("Setting task to", i : string, hstring=vstring);
-    mH.SEND(newMsg, iM);
-
-    vLog.log("Setting ID to", vId : string, hstring=vstring);
-    newMsg = new messaging.msg(vId);
-    newMsg.COMMAND = messaging.command.SET_ID;
-    mH.SEND(newMsg, iM);
-    return vp;
-  }
-
   proc run() {
     // Print out the header, yo.
     this.header();
@@ -398,7 +368,7 @@ class Propagator {
             }
             // also, spin up the tasks.
             //this.lock.wl(v.header);
-            var vp = this.valhalla(1, v.id, mH, vLog, vstring=v.header);
+            var vp = mH.valhalla(1, v.id, mH, vLog, vstring=v.header);
             if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
               this.areSpawned;

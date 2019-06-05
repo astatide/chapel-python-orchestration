@@ -3,6 +3,7 @@
 
 use genes;
 use ZMQ;
+use ygglog;
 
 extern proc chpl_nodeName(): c_string;
 config const awaitResponse = false;
@@ -249,5 +250,31 @@ class msgHandler {
 
   proc RECV(ref m: msg, i: int) { return this.__RECV__(m, i); }
   proc RECV(ref m: msg) { return this.__RECV__(m, this.mId); }
+
+  proc valhalla(i: int, vId: string, vLog: ygglog.YggdrasilLogging, vstring: ygglog.yggHeader) {
+    // ha ha, cause Valkyries are in Valhalla, get it?  Get it?
+    // ... no?
+    // set up a ZMQ client/server
+    var iM: int = i; //+(maxValkyries*here.id);
+    vLog.log("Initializing sockets", hstring=vstring);
+    this.initSendSocket(iM);
+    this.initUnlinkedRecvSocket(iM);
+
+    vLog.log("Spawning Valkyrie", hstring=vstring);
+    var vp = spawn(["./v.sh", this.sendPorts[iM], this.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
+
+    vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[iM], "--sendPort", this.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
+
+    var newMsg = new messaging.msg(i);
+    newMsg.COMMAND = messaging.command.SET_TASK;
+    vLog.log("Setting task to", i : string, hstring=vstring);
+    this.SEND(newMsg, iM);
+
+    vLog.log("Setting ID to", vId : string, hstring=vstring);
+    newMsg = new messaging.msg(vId);
+    newMsg.COMMAND = messaging.command.SET_ID;
+    this.SEND(newMsg, iM);
+    return vp;
+  }
 
 }
