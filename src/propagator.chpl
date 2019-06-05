@@ -378,7 +378,7 @@ class Propagator {
           vLock.t = 'Valkyrie';
           vLock.log = vLog;
           //var yggLocalCopy = new shared network.GeneNetwork();
-          forall i in 1..maxValkyries {
+          coforall i in 1..maxValkyries {
             // spin up the Valkyries!
             //var yggLocalCopy = this.ygg.clone();
             var yggLocalCopy = new shared network.GeneNetwork();

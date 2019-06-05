@@ -178,6 +178,7 @@ proc main {
 
   v.initRecvSocket(1, recvPort);
   v.initPrevSendSocket(1, sendPort);
+  writeln('VALKYRIE %s on locale %i, ports initialized'.format(v.id, here.id));
   //c.write("So, I've got all that stuff set");
   //c.write(v.sendPorts[1], " ", v.recvPorts[1]);
   //c.flush();
