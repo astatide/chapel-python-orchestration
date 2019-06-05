@@ -489,7 +489,16 @@ class Propagator {
                       // set the score on the node.
                       this.ygg.nodes[currToProc].scores[deme] = score;
                       var sA = this.scoreArray[deme, 1..maxPerGeneration];
-                      var (minVal, minLoc) = minloc reduce zip(sA, sA.domain);
+                      // Is that a problem?
+                      //var (minVal, minLoc) = minloc reduce zip(sA, sA.domain);
+                      var minVal : real = Math.INFINITY;
+                      var minLoc : int;
+                      for (v,l) in zip(sA, sA.domain) {
+                        if v <= minVAL {
+                          minVal = v;
+                          minLoc = l;
+                        }
+                      }
                       if score >= minVal {
                         this.scoreArray[deme,minLoc] = score;
                         this.idArray[deme, minLoc] = currToProc;
