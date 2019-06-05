@@ -415,13 +415,13 @@ class GeneNetwork {
     var pl: int;
     path.remove(id);
     for (i, pt) in path {
-      this.log.debug(i: string, pt: string, hstring=vstring);
+      //this.log.debug(i: string, pt: string, hstring=vstring);
       this.lock.rl(vstring);
       // LOCK THE NODES.
       this.nodes[currentNode].l.rl(vstring);
       if this.nodes[currentNode].nodes.contains(pt) {
         edge = this.nodes[currentNode].edges[pt : string];
-        this.log.debug('EDGE:', edge : string, hstring=vstring);
+        //this.log.debug('EDGE:', edge : string, hstring=vstring);
       } else {
         this.log.critical('EDGE', pt : string, 'NOT IN EDGE LIST FOR', currentNode, hstring=vstring);
         this.log.critical('EDGELIST for 1st:', this.nodes[pt : string].nodes : string, hstring=vstring);
