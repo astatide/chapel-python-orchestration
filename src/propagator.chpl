@@ -371,9 +371,14 @@ class Propagator {
           // create a logger, just for us!
           var vLog = new shared ygglog.YggdrasilLogging();
           vLog.currentDebugLevel = debug;
-          var generationTime: real;
+          var localeUpdated: [1..generations] atomic bool;
+          var vLock = new shared spinlock.SpinLock();
+          vLock.t = 'Valkyrie';
+          vLock.log = vLog;
+          //var yggLocalCopy = new shared network.GeneNetwork();
           forall i in 1..maxValkyries {
             // spin up the Valkyries!
+            var yggLocalCopy = this.ygg.clone();
             var v = new valkyrie();
             v.currentTask = i;
             v.currentLocale = L : string;
@@ -386,7 +391,6 @@ class Propagator {
             var vp = this.valhalla(i, v.id, mH, vLog, vstring=v.header);
             //this.lock.uwl(v.header);
             v.moveToRoot();
-            var yggLocalCopy = new shared network.GeneNetwork();
 
             for gen in 1..generations {
 
@@ -396,12 +400,15 @@ class Propagator {
               var toProcess: domain(string);
               var path: network.pathHistory;
               toProcess.clear();
-              this.lock.wl(v.header);
-              if this.generationTime == 0 : real {
-                this.generationTime = Time.getCurrentTime();
-              }
-              yggLocalCopy = this.ygg;
-              this.lock.uwl(v.header);
+              //this.lock.wl(v.header);
+              //if this.generationTime == 0 : real {
+              //  this.generationTime = Time.getCurrentTime();
+              //}
+              //if !localeUpdated[gen].testAndSet() {
+                //yggLocalCopy = this.ygg;
+              this.ygg.update(yggLocalCopy);
+              //}
+              //this.lock.uwl(v.header);
               vLog.debug('Beginning processing', hstring=v.header);
               vLog.debug(this.nodesToProcess : string, hstring=v.header);
               var prioritySize = v.priorityNodes.size;
@@ -673,7 +680,7 @@ class Propagator {
                 processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
                 this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
                 this.yh.printedHeader = true;
-                this.generationTime = 0 : real;
+                this.generationTime = Time.getCurrentTime() : real;
                 this.lock.uwl(v.header);
                 this.valkyriesProcessed.write(0);
                 this.priorityValkyriesProcessed.write(0);

@@ -282,6 +282,16 @@ class GeneEdge {
     }
   }
 
+  proc reverse() {
+    var rEdge = new shared GeneEdge();
+    rEdge.delta = (this.delta * -1);
+    rEdge.direction = (this.direction[2], this.direction[1]);
+    rEdge.mu = this.mu;
+    rEdge.sigma = this.sigma;
+    rEdge.noise_function = this.noise_function;
+    return rEdge;
+  }
+
 }
 
 class GeneNode {

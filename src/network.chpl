@@ -85,6 +85,8 @@ class GeneNetwork {
   var nodes: [ids] shared genes.GeneNode;
   var lock: shared spinlock.SpinLock;
 
+  var newIDs: domain(string);
+
   var irng = new owned rng.UDevRandomHandler();
 
   var rootNode: shared genes.GeneNode;
@@ -114,6 +116,7 @@ class GeneNetwork {
     for edge in node.nodes {
       this.edges[node.id].add(edge);
     }
+    this.newIDs.add(node.id);
     this.lock.uwl(vstring);
   }
 
@@ -614,6 +617,27 @@ class GeneNetwork {
     assert(this.nodes[node.id].nodeInEdges(id, vstring));
     this.log.debug('Successfully added', (seed+1) : string, 'to ID', id : string, 'to create ID', node.id : string, hstring=hstring);
     return node.id;
+  }
+
+  proc clone() {
+    var networkCopy = new shared GeneNetwork();
+    networkCopy.ids = this.ids;
+    networkCopy.edges = this.edges;
+    networkCopy.nodes = this.nodes;
+    return networkCopy;
+  }
+
+  proc update(otherNetwork: GeneNetwork) {
+    for node in this.newIDs {
+      for edge in this.nodes[node].nodes {
+        // these are all the edges it's connected to.
+        otherNetwork.edges[node].add(edge);
+        otherNetwork.edges[edge].add(node);
+        otherNetwork.nodes[edge].nodes.add(node);
+        otherNetwork.nodes[edge].edges[node] = this.nodes[node].edges[edge].reverse();
+      }
+    }
+    this.newIDs.clear();
   }
 
 }
