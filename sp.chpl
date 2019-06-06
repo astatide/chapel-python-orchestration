@@ -11,94 +11,68 @@ use propagator;
 use spinlock;
 use genes;
 
+config const mSize = 20;
+config const maxPerGeneration = 10;
+config const mutationRate = 0.03;
+config const maxValkyries = 1;
+config const startingSeeds = 4;
+config const createEdgeOnMove = true;
+config const edgeDistance = 10;
+config const debug = -1;
+config const generations = 100;
+config const unitTestMode = false;
+config const stdoutOnly = false;
+// The locks are noisy, but we do need to debug them sometimes.
+// This shuts them up unless you really want them to sing.  Their song is
+// a terrible noise; an unending screech which ends the world.
+// (okay, they're just super verbose)
+config var lockLog = false;
+config var flushToLog = false;
+
+config var nChromosomes = 6;
+config var chromosomeSize = 36;
+config var nDuplicates = 4;
+
 class A {
   proc blah {}
 }
 
 
-class vSpawner: msgHandler {
+class vSpawner {
 
-  proc init(n: int) {
-    // basically, the inheritance isn't working as I would have expected.
-    // see https://github.com/chapel-lang/chapel/issues/8232
-    this.size = n;
-  }
   proc run() {
-    var i: int;
-    var d = new deltaRecord();
-    var recvPort: string;
-    d += (123, 2);
-    d += (54345, 4);
-    writeln("Spawning valkyrie");
-    var vp = spawn(["./valkyrie"], stdout=PIPE, stdin=PIPE);
-    //var vp = spawn(["./valkyrie"], stdin=PIPE);
-    // this SHOULD be good?
-    //vp.stdout.readln(recvPort);
-    //writeln(recvPort);
-    writeln("Valkyrie spawned; initializing sockets");
-    //this.setChannels(vp.stdout, vp.stdin);
-    this.initSendSocket(1);
-    vp.stdin.writeln(this.sendPorts[1]);
-    // don't forget to flush the connection
-    vp.stdin.flush();
-    vp.stdout.readln(recvPort);
-    //writeln(recvPort);
-    //vp.stdout.readln(recvPort);
-    this.initRecvSocket(1, recvPort);
-    writeln(this.sendPorts[1], " ", this.recvPorts[1]);
-    writeln(this.recvSocket[1]);
-
-
-    begin {
-      // start dumping the stdout.
-      var l: string;
-      while true {
-        vp.stdout.readline(l);
-        if (l != "") {
-          writeln(l);
+    coforall L in Locales {
+      on L do {
+        coforall i in 1..maxValkyries {
+          // spin up the Valkyries!
+          //var yggLocalCopy = this.ygg.clone();
+          var mH = new messaging.msgHandler(1);
+          var vLog = new shared ygglog.YggdrasilLogging();
+          vLog.currentDebugLevel = debug;
+          var vLock = new shared spinlock.SpinLock();
+          vLock.t = 'Valkyrie';
+          var yggLocalCopy = this.ygg.clone();
+          // ?? This doesn't seem to actually be working.
+          //yggLocalCopy.log = vLog;
+          //yggLocalCopy.lock.log = vLog;
+          var v = new valkyrie();
+          v.currentTask = i;
+          v.currentLocale = L : string;
+          v.yh += 'run';
+          for iL in v.logo {
+            vLog.header(iL, hstring=v.header);
+          }
+          // also, spin up the tasks.
+          //this.lock.wl(v.header);
+          var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
+          if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
+            // we want to wait so that we spin up all processes.
+            this.areSpawned;
+          } else {
+            this.areSpawned = true;
+          }
         }
       }
-    }
-
-
-    /*
-    var c: channel(true,iokind.dynamic,true);
-    var z: channel(false,iokind.dynamic,true);
-    var lf = open('test.log' : string, iomode.cwr);
-    c = lf.writer();
-    z = lf.reader();
-    c.write(d);
-    c.flush();
-    //var l: genes.deltaRecord;
-    var l = z.read(genes.deltaRecord);
-    writeln("This should be a delta");
-    writeln(d);
-    writeln(l);
-    */
-    var newMsg = new messaging.msg(1);
-    newMsg.COMMAND = messaging.command.SET_TASK;
-    writeln(newMsg);
-    writeln("Attempting to send message");
-    SEND(newMsg);
-    writeln("Message sent");
-    // setting the task, now.
-    while true {
-      //vp.stdin.writeln("blooo");
-      //var b: int = 12;
-      //vp.stdout.read(b);
-      //writeln(b : string);
-      newMsg = new messaging.msg(d);
-      newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
-      writeln(newMsg);
-      writeln("Attempting to run TF");
-      SEND(newMsg);
-      writeln("Message & delta sent; awaiting instructions");
-      RECV(newMsg);
-      writeln("Message received; awaiting score");
-      var score: real;
-      newMsg.open(score);
-      writeln(score);
-      //vp.wait();
     }
   }
 }
