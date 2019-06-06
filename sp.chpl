@@ -70,6 +70,7 @@ class vSpawner {
           //this.lock.wl(v.header);
           var t: real = Time.getCurrentTime();
           var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
+          //var vp = spawn(["./v.sh", this.sendPorts[iM], this.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=true);
           writeln("Hello from task %i on ".format(i) + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
         }
       }

@@ -40,7 +40,6 @@ record msg {
   var s: string;
   var i: int;
   var r: real;
-
   // this.complete() means we complete!
 
   proc init() {}
@@ -168,7 +167,9 @@ class msgHandler {
     //var m: msg;
     //fin[i].readln(m);
     // this is a wee loop.
+    // does this yield?  Who knows!
     var m = this.recvSocket[i].recv(msg);
+    while m.TYPE == 0 do chpl_task_yield();
     this.__PROCESS__(m, i);
   }
 
