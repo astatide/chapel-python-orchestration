@@ -51,7 +51,7 @@ class vSpawner {
           vLog.currentDebugLevel = debug;
           var vLock = new shared spinlock.SpinLock();
           vLock.t = 'Valkyrie';
-          var yggLocalCopy = this.ygg.clone();
+          //var yggLocalCopy = this.ygg.clone();
           // ?? This doesn't seem to actually be working.
           //yggLocalCopy.log = vLog;
           //yggLocalCopy.lock.log = vLog;
@@ -71,6 +71,7 @@ class vSpawner {
           } else {
             this.areSpawned = true;
           }
+          writeln("Hello from " + here.id : string + "; done!");
         }
       }
     }
