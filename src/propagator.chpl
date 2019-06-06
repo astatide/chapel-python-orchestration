@@ -345,7 +345,9 @@ class Propagator {
           //var vLog = new shared ygglog.YggdrasilLogging();
           //vLog.currentDebugLevel = debug;
           var localeUpdated: [1..generations] atomic bool;
+          this.log.debug("Copying network onto locale", here.id : string, this.yh);
           var yggNodeCopy: network.GeneNetwork = this.ygg.clone();
+          this.log.debug("Network copied onto locale ", here.id : string, this.yh);
           var nodeHasCopy: single bool;
           //vLock.log = vLog;
           //var yggLocalCopy = new shared network.GeneNetwork();
