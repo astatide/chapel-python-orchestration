@@ -161,7 +161,7 @@ class YggdrasilLogging {
     this.complete();
     //this.filesOpened = new domain(string);
     //this.channelsOpened = [filesOpened] channel(true,iokind.dynamic,true);
-    this.filesOpened.add('stdout');
+    //this.filesOpened.add('stdout');
     //this.channelsOpened['stdout'] = stdout;
   }
 
