@@ -7,7 +7,6 @@ use uuid;
 use rng;
 use genes;
 use network;
-use propagator;
 use spinlock;
 use genes;
 use Time;
@@ -76,7 +75,7 @@ class vSpawner {
           } else {
             this.areSpawned = true;
           }
-          writeln("Hello from " + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
+          writeln("Hello from task %i on ".format(i) + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
         }
       }
     }
