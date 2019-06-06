@@ -78,5 +78,5 @@ class vSpawner {
   }
 }
 
-var vs = new owned vSpawner(1);
+var vs = new owned vSpawner();
 vs.run();
