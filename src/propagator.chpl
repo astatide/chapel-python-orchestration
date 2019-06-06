@@ -394,7 +394,7 @@ class Propagator {
               //}
               //if !localeUpdated[gen].testAndSet() {
               //yggLocalCopy = this.ygg;
-              yggLocalCopy = this.ygg.clone();
+              //yggLocalCopy = this.ygg.clone();
               //this.ygg.update(yggLocalCopy);
               //}
               //this.lock.uwl(v.header);
