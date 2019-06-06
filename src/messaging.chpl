@@ -168,7 +168,8 @@ class msgHandler {
     //fin[i].readln(m);
     // this is a wee loop.
     // does this yield?  Who knows!
-    var m = this.recvSocket[i].recv(msg);
+    var m = new msg();
+    m = this.recvSocket[i].recv(msg);
     while m.TYPE == 0 do chpl_task_yield();
     this.__PROCESS__(m, i);
   }
