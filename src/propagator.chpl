@@ -370,8 +370,11 @@ class Propagator {
             var yggLocalCopy: network.GeneNetwork;
             // spin it off baby.
             //begin with (ref yggLocalCopy) yggLocalCopy = this.ygg.clone();
+            vLog.log('Cloning network onto', here.id : string, hstring=v.header);
             yggLocalCopy = this.ygg.clone();
+            vLog.log('Initiating spawning sequence', hstring=v.header);
             var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
+            vLog.log('Spawn function complete; awaiting arrival of other Valkyries.', hstring=v.header);
             if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
               this.areSpawned;

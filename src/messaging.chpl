@@ -264,8 +264,8 @@ class msgHandler {
     this.initUnlinkedRecvSocket(iM);
 
     vLog.log("Spawning Valkyrie", hstring=vstring);
-    var vp: subprocess(kind=iokind.dynamic, locking=true);
-    begin with (ref vp) vp = spawn(["./v.sh", this.sendPorts[iM], this.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=true);
+    var vp: subprocess(kind=iokind.dynamic, locking=false);
+    begin with (ref vp) vp = spawn(["./v.sh", this.sendPorts[iM], this.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
 
     vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[iM], "--sendPort", this.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
 
