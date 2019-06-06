@@ -10,6 +10,7 @@ use network;
 use propagator;
 use spinlock;
 use genes;
+use Time;
 
 config const mSize = 20;
 config const maxPerGeneration = 10;
@@ -40,6 +41,9 @@ class A {
 
 class vSpawner {
 
+  var areSpawned: single bool;
+  var numSpawned: atomic int;
+
   proc run() {
     coforall L in Locales {
       on L do {
@@ -64,6 +68,7 @@ class vSpawner {
           }
           // also, spin up the tasks.
           //this.lock.wl(v.header);
+          var t: real = Time.getCurrentTime();
           var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
           if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
             // we want to wait so that we spin up all processes.
@@ -71,7 +76,7 @@ class vSpawner {
           } else {
             this.areSpawned = true;
           }
-          writeln("Hello from " + here.id : string + "; done!");
+          writeln("Hello from " + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
         }
       }
     }
