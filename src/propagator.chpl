@@ -345,6 +345,8 @@ class Propagator {
           //var vLog = new shared ygglog.YggdrasilLogging();
           //vLog.currentDebugLevel = debug;
           var localeUpdated: [1..generations] atomic bool;
+          var yggNodeCopy: network.GeneNetwork;
+          var nodeHasCopy: single bool;
           //vLock.log = vLog;
           //var yggLocalCopy = new shared network.GeneNetwork();
           coforall i in 1..maxValkyries {
@@ -370,8 +372,17 @@ class Propagator {
             var yggLocalCopy: network.GeneNetwork;
             // spin it off baby.
             //begin with (ref yggLocalCopy) yggLocalCopy = this.ygg.clone();
-            vLog.log('Cloning network onto', here.id : string, hstring=v.header);
-            yggLocalCopy = this.ygg.clone();
+            if i == 1 {
+              vLog.log('Cloning network onto locale', here.id : string, 'for all tasks.', hstring=v.header);
+              yggNodeCopy = this.ygg.clone();
+              yggLocalCopy = yggNodeCopy;
+              this.nodeHasCopy = true;
+            } else {
+              this.nodeHasCopy;
+              vLog.log('Cloning network for task', i : string, hstring=v.header);
+              yggLocalCopy = yggNodeCopy.clone();
+            }
+            //yggLocalCopy = this.ygg.clone();
             vLog.log('Initiating spawning sequence', hstring=v.header);
             var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
             vLog.log('Spawn function complete; awaiting arrival of other Valkyries.', hstring=v.header);
