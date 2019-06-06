@@ -367,7 +367,7 @@ class Propagator {
             }
             // also, spin up the tasks.
             //this.lock.wl(v.header);
-            var yggLocalCopy: genes.GeneNetwork;
+            var yggLocalCopy: network.GeneNetwork;
             // spin it off baby.
             begin with (ref yggLocalCopy) yggLocalCopy = this.ygg.clone();
             var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
