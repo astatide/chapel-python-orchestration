@@ -376,9 +376,9 @@ class Propagator {
               vLog.log('Cloning network onto locale', here.id : string, 'for all tasks.', hstring=v.header);
               yggNodeCopy = this.ygg.clone();
               yggLocalCopy = yggNodeCopy;
-              this.nodeHasCopy = true;
+              nodeHasCopy = true;
             } else {
-              this.nodeHasCopy;
+              nodeHasCopy;
               vLog.log('Cloning network for task', i : string, hstring=v.header);
               yggLocalCopy = yggNodeCopy.clone();
             }
