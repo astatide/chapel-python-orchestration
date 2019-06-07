@@ -35,7 +35,7 @@ class vSpawner {
           //this.lock.wl(v.header);
           var yh = new ygglog.yggHeader();
           var t: real = Time.getCurrentTime();
-          var vp = mH.valhalla(1, i, 33483 : string, vLog, vstring=yh);
+          var vp = mH.valhalla(1, i : string, 33483 : string, vLog, vstring=yh);
           //var vp = spawn(["./v.sh", this.sendPorts[iM], this.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=true);
           writeln("Hello from task %i on ".format(i) + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
         }
