@@ -56,7 +56,8 @@ class vSpawner {
       on L do {
         coforall i in 1..maxTasks {
           var t: real = Time.getCurrentTime();
-          var vp = spawn(["./v.sh"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
+          //var vp = spawn(["./v.sh"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
+          var vp = spawn(["echo", "ha"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
           vp.wait();
           writeln("Hello from task %i on ".format(i) + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
         }
