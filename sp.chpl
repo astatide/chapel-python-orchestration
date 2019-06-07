@@ -9,6 +9,7 @@ use ygglog;
 config const useValhalla: bool = false;
 config const useCSpawn: bool = true;
 config const maxTasks: int = 24;
+config const bash: bool = true;
 
 extern proc cSpawn() : c_int;
 
@@ -57,8 +58,13 @@ class vSpawner {
         coforall i in 1..maxTasks {
           var t: real = Time.getCurrentTime();
           //var vp = spawn(["./v.sh"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
-          var vp = spawn(["bash", "v.sh"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
-          vp.wait();
+          if bash {
+            var vp = spawn(["bash", "v.sh"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
+            vp.wait();
+          } else {
+            var vp = spawn(["./v.sh"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
+            vp.wait();
+          }
           writeln("Hello from task %i on ".format(i) + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
         }
       }
