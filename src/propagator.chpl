@@ -42,7 +42,6 @@ config const stdoutOnly = false;
 // This shuts them up unless you really want them to sing.  Their song is
 // a terrible noise; an unending screech which ends the world.
 // (okay, they're just super verbose)
-config var lockLog = false;
 //config var flushToLog = false;
 
 config var nChromosomes = 6;
@@ -377,7 +376,8 @@ class Propagator {
             //begin with (ref yggLocalCopy) yggLocalCopy = this.ygg.clone();
             //nodeHasCopy;
             vLog.log('NOT Cloning network for task', i : string, hstring=v.header);
-            var yggLocalCopy = this.ygg.clone();
+            //var yggLocalCopy = this.ygg.clone();
+            var yggLocalCopy = this.ygg;
             //yggLocalCopy = yggNodeCopy.clone();
             //yggLocalCopy = this.ygg.clone();
             vLog.log('Initiating spawning sequence', hstring=v.header);
