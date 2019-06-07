@@ -172,7 +172,7 @@ class msgHandler {
     var m = new msg();
     m = this.recvSocket[i].recv(msg);
     if yieldWhileWait {
-      while m.TYPE == 0 do chpl_task_yield();      
+      while m.TYPE == 0 do chpl_task_yield();
     }
     this.__PROCESS__(m, i);
   }
@@ -268,7 +268,7 @@ class msgHandler {
 
     vLog.log("Spawning Valkyrie", hstring=vstring);
     var vp: subprocess(kind=iokind.dynamic, locking=false);
-    begin with (ref vp) vp = spawn(["./v.sh", this.sendPorts[iM], this.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
+    begin with (ref vp) vp = spawn(["bash", "v.sh", this.sendPorts[iM], this.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
 
     vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[iM], "--sendPort", this.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
 
