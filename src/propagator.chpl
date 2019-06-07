@@ -349,6 +349,7 @@ class Propagator {
           //this.log.debug("Network copied onto locale ", here.id : string, this.yh);
           //var nodeHasCopy: single bool;
           //vLock.log = vLog;
+          var yggNodeCopy = this.ygg.clone();
           //var yggLocalCopy = new shared network.GeneNetwork();
           writeln("What the fucking bullshit");
           coforall i in 1..maxValkyries {
@@ -383,7 +384,8 @@ class Propagator {
             var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
             vLog.log('Spawn function complete', hstring=v.header);
             vLog.log('Cloning network for task', i : string, hstring=v.header);
-            var yggLocalCopy = this.ygg.clone();
+            //var yggLocalCopy = this.ygg.clone();
+            var yggLocalCopy = yggNodeCopy.clone();
             vLog.log('Clone complete; awaiting arrival of other valkyries', hstring=v.header);
             if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
