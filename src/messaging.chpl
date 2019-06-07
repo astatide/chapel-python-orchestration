@@ -8,6 +8,7 @@ use Spawn;
 
 extern proc chpl_nodeName(): c_string;
 config const awaitResponse = false;
+config const yieldWhileWait = false;
 
 
 record statusRecord {
@@ -170,7 +171,9 @@ class msgHandler {
     // does this yield?  Who knows!
     var m = new msg();
     m = this.recvSocket[i].recv(msg);
-    while m.TYPE == 0 do chpl_task_yield();
+    if yieldWhileWait {
+      while m.TYPE == 0 do chpl_task_yield();      
+    }
     this.__PROCESS__(m, i);
   }
 
