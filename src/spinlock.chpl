@@ -1,6 +1,8 @@
 use ygglog;
 use SysError;
 
+config var lockLog = false;
+
 class TooManyLocksError : Error {
   proc init() { }
 }
@@ -15,7 +17,7 @@ class SpinLock {
   var readHandles: atomic int;
 
   inline proc lock(hstring: ygglog.yggHeader) throws {
-    if propagator.lockLog {
+    if lockLog {
       this.log.debug('locking', this.t, hstring);
     }
     while l.testAndSet(memory_order_acquire) do chpl_task_yield();
@@ -24,7 +26,7 @@ class SpinLock {
       this.log.critical('CRITICAL FAILURE: During lock, spinlock has been acquired multiple times on', this.t, hstring);
       throw new owned TooManyLocksError();
     }
-    if propagator.lockLog {
+    if lockLog {
       this.log.debug(this.t, 'lock successful; locks - ', this.n.read() : string, hstring);
     }
   }
@@ -36,7 +38,7 @@ class SpinLock {
       throw new owned TooManyLocksError();
     }
     l.clear(memory_order_release);
-    if propagator.lockLog {
+    if lockLog {
       this.log.debug(this.t, 'unlocked; locks - ', this.n.read() : string, hstring);
     }
   }
@@ -55,29 +57,29 @@ class SpinLock {
     // allows reads.
     while this.writeLock.read() >= 1 do chpl_task_yield();
     this.readHandles.add(1);
-    if propagator.lockLog {
+    if lockLog {
       this.log.debug('Locked RL on ', this.t : string, 'handles open -', this.readHandles.read() : string, hstring);
     }
   }
 
   inline proc url(hstring: ygglog.yggHeader) {
-    if propagator.lockLog {
+    if lockLog {
       this.log.debug('Releasing read lock on', this.t, hstring);
     }
     this.readHandles.sub(1);
-    if propagator.lockLog {
+    if lockLog {
       this.log.debug('Unlocked RL on ', this.t : string, 'handles open -', this.readHandles.read() : string, hstring);
     }
   }
 
   inline proc wl(hstring: ygglog.yggHeader) {
     // While we are actively reading, we do not write.
-    if propagator.lockLog {
+    if lockLog {
       this.log.debug('Requesting write lock on', this.t, 'current RL', this.readHandles.read() : string, hstring);
     }
     this.writeLock.add(1);
     while this.readHandles.read() != 0 do chpl_task_yield();
-    if propagator.lockLog {
+    if lockLog {
       this.log.debug('Write lock obtained on', this.t, 'current readHandles:', this.readHandles.read() : string, hstring);
     }
     this.lock(hstring);
@@ -85,7 +87,7 @@ class SpinLock {
 
   inline proc uwl(hstring: ygglog.yggHeader) {
     this.writeLock.sub(1);
-    if propagator.lockLog {
+    if lockLog {
       this.log.debug('Releasing write lock on', this.t, 'current WL', this.writeLock.read() : string, hstring);
     }
     this.unlock(hstring);
