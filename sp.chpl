@@ -7,8 +7,13 @@ use ygglog;
 
 
 config const useValhalla: bool = false;
+config const useCSpawn: bool = true;
 config const maxTasks: int = 24;
 
+extern proc cSpawn() : c_int;
+
+
+require "sp.c";
 
 class vSpawner {
 
@@ -16,7 +21,9 @@ class vSpawner {
   var numSpawned: atomic int;
 
   proc run() {
-    if useValhalla {
+    if useCSpawn {
+      this.runCSpawn();
+    } else if useValhalla {
       this.runValhalla();
     } else {
       this.runSansValhalla();
@@ -51,6 +58,20 @@ class vSpawner {
           var t: real = Time.getCurrentTime();
           var vp = spawn(["./v.sh"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
           vp.wait();
+          writeln("Hello from task %i on ".format(i) + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
+        }
+      }
+    }
+  }
+  proc runCSpawn() {
+
+    coforall L in Locales {
+      on L do {
+        coforall i in 1..maxTasks {
+          var t: real = Time.getCurrentTime();
+          cSpawn();
+          //var vp = spawn(["./v.sh"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
+          //vp.wait();
           writeln("Hello from task %i on ".format(i) + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
         }
       }
