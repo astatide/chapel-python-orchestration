@@ -351,6 +351,7 @@ class Propagator {
           //var nodeHasCopy: single bool;
           //vLock.log = vLog;
           //var yggLocalCopy = new shared network.GeneNetwork();
+          var yggLocalCopy = this.ygg.clone();
           coforall i in 1..maxValkyries {
             // spin up the Valkyries!
             //var yggLocalCopy = this.ygg.clone();
@@ -376,9 +377,6 @@ class Propagator {
             //begin with (ref yggLocalCopy) yggLocalCopy = this.ygg.clone();
             //nodeHasCopy;
             vLog.log('NOT Cloning network for task', i : string, hstring=v.header);
-            writeln("What's going on?");
-            var yggLocalCopy = this.ygg.clone();
-            writeln("Are you this far?");
             //yggLocalCopy = yggNodeCopy.clone();
             //yggLocalCopy = this.ygg.clone();
             vLog.log('Initiating spawning sequence', hstring=v.header);
