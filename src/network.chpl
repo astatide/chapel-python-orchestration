@@ -94,6 +94,8 @@ class GeneNetwork {
 
   var testNodeId: string;
 
+  var isCopyComplete: bool = false;
+
   proc add_node(ref node: shared genes.GeneNode) {
     this.__addNode__(node, hstring='');
   }
@@ -631,6 +633,7 @@ class GeneNetwork {
       networkCopy.edges[i] = this.edges[i];
       networkCopy.nodes[i] = this.nodes[i].clone();
     }
+    networkCopy.isCopyComplete = true;
     return networkCopy;
   }
 

@@ -349,9 +349,11 @@ class Propagator {
           //this.log.debug("Network copied onto locale ", here.id : string, this.yh);
           //var nodeHasCopy: single bool;
           //vLock.log = vLog;
-          var yggNodeCopy = this.ygg.clone();
-          //var yggLocalCopy = new shared network.GeneNetwork();
+          // they really do not like to do this.  Why?
           writeln("What the fucking bullshit");
+          var yggNodeCopy = new shared network.GeneNetwork();
+          begin with (ref yggNodeCopy) yggNodeCopy = this.ygg.clone();
+          //var yggLocalCopy = new shared network.GeneNetwork();
           coforall i in 1..maxValkyries {
             // spin up the Valkyries!
             //var yggLocalCopy = this.ygg.clone();
@@ -382,7 +384,8 @@ class Propagator {
             //var ayh = new ygglog.yggHeader();
             vLog.log('Initiating spawning sequence', hstring=v.header);
             var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
-            vLog.log('Spawn function complete', hstring=v.header);
+            vLog.log('Spawn function complete; awaiting node copy of network', hstring=v.header);
+            while !(yggNodeCopy.isCopyComplete) do chpl_task_yield();
             vLog.log('Cloning network for task', i : string, hstring=v.header);
             //var yggLocalCopy = this.ygg.clone();
             var yggLocalCopy = yggNodeCopy.clone();
