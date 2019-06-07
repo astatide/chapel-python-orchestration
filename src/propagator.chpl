@@ -38,12 +38,12 @@ config const debug = -1;
 config const generations = 100;
 config const unitTestMode = false;
 config const stdoutOnly = false;
-// The locks are noisy, but we do need to debug them sometimes.
+//// The locks are noisy, but we do need to debug them sometimes.
 // This shuts them up unless you really want them to sing.  Their song is
 // a terrible noise; an unending screech which ends the world.
 // (okay, they're just super verbose)
 config var lockLog = false;
-config var flushToLog = false;
+//config var flushToLog = false;
 
 config var nChromosomes = 6;
 config var chromosomeSize = 36;

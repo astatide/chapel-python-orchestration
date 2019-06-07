@@ -3,7 +3,6 @@
 use Spawn;
 use Time;
 use messaging;
-use ygglog;
 
 
 config const useValhalla: bool = false;
@@ -29,19 +28,13 @@ class vSpawner {
       on L do {
         coforall i in 1..maxTasks {
           var mH = new messaging.msgHandler(1);
-          var vLog = new shared ygglog.YggdrasilLogging();
-          vLog.currentDebugLevel = 0;
           var v = new valkyrie();
           v.currentTask = i;
           v.currentLocale = L : string;
-          v.yh += 'run';
-          for iL in v.logo {
-            vLog.header(iL, hstring=v.header);
-          }
           // also, spin up the tasks.
           //this.lock.wl(v.header);
           var t: real = Time.getCurrentTime();
-          var vp = mH.valhalla(1, v.id, 33483 : string, vLog, vstring=v.header);
+          var vp = mH.valhalla(1, v.id, 33483 : string, vLog, vstring='');
           //var vp = spawn(["./v.sh", this.sendPorts[iM], this.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=true);
           writeln("Hello from task %i on ".format(i) + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
         }

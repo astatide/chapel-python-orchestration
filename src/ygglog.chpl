@@ -3,6 +3,10 @@ use spinlock;
 use IO;
 use Time;
 
+config const flushToLog: bool = false;
+config const stdoutOnly = false;
+
+
 record yggHeader {
   // How many levels of the stack to report?
   var levels: int = 10;
@@ -210,7 +214,7 @@ class YggdrasilLogging {
       id = hstring.id;
       // First, check to see whether we've created the file.
       if this.filesOpened.contains(id) {
-        if (propagator.unitTestMode | propagator.flushToLog) {
+        if (flushToLog) {
           // if we're in debug mode, we close the channels.
           // Otherwise, we leave them open.  It's for exception handling.
           try {
@@ -221,7 +225,7 @@ class YggdrasilLogging {
           }
         }
         wc = this.channelsOpened[id];
-        if propagator.stdoutOnly {
+        if stdoutOnly {
           wc = stdout;
         }
       } else {
@@ -230,7 +234,7 @@ class YggdrasilLogging {
         this.channelsOpened[id] = lf.writer();
         this.fileHandles[id] = lf;
         wc = this.channelsOpened[id];
-        if propagator.stdoutOnly {
+        if stdoutOnly {
           wc = stdout;
         }
         // First Valkyrie!
@@ -303,7 +307,7 @@ class YggdrasilLogging {
     }
     if id != 'stdout' {
       //writeln(wc.type : string);
-      if (propagator.unitTestMode | propagator.flushToLog) {
+      if (flushToLog) {
         // If we're in debug mode, sync the file every time.
         // This ensures that if/when we fail out, our logs are complete.
         //if !propagator.stdoutOnly {
