@@ -344,11 +344,14 @@ class Propagator {
           // create a logger, just for us!
           //var vLog = new shared ygglog.YggdrasilLogging();
           //vLog.currentDebugLevel = debug;
-          var localeUpdated: [1..generations] atomic bool;
+          //var localeUpdated: [1..generations] atomic bool;
           //this.log.debug("Copying network onto locale", here.id : string, this.yh);
+          // why the fuck is this suddenly a problem?
+          writeln("What's going on?");
           var yggLocalCopy = this.ygg.clone();
+          writeln("Are you this far?");
           //this.log.debug("Network copied onto locale ", here.id : string, this.yh);
-          var nodeHasCopy: single bool;
+          //var nodeHasCopy: single bool;
           //vLock.log = vLog;
           //var yggLocalCopy = new shared network.GeneNetwork();
           coforall i in 1..maxValkyries {
