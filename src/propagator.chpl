@@ -389,8 +389,12 @@ class Propagator {
             vLog.log('Cloning network for task', i : string, hstring=v.header);
             //var yggLocalCopy = this.ygg.clone();
             //var yggLocalCopy = yggNodeCopy.clone();
+            //writeln("Original");
+            //writeln(this.ygg : string);
+            //writeln("Node copy");
+            //writeln(yggNodeCopy : string);
             var yggLocalCopy = new shared network.GeneNetwork();
-            yggLocalCopy = yggNodeCopy;
+            yggLocalCopy = yggNodeCopy.clone();
             vLog.log('Clone complete; awaiting arrival of other valkyries', hstring=v.header);
             if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.

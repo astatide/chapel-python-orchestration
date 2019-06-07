@@ -628,6 +628,8 @@ class GeneNetwork {
 
   proc clone() {
     var networkCopy = new shared GeneNetwork();
+    networkCopy.log = this.log;
+    //networkCopy.initializeRoot();
     for i in this.ids {
       networkCopy.ids.add(i);
       networkCopy.edges[i] = this.edges[i];
@@ -654,6 +656,8 @@ class GeneNetwork {
 
 proc =(a : GeneNetwork, b : GeneNetwork) {
   // make this serial.
+  a.log = b.log;
+  //a.initializeRoot();
   for i in b.ids {
     a.ids.add(i);
     a.edges[i] = b.edges[i];
