@@ -4,6 +4,7 @@ use Spawn;
 use Time;
 
 config const useValhalla: bool = false;
+config const maxTasks: int = 24;
 
 
 class vSpawner {
@@ -23,7 +24,7 @@ class vSpawner {
 
     coforall L in Locales {
       on L do {
-        coforall i in 1..maxValkyries {
+        coforall i in 1..maxTasks {
           var mH = new messaging.msgHandler(1);
           var vLog = new shared ygglog.YggdrasilLogging();
           vLog.currentDebugLevel = debug;
@@ -51,7 +52,7 @@ class vSpawner {
 
     coforall L in Locales {
       on L do {
-        coforall i in 1..maxValkyries {
+        coforall i in 1..maxTasks {
           var t: real = Time.getCurrentTime();
           var vp = spawn(["./v.sh", this.sendPorts[iM], this.recvPorts[iM], 33483 : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=false);
           writeln("Hello from task %i on ".format(i) + here.id : string + "; done in %r time!".format(Time.getCurrentTime() - t));
