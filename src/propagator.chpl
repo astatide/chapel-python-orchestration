@@ -346,7 +346,7 @@ class Propagator {
           //vLog.currentDebugLevel = debug;
           var localeUpdated: [1..generations] atomic bool;
           //this.log.debug("Copying network onto locale", here.id : string, this.yh);
-          var yggNodeCopy: network.GeneNetwork = this.ygg.clone();
+          var yggLocalCopy = this.ygg.clone();
           //this.log.debug("Network copied onto locale ", here.id : string, this.yh);
           var nodeHasCopy: single bool;
           //vLock.log = vLog;
@@ -371,12 +371,12 @@ class Propagator {
             }
             // also, spin up the tasks.
             //this.lock.wl(v.header);
-            var yggLocalCopy: network.GeneNetwork;
+            //var yggLocalCopy: network.GeneNetwork;
             // spin it off baby.
             //begin with (ref yggLocalCopy) yggLocalCopy = this.ygg.clone();
-            nodeHasCopy;
-            vLog.log('Cloning network for task', i : string, hstring=v.header);
-            yggLocalCopy = yggNodeCopy.clone();
+            //nodeHasCopy;
+            vLog.log('NOT Cloning network for task', i : string, hstring=v.header);
+            //yggLocalCopy = yggNodeCopy.clone();
             //yggLocalCopy = this.ygg.clone();
             vLog.log('Initiating spawning sequence', hstring=v.header);
             var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
