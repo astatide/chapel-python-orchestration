@@ -959,7 +959,6 @@ def runParallel():
 
 
 def run():
-    print("Boo hiss fuck");
     from keras import backend as K
     # This is the main function that we'll call.  Also, you're a bitch.
     loki = yggdrasilModel()
@@ -992,5 +991,5 @@ def run():
 
     #gc.collect()
     #q.put(final_val)
-    print("Valkyrie ID: " + vId + " " + "Returning score")
+    print("Valkyrie ID: " + vId + " " + "Returning score: " + str(final_val))
     return final_val

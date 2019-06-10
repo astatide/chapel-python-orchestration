@@ -398,7 +398,7 @@ struct threadArgs {
 };
 
 
-double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long deme, double * score2, char * buffer)
+double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long deme, double * score, char * buffer)
 //void *pythonRunInThread(void * arguments)
 
 {
@@ -406,7 +406,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
-  double *score;
+  //double *score;
   int pid;
   int stat;
 
@@ -431,7 +431,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   moduleImportedOnce = true;
   fflush(stdout);
 
-  *score2 = *score;
+  //*score2 = *score;
   return *score;
 }
 

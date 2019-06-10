@@ -64,20 +64,17 @@ class Gjallarbru {
     // or that's the hope.  Who fucking knows anymore.
     // We're gonna pass in the file object.
     //var score: real;
-    var score2: [0..1] real = Math.INFINITY;
+    //var score2: [0..1] real = Math.INFINITY;
     var buffer : [0..1023] c_string;
     var moveOn: [0..1] bool = false;
 
     var score: c_double;
     pythonRun(matrix, valkyrie : c_ulonglong, deme: c_ulonglong, score, buffer[0]);
-    var a: string;
-    for i in 0..1023 {
-      a += buffer[i] : string;
-    }
-    score2[0] = score;
+    writeln("SCORE: ", score : string);
+    //score2[0] = score;
     moveOn[0] = true;
 
-    score = score2[0];
+    //score = score2[0];
     stdout.flush();
     return score;
   }
