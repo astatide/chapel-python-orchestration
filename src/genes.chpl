@@ -197,6 +197,12 @@ proc +=(ref a: deltaRecord, b: deltaRecord) {
   }
 }
 
+proc =(ref a: deltaRecord, b: deltaRecord) {
+  for (s, c) in b {
+    a.add(s, c);
+  }
+}
+
 proc +=(ref a: deltaRecord, b: (int, real)) {
   a.add(b[1], b[2]);
 }
@@ -294,7 +300,7 @@ class GeneEdge {
 
   proc clone() {
     var rEdge = new shared GeneEdge();
-    rEdge.delta = (this.delta);
+    rEdge.delta = this.delta;
     rEdge.direction = (this.direction[1], this.direction[2]);
     rEdge.mu = this.mu;
     rEdge.sigma = this.sigma;
@@ -437,6 +443,30 @@ class GeneNode {
     this.join(node, delta, vstring);
     return node;
   }
+
+  /*
+  var nodes: domain(string);
+  var edges: [nodes] shared GeneEdge;
+  var generation: int;
+  var ctype: string;
+  var parent: string;
+  // we need a node ID.  I like the ability of being able to specify them.
+  // but we should generate them by default.
+  var id: string;
+  var debugOrderOfCreation: int;
+
+  // Here, we're gonna track our parent at history 0
+  // should make it easier to return histories.
+  var parentSeedNode: string;
+
+  var l: shared spinlock.SpinLock;
+  var log: shared ygglog.YggdrasilLogging;
+
+  // We want to hold scores on the nodes.
+  var demeDomain: domain(int);
+  var chromosomes: domain(string);
+  var scores: [demeDomain] real;
+  */
 
   proc clone() {
     var node = new shared GeneNode();

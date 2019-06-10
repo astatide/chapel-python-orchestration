@@ -626,13 +626,15 @@ class GeneNetwork {
     return node.id;
   }
 
-  proc clone() {
-    var networkCopy = new shared GeneNetwork();
+  proc clone(ref networkCopy: shared GeneNetwork) {
+    //var networkCopy = new shared GeneNetwork();
     networkCopy.log = this.log;
     //networkCopy.initializeRoot();
     for i in this.ids {
       networkCopy.ids.add(i);
-      networkCopy.edges[i] = this.edges[i];
+      for edge in this.edges[i] {
+        networkCopy.edges[i].add(edge);
+      }
       networkCopy.nodes[i] = this.nodes[i].clone();
     }
     networkCopy.isCopyComplete = true;
@@ -654,6 +656,7 @@ class GeneNetwork {
 
 }
 
+/*
 proc =(a : GeneNetwork, b : GeneNetwork) {
   // make this serial.
   a.log = b.log;
@@ -668,3 +671,4 @@ proc =(a : GeneNetwork, b : GeneNetwork) {
   // we don't need nodes.
   //a.nodes = b.nodes;
 }
+*/

@@ -259,9 +259,11 @@ class Propagator {
     this.ygg.lock.log = this.log;
     //this.ygg.initializeNetwork(n_seeds=startingSeeds);
     this.log.debug("Initialising chromosomes", this.yh);
-    this.initChromosomes();
-    this.log.debug("Initialising root node", this.yh);
     this.ygg.initializeRoot();
+    this.initChromosomes();
+    // basically, re-add the root node to make sure its connections are up to date
+    this.ygg.add_node(this.ygg.rootNode, this.yh);
+    this.log.debug("Initialising root node", this.yh);
     this.log.debug("About to add existing nodes to the processing list", this.yh);
     var ids = this.ygg.ids;
     this.log.debug(this.ygg.ids : string, this.yh);
@@ -350,9 +352,11 @@ class Propagator {
           //var nodeHasCopy: single bool;
           //vLock.log = vLog;
           // they really do not like to do this.  Why?
-          writeln("What the fucking bullshit");
           var yggNodeCopy = new shared network.GeneNetwork();
-          begin with (ref yggNodeCopy) yggNodeCopy = this.ygg.clone();
+          //ref YNC = yggNodeCopy;
+          //var yggNodeCopy: network.GeneNetwork;
+          begin with (ref yggNodeCopy) this.ygg.clone(yggNodeCopy);
+          //this.ygg.clone(YNC);
           //var yggLocalCopy = new shared network.GeneNetwork();
           coforall i in 1..maxValkyries {
             // spin up the Valkyries!
@@ -362,6 +366,7 @@ class Propagator {
             vLog.currentDebugLevel = debug;
             var vLock = new shared spinlock.SpinLock();
             vLock.t = 'Valkyrie';
+            //var yggLocalCopy: network.GeneNetwork;
             // ?? This doesn't seem to actually be working.
             //yggLocalCopy.log = vLog;
             //yggLocalCopy.lock.log = vLog;
@@ -385,7 +390,6 @@ class Propagator {
             vLog.log('Initiating spawning sequence', hstring=v.header);
             var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
             vLog.log('Spawn function complete; awaiting node copy of network', hstring=v.header);
-            while !(yggNodeCopy.isCopyComplete) do chpl_task_yield();
             vLog.log('Cloning network for task', i : string, hstring=v.header);
             //var yggLocalCopy = this.ygg.clone();
             //var yggLocalCopy = yggNodeCopy.clone();
@@ -394,7 +398,11 @@ class Propagator {
             //writeln("Node copy");
             //writeln(yggNodeCopy : string);
             var yggLocalCopy = new shared network.GeneNetwork();
-            yggLocalCopy = yggNodeCopy.clone();
+            //ref YLC = yggLocalCopy;
+            while !(yggNodeCopy.isCopyComplete) do chpl_task_yield();
+            vLog.log('Network has the following IDs', yggNodeCopy.ids : string, hstring=v.header);
+            //yggLocalCopy = yggNodeCopy.clone();
+            yggNodeCopy.clone(yggLocalCopy);
             vLog.log('Clone complete; awaiting arrival of other valkyries', hstring=v.header);
             if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
@@ -576,8 +584,8 @@ class Propagator {
               } else {
                 // Same stuff here, but as this is the last Valkyrie, we also
                 // do global cleanup to ensure the global arrays are ready.
+                vLog.debug('Handling cleanup on gen', gen : string, v.header);
                 v.moved = false;
-                this.lock.wl(v.header);
 
                 // we'll just throw this in here for now.
                 // Only do the max!
@@ -585,6 +593,7 @@ class Propagator {
                 var (bestInGen, minLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
                 var chromosomesToAdvance: domain(string);
                 var c: [chromosomesToAdvance] chromosomes.Chromosome;
+                vLog.debug('Determining which chromosomes to advance', v.header);
                 for node in this.idArray {
                   // these are the best nodes, so work em!
                   if node != '' {
@@ -599,22 +608,28 @@ class Propagator {
                   }
                 }
                 // clear the domain of our losers.
+                vLog.debug('Clearing the domain of those who are not continuing.', v.header);
                 if true {
+                  var vheader = v.header;
                   for chrome in this.chromosomeDomain {
                     if !chromosomesToAdvance.contains(chrome) {
                       this.chromosomeDomain.remove(chrome);
                     }
                   }
-                  var vheader = v.header;
+                  vLog.debug('Advancing the chromosomes.', vheader);
                   forall chrome in chromosomesToAdvance {
                     var nc = this.chromes[chrome];
+                    vLog.debug('Pushing forward chromosome ID', nc.id : string , vheader);
                     for node in nc.geneIDs {
                       this.lock.wl(vheader);
                       this.nextGeneration.add(node);
                       this.lock.uwl(vheader);
                     }
+                    vLog.debug('Advancing chromosome ID', nc.id : string , vheader);
                     for i in 1..nDuplicates {
-                      var cc = nc;
+                      //var cc: chromosomes.Chromosome;
+                      var cc = nc.clone();
+                      vLog.debug('New chromosome ID', cc.id : string , vheader);
                       cc.advanceNodes(this.ygg);
                       for node in cc.geneIDs {
                         this.lock.wl(vheader);
@@ -708,7 +723,7 @@ class Propagator {
                 this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
                 this.yh.printedHeader = true;
                 this.generationTime = Time.getCurrentTime() : real;
-                this.lock.uwl(v.header);
+                //this.lock.uwl(v.header);
                 this.valkyriesProcessed.write(0);
                 this.priorityValkyriesProcessed.write(0);
                 v.nPriorityNodesProcessed = 0;
