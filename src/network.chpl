@@ -356,17 +356,17 @@ class GeneNetwork {
 
   }
 
-  proc move(ref v: propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) throws {
+  proc move(ref v: shared propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) throws {
     // This is the pathless one.  We just need the path, then we're good.
     var path = this.calculatePath(v.currentNode, id, hstring=v.header);
     return this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
   }
 
-  proc move(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
+  proc move(ref v: shared propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
     return this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
   }
 
-  proc __move__(ref v: propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
+  proc __move__(ref v: shared propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
     // This is a overloaded move function if we already have a path.
     // The other move function is for if we DON'T have a path.
     var vstring = v.header + '__move__';
@@ -641,7 +641,7 @@ class GeneNetwork {
     return networkCopy;
   }
 
-  proc update(otherNetwork: GeneNetwork) {
+  proc update(ref otherNetwork: shared GeneNetwork) {
     for node in this.newIDs {
       for edge in this.nodes[node].nodes {
         // these are all the edges it's connected to.

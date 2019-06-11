@@ -15,6 +15,11 @@ use gjallarbru;
 use Spawn;
 use messaging;
 
+class yggMsgHandler : msgHandler {
+  var log: shared ygglog.YggdrasilLogging();
+  var yh = new ygglog.yggHeader();
+}
+
 record scoreComparator {
   proc keyPart(x: (string, real), i: int) {
     if i > 2 then
@@ -61,9 +66,10 @@ var absComparator: Comparator;
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
 // (this is a record for a worker class)
-record valkyrie {
+class valkyrie : msgHandler {
   // it's okay for now.
   var matrixValues: [0..mSize] c_double;
+  var log: shared ygglog.YggdrasilLogging();
   var takeAnyPath: bool = false;
   var moved: bool = false;
   var canMove: bool = false;
@@ -85,10 +91,49 @@ record valkyrie {
 
   var yh = new ygglog.yggHeader();
 
+  var __score__ : real;
+
+
   proc moveToRoot() {
     // Zero out the matrix, return the root id.
     this.matrixValues = 0;
     this.currentNode = 'root';
+  }
+
+  proc init() {
+    // basically, the inheritance isn't working as I would have expected.
+    // see https://github.com/chapel-lang/chapel/issues/8232
+    super.init(1);
+    this.complete();
+    this.log = new shared ygglog.YggdrasilLogging();
+    this.log.currentDebugLevel = debug;
+  }
+
+  proc init(n: int) {
+    // basically, the inheritance isn't working as I would have expected.
+    // see https://github.com/chapel-lang/chapel/issues/8232
+    super.init(n);
+    this.complete();
+    this.log = new shared ygglog.YggdrasilLogging();
+    this.log.currentDebugLevel = debug;
+  }
+
+  override proc PROCESS(m: msg, i: int) {
+    // overriden from the messaging class
+    this.log.debug("MESSAGE RECEIVED:", m : string, hstring = this.header);
+    select m.COMMAND {
+      when messaging.command.RECEIVE_SCORE {
+        m.open(this.__score__);
+      }
+    }
+    this.log.debug("SCORE IS", this.__score__ : string, hstring = this.header);
+    //stdout.flush();
+  }
+
+  inline proc score {
+    var s = this.__score__;
+    this.__score__ = 0;
+    return s;
   }
 
   // Assume we're given a delta object so that we may express it.
@@ -361,7 +406,8 @@ class Propagator {
           coforall i in 1..maxValkyries {
             // spin up the Valkyries!
             //var yggLocalCopy = this.ygg.clone();
-            var mH = new messaging.msgHandler(1);
+            //var mH = new messaging.msgHandler(1);
+            //var mH = new shared yggMsgHandler(1);
             var vLog = new shared ygglog.YggdrasilLogging();
             vLog.currentDebugLevel = debug;
             var vLock = new shared spinlock.SpinLock();
@@ -370,7 +416,7 @@ class Propagator {
             // ?? This doesn't seem to actually be working.
             //yggLocalCopy.log = vLog;
             //yggLocalCopy.lock.log = vLog;
-            var v = new valkyrie();
+            var v = new shared valkyrie(1);
             v.currentTask = i;
             v.currentLocale = L : string;
             v.yh += 'run';
@@ -388,7 +434,7 @@ class Propagator {
             //yggLocalCopy = this.ygg.clone();
             //var ayh = new ygglog.yggHeader();
             vLog.log('Initiating spawning sequence', hstring=v.header);
-            var vp = mH.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
+            var vp = v.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
             vLog.log('Spawn function complete; awaiting node copy of network', hstring=v.header);
             vLog.log('Cloning network for task', i : string, hstring=v.header);
             //var yggLocalCopy = this.ygg.clone();
@@ -480,9 +526,9 @@ class Propagator {
                       newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
                       vLog.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
                       vLog.debug("Sending the following msg:", newMsg : string, hstring=v.header);
-                      mH.SEND(newMsg);
+                      v.SEND(newMsg);
                       vLog.debug("Message & delta sent; awaiting instructions", hstring=v.header);
-                      //RECV(newMsg, i);
+                      //v.RECV(newMsg, i);
                       /*
                       var vheader = v.header;
                       vheader += "ValkyriePython";
@@ -496,10 +542,20 @@ class Propagator {
                           this.log.log(l, hstring=vheader);
                         }
                       }*/
-                      mH.RECV(newMsg);
-                      var score: real;
-                      newMsg.open(score);
+                      //var retMsg = mH.RECV();
+                      //mH.receiveMessage();
+                      //mH.receiveMessage();
+                      //v.receiveMessage();
+                      var m = v.RECV();
+                      var score = m.r;
+
+                      //var score: real;
+                      //var scoreString: real;
+                      //scoreString = retMsg.open(score);
                       vLog.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
+                      //vLog.debug('SCORE FOR', currToProc : string, 'IS', retMsg.r : string, hstring=v.header);
+                      //vLog.debug('MSG FOR', currToProc : string, 'IS', retMsg : string, hstring=v.header);
+                      //vLog.debug('SCORE FOR', currToProc : string, 'IS', scoreString : string, hstring=v.header);
 
                       this.lock.wl(v.header);
                       /*if false {

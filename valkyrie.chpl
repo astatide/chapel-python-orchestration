@@ -116,17 +116,37 @@ class valkyrieExecutor: msgHandler {
   override proc PROCESS(m: msg, i: int) {
     // overriden from the messaging class
     writeln("STARTING TO PROCESS");
+    writeln(m : string);
     select m.COMMAND {
-      when messaging.command.SET_ID do m.open(this.id);
-      when messaging.command.SHUTDOWN do exit(0);
-      when messaging.command.SET_TASK do m.open(this.currentTask);
+      when messaging.command.SET_ID do {
+        m.open(this.id);
+        var newMsg = new messaging.msg(0);
+        newMsg.STATUS = messaging.status.OK;
+        SEND(newMsg);
+      }
+      when messaging.command.SHUTDOWN do {
+        exit(0);
+        var newMsg = new messaging.msg(0);
+        newMsg.STATUS = messaging.status.OK;
+        SEND(newMsg);
+      }
+      when messaging.command.SET_TASK do {
+        m.open(this.currentTask);
+        var newMsg = new messaging.msg(0);
+        newMsg.STATUS = messaging.status.OK;
+        SEND(newMsg);
+      }
       when messaging.command.RECEIVE_AND_PROCESS_DELTA do {
         var delta: genes.deltaRecord;
         m.open(delta);
         this.move(delta);
-        var score: c_double = gj.lockAndRun(this.matrixValues, this.currentTask, m.i, hstring=this.header);
+        var score: real = gj.lockAndRun(this.matrixValues, this.currentTask, m.i, hstring=this.header);
+        writeln("score in valkyrie: " + score : string);
         var newMsg = new messaging.msg(score);
+        newMsg.s = "blah blah fucken sie";
+        newMsg.r = score;
         newMsg.COMMAND = messaging.command.RECEIVE_SCORE;
+        writeln("what is our msg?: " + newMsg : string);
         SEND(newMsg);
       }
     }
@@ -165,7 +185,6 @@ proc main {
 
   // get the information necessary.  We need a currentTask, for instance.
   var v = new owned valkyrieExecutor(1);
-  v.setChannels(stdin, stdout);
   //writeln("VALKYRIE on locale %i, spawned.".format(here.id));
   //v.id = 1;
   //stdout.writeln("Started!");
@@ -177,7 +196,7 @@ proc main {
 
 
   v.initRecvSocket(1, recvPort);
-  v.initPrevSendSocket(1, sendPort);
+  //v.initPrevSendSocket(1, sendPort);
   writeln('VALKYRIE %s on locale %i, ports initialized'.format(v.id, here.id));
   //c.write("So, I've got all that stuff set");
   //c.write(v.sendPorts[1], " ", v.recvPorts[1]);

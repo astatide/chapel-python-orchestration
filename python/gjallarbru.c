@@ -364,12 +364,14 @@ double run(char * function) {
     PyErr_Print();
   }
   if (pValue != NULL) {
-    PyObject* repr = PyObject_Repr(pValue);
-    PyObject* str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
-    const char *bytes = PyBytes_AS_STRING(str);
-    score = atof(bytes);
-    Py_XDECREF(str);
-    Py_XDECREF(repr);
+
+    //PyObject* repr = PyObject_Repr(pValue);
+    //PyObject* str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
+    //const char *bytes = PyBytes_AS_STRING(str);
+    //score = atof(bytes);
+    score = PyFloat_AsDouble(pValue);
+    //Py_XDECREF(str);
+    //Py_XDECREF(repr);
     if (PyErr_Occurred()) {
       PyErr_Print();
     }
@@ -380,6 +382,7 @@ double run(char * function) {
   Py_XDECREF(pValue);
   // this MIGHT be a borrowed reference
   Py_XDECREF(pModule);
+  printf("Score is %f\n", score);
   return score;
 
 }
@@ -406,13 +409,13 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
-  //double *score;
+  double s2;
   int pid;
   int stat;
 
 
-  score = mmap(NULL, sizeof *score, PROT_READ | PROT_WRITE,
-                MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+  //score = mmap(NULL, sizeof *score, PROT_READ | PROT_WRITE,
+  //              MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
 
   pid = 0;
@@ -424,15 +427,18 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   globalArray = arr;
 
   functionRunOnce = false;
-  *score = run("run");
+  s2 = run("run");
+  printf("S2 is %f\n", s2);
   functionRunOnce = false;
   Py_CLEAR(returnList);
   returnList = NULL;
   moduleImportedOnce = true;
+  *score = s2;
+  printf("score is %f\n", *score);
   fflush(stdout);
 
   //*score2 = *score;
-  return *score;
+  return s2;
 }
 
 

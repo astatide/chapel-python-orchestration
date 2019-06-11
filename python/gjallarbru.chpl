@@ -12,7 +12,7 @@ extern type PyThreadState;
 extern proc returnNumpyArray(ref arr: c_float, ref dims: npy_intp) : PyObject;
 extern proc weights(ref self: PyObject, ref args: PyObject): PyObject;
 extern proc run();
-extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong, deme : c_ulonglong, ref score : c_double, ref buffer : c_string) : real;
+extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong, deme : c_ulonglong, ref score : c_double, ref buffer : c_string) : c_double;
 extern proc pythonInit(n: c_ulonglong): c_void_ptr;
 extern proc pythonFinal();
 extern proc newThread() : c_void_ptr;
@@ -69,13 +69,15 @@ class Gjallarbru {
     var moveOn: [0..1] bool = false;
 
     var score: c_double;
-    pythonRun(matrix, valkyrie : c_ulonglong, deme: c_ulonglong, score, buffer[0]);
-    writeln("SCORE: ", score : string);
+    var s2: c_double;
+    s2 = pythonRun(matrix, valkyrie : c_ulonglong, deme: c_ulonglong, score, buffer[0]);
+    //writeln("S2 in Chapel: ", s2 : real : string);
+    writeln("score in Chapel: ", score : real : string);
     //score2[0] = score;
-    moveOn[0] = true;
+    //moveOn[0] = true;
 
     //score = score2[0];
     stdout.flush();
-    return score;
+    return score : real;
   }
 }
