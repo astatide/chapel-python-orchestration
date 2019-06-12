@@ -5,7 +5,7 @@ LINCLUDE:=--warn-unstable --fast -M src -M python
 ENVSTATE:=env CHPL_COMM_SUBSTRATE=udp CHPL_COMM=gasnet
 HOST=$(shell hostname)
 
-ifeq ($(HOST), "cicero")
+ifeq ($(HOST), cicero)
  	COMM:=--comm ugni --launcher slurm-srun
 	MACLUDE:=
 else
