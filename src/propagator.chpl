@@ -394,11 +394,11 @@ class Propagator {
           //var nodeHasCopy: single bool;
           //vLock.log = vLog;
           // they really do not like to do this.  Why?
-          //var yggNodeCopy = new shared network.GeneNetwork();
+          var yggLocalCopy = new shared network.GeneNetwork();
           //ref YNC = yggNodeCopy;
           //var yggNodeCopy: network.GeneNetwork;
           //begin with (ref yggNodeCopy) this.ygg.clone(yggNodeCopy);
-          //this.ygg.clone(YNC);
+          this.ygg.clone(yggLocalCopy);
           //var yggLocalCopy = new shared network.GeneNetwork();
           coforall i in 1..maxValkyries {
             // spin up the Valkyries!
@@ -443,7 +443,7 @@ class Propagator {
             //var yggLocalCopy = new shared network.GeneNetwork();
             //ref YLC = yggLocalCopy;
             //while !(yggNodeCopy.isCopyComplete) do chpl_task_yield();
-            //vLog.log('Network has the following IDs', yggNodeCopy.ids : string, hstring=v.header);
+            vLog.log('Network has the following IDs', yggLocalCopy.ids : string, hstring=v.header);
             //yggLocalCopy = yggNodeCopy.clone();
             //yggNodeCopy.clone(yggLocalCopy);
             vLog.log('Clone complete; awaiting arrival of other valkyries', hstring=v.header);
@@ -499,10 +499,10 @@ class Propagator {
                   var existsInDomainAndCanProcess: bool = false;
                   // This function now does the atomic test.
                   vLog.debug('Returning nearest unprocessed', hstring=v.header);
-                  (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
+                  (currToProc, path) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
                   vLog.debug('Unprocessed found.', hstring=v.header);
                   if currToProc != '' {
-                    for deme in this.ygg.nodes[currToProc].demeDomain {
+                    for deme in yggLocalCopy.nodes[currToProc].demeDomain {
                       // Actually, reduce the count BEFORE we do this.
                       // Otherwise we could have threads stealing focus that should
                       // actually be idle.
@@ -516,7 +516,7 @@ class Propagator {
                         v.nPriorityNodesProcessed += 1;
                       }
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
-                      var d = this.ygg.deltaFromPath(path, path.key(0), hstring=v.header);
+                      var d = yggLocalCopy.deltaFromPath(path, path.key(0), hstring=v.header);
                       //var d = yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
                       d.to = currToProc;
                       var newMsg = new messaging.msg(d);

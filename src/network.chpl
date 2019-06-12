@@ -630,8 +630,10 @@ class GeneNetwork {
     //var networkCopy = new shared GeneNetwork();
     networkCopy.log = this.log;
     //networkCopy.initializeRoot();
-    for i in this.ids {
+    forall i in this.ids {
+      this.lock.wl();
       networkCopy.ids.add(i);
+      this.lock.uwl();
       for edge in this.edges[i] {
         networkCopy.edges[i].add(edge);
       }
