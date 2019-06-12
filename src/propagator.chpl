@@ -394,10 +394,10 @@ class Propagator {
           //var nodeHasCopy: single bool;
           //vLock.log = vLog;
           // they really do not like to do this.  Why?
-          var yggNodeCopy = new shared network.GeneNetwork();
+          //var yggNodeCopy = new shared network.GeneNetwork();
           //ref YNC = yggNodeCopy;
           //var yggNodeCopy: network.GeneNetwork;
-          begin with (ref yggNodeCopy) this.ygg.clone(yggNodeCopy);
+          //begin with (ref yggNodeCopy) this.ygg.clone(yggNodeCopy);
           //this.ygg.clone(YNC);
           //var yggLocalCopy = new shared network.GeneNetwork();
           coforall i in 1..maxValkyries {
@@ -440,12 +440,12 @@ class Propagator {
             //writeln(this.ygg : string);
             //writeln("Node copy");
             //writeln(yggNodeCopy : string);
-            var yggLocalCopy = new shared network.GeneNetwork();
+            //var yggLocalCopy = new shared network.GeneNetwork();
             //ref YLC = yggLocalCopy;
-            while !(yggNodeCopy.isCopyComplete) do chpl_task_yield();
-            vLog.log('Network has the following IDs', yggNodeCopy.ids : string, hstring=v.header);
+            //while !(yggNodeCopy.isCopyComplete) do chpl_task_yield();
+            //vLog.log('Network has the following IDs', yggNodeCopy.ids : string, hstring=v.header);
             //yggLocalCopy = yggNodeCopy.clone();
-            yggNodeCopy.clone(yggLocalCopy);
+            //yggNodeCopy.clone(yggLocalCopy);
             vLog.log('Clone complete; awaiting arrival of other valkyries', hstring=v.header);
             if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
@@ -499,10 +499,10 @@ class Propagator {
                   var existsInDomainAndCanProcess: bool = false;
                   // This function now does the atomic test.
                   vLog.debug('Returning nearest unprocessed', hstring=v.header);
-                  (currToProc, path) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
+                  (currToProc, path) = this.ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
                   vLog.debug('Unprocessed found.', hstring=v.header);
                   if currToProc != '' {
-                    for deme in yggLocalCopy.nodes[currToProc].demeDomain {
+                    for deme in this.ygg.nodes[currToProc].demeDomain {
                       // Actually, reduce the count BEFORE we do this.
                       // Otherwise we could have threads stealing focus that should
                       // actually be idle.
@@ -516,7 +516,7 @@ class Propagator {
                         v.nPriorityNodesProcessed += 1;
                       }
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
-                      var d = yggLocalCopy.deltaFromPath(path, path.key(0), hstring=v.header);
+                      var d = this.ygg.deltaFromPath(path, path.key(0), hstring=v.header);
                       //var d = yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
                       d.to = currToProc;
                       var newMsg = new messaging.msg(d);
@@ -604,7 +604,7 @@ class Propagator {
               // if we haven't moved, we should move our valkyrie to something in the current generation.  It makes searching substantially easier.
               if !v.moved {
                 if currToProc != '' {
-                  yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
+                  //yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
                   // Get rid of the priority nodes; we've moved, after all.
                   v.priorityNodes.clear();
                   // We just need to make the current priorityNodes the intersection
