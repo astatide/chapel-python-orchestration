@@ -15,11 +15,6 @@ use gjallarbru;
 use Spawn;
 use messaging;
 
-class yggMsgHandler : msgHandler {
-  var log: shared ygglog.YggdrasilLogging();
-  var yh = new ygglog.yggHeader();
-}
-
 record scoreComparator {
   proc keyPart(x: (string, real), i: int) {
     if i > 2 then
@@ -302,6 +297,9 @@ class Propagator {
     this.log.currentDebugLevel = debug;
     this.ygg.log = this.log;
     this.ygg.lock.log = this.log;
+    this.lock = new shared spinlock.SpinLock();
+    this.lock.t = 'Ragnarok';
+    this.lock.log = this.log;
     //this.ygg.initializeNetwork(n_seeds=startingSeeds);
     this.log.debug("Initialising chromosomes", this.yh);
     this.ygg.initializeRoot();
@@ -324,14 +322,11 @@ class Propagator {
     }
     this.log.debug(this.nodesToProcess: string, this.yh);
     this.log.debug('INITIALIZED', this.inCurrentGeneration.read() : string, 'seeds.', this.yh);
-    this.lock = new shared spinlock.SpinLock();
-    this.lock.t = 'Ragnarok';
-    this.lock.log = this.log;
   }
 
   proc initChromosomes() {
-    for deme in 0..4 {
-      for i in 1..nChromosomes {
+    forall deme in 0..4 {
+      forall i in 1..nChromosomes {
         // Here, we're going to be given the instructions for generating chromosomes.
         // No reason this can't be parallel, so let's do it.
         this.log.debug('Spawning chromosome', this.yh);
@@ -348,8 +343,10 @@ class Propagator {
           //this.log.debug('LOC IN GENE:', n : string, 'SET:', hstring=this.yh);
         //  n += 1;
         //}
+        this.lock.wl();
         this.chromosomeDomain.add(nc.id);
         this.chromes[nc.id] = nc;
+        this.lock.uwl();
       }
     }
   }
