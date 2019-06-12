@@ -2,18 +2,20 @@ NUMPY:=`python3 -c 'import numpy.distutils.misc_util as m; print(m.get_numpy_inc
 PYTHONC:=`python3-config --cflags`
 PYTHONL:=`python3-config --ldflags`
 LINCLUDE:=--warn-unstable --fast -M src -M python
-MACLUDE:=-L /usr/local/lib -I /usr/local/include
 ENVSTATE:=env CHPL_COMM_SUBSTRATE=udp CHPL_COMM=gasnet
 HOST=$(shell hostname)
 
 ifeq ($(HOST), "cicero")
  	COMM:=--comm ugni --launcher slurm-srun
+	MACLUDE:=
 else
 	COMM:=--comm gasnet
+	MACLUDE:= -L ZMQHelper/ -L /usr/local/lib -I /usr/local/include
 endif
 
 all:
 	@echo $(HOST)
+	@echo $(COMM)
 	make valkyrie
 	make yggdrasil
 
@@ -22,10 +24,10 @@ clean:
 	rm yggdrasil
 
 valkyrie:
-	chpl -o valkyrie valkyrie.chpl $(LINCLUDE) --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" --comm none --launcher none
+	chpl -o valkyrie valkyrie.chpl $(LINCLUDE) $(MACLUDE) --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" --comm none --launcher none
 
 yggdrasil:
-	chpl -o yggdrasil main.chpl $(LINCLUDE)    --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" $(COMM)
+	chpl -o yggdrasil main.chpl $(LINCLUDE)    $(MACLUDE) --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" $(COMM)
 
 spawn:
 	env CHPL_DEVELOPER=true chpl -o spawn -L /usr/local/lib -I /usr/local/include -M src/ -M python/ sp.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks
