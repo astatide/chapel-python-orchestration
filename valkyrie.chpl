@@ -184,7 +184,7 @@ proc main {
   signal(2, c_ptrTo(handler));
 
   // get the information necessary.  We need a currentTask, for instance.
-  var v = new owned valkyrieExecutor(1);
+  var v = new shared valkyrieExecutor(1);
   //writeln("VALKYRIE on locale %i, spawned.".format(here.id));
   //v.id = 1;
   //stdout.writeln("Started!");

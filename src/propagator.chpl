@@ -516,7 +516,8 @@ class Propagator {
                         v.nPriorityNodesProcessed += 1;
                       }
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
-                      var d = yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
+                      var d = yggLocalCopy.deltaFromPath(path, path.key(0), hstring=v.header);
+                      //var d = yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
                       d.to = currToProc;
                       var newMsg = new messaging.msg(d);
                       newMsg.i = deme;
