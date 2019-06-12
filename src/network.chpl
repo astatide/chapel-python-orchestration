@@ -546,7 +546,8 @@ class GeneNetwork {
         if i != j {
           delta += deltaList[j];
         } else {
-          delta += deltaList[i]*-1;
+          // make sure we end up subtracting N-1/N such that we have 1/Nth left.
+          delta += deltaList[i]*-1*(idList.size-1);
         }
       }
       delta /= idList.size;
