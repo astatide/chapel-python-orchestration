@@ -399,7 +399,7 @@ record Chromosome {
     return (bestNode, bestScore);
   }
 
-  proc bestGeneInDeme(deme='') {
+  proc bestGeneInDeme(deme=0) {
     var bestNode: string;
     // Are scores high or low?  I guess it depends on our metric.  Blah.
     var bestScore: real = 0;

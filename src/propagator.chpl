@@ -555,7 +555,7 @@ class Propagator {
                       //vLog.debug('MSG FOR', currToProc : string, 'IS', retMsg : string, hstring=v.header);
                       //vLog.debug('SCORE FOR', currToProc : string, 'IS', scoreString : string, hstring=v.header);
 
-                      this.lock.wl(v.header);
+                      //this.lock.wl(v.header);
                       /*if false {
                         var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
                         if score < maxVal {
@@ -564,7 +564,9 @@ class Propagator {
                         }
                       } else {*/
                       // set the score on the node.
+                      // this is thread safe.
                       this.ygg.nodes[currToProc].scores[deme] = score;
+                      /*
                       var sA = this.scoreArray[deme, 1..maxPerGeneration];
                       // Is that a problem?
                       //var (minVal, minLoc) = minloc reduce zip(sA, sA.domain);
@@ -582,6 +584,7 @@ class Propagator {
                       }
                       //}
                       this.lock.uwl(v.header);
+                      */
                     }
                   }
                   // While it seems odd we might try this twice, this helps us keep
@@ -640,6 +643,24 @@ class Propagator {
                 // do global cleanup to ensure the global arrays are ready.
                 vLog.debug('Handling cleanup on gen', gen : string, v.header);
                 v.moved = false;
+
+                /*
+                // first, get the best!
+                var sA = this.scoreArray[deme, 1..maxPerGeneration];
+                // Is that a problem?
+                //var (minVal, minLoc) = minloc reduce zip(sA, sA.domain);
+                var minVal : real = Math.INFINITY;
+                var minLoc : int;
+                for (v,l) in zip(sA, sA.domain) {
+                  if v <= minVal {
+                    minVal = v;
+                    minLoc = l;
+                  }
+                }
+                if score >= minVal {
+                  this.scoreArray[deme,minLoc] = score;
+                  this.idArray[deme, minLoc] = currToProc;
+                }*/
 
                 // we'll just throw this in here for now.
                 // Only do the max!
