@@ -281,6 +281,9 @@ record Chromosome {
           node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes['root']);
         } else {
           node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes[this.geneIDs[n]]);
+          network.globalNodes[this.geneIDs[n]].l.wl();
+          network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
+          network.globalNodes[this.geneIDs[n]].l.uwl();
         }
         this.geneIDs[n] = id;
         this.geneSeeds[n] = seed;
@@ -306,6 +309,10 @@ record Chromosome {
           node.newCombinationNode(idList, seedList, 'root', network.globalNodes);
         } else {
           node.newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
+          // finalize it.
+          network.globalNodes[this.geneIDs[n]].l.wl();
+          network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
+          network.globalNodes[this.geneIDs[n]].l.uwl();
         }
         this.geneIDs[n] = newId;
       }

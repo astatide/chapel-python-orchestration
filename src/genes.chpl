@@ -407,7 +407,6 @@ class GeneNode {
     var vstring: ygglog.yggHeader;
     vstring += '__join__';
     this.l.wl(vstring);
-    node.l.wl(vstring);
     var z: int = 1;
     for i in idList {
       if i == node.id {
@@ -419,14 +418,15 @@ class GeneNode {
     var e = new shared GeneEdge(idList, 1);
     var re = new shared GeneEdge(idList, -1);
     // okay, cool.  So.
+    node.l.wl(vstring);
     this.nodes.add(node.id);
     node.nodes.add(this.id);
 
     this.edges[node.id] = e;
     node.edges[this.id] = re;
 
-    this.l.uwl(vstring);
     node.l.uwl(vstring);
+    this.l.uwl(vstring);
   }
 
   // Now, the functions to handle the nodes!
@@ -507,62 +507,6 @@ class GeneNode {
     for id in idList {
       joinPaths(gN[id], idList);
     }
-  }
-
-  // Here's a function for merging nodes.
-
-  proc mergeNodeList(cId: string, ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
-    return this.__mergeNodeList__(cId, idList, deme, hstring=ygglog.yggHeader);
-  }
-
-  proc mergeNodeList(cId: string, ref idList : [] string, deme: int) {
-    var yh = new ygglog.yggHeader();
-    return this.__mergeNodeList__(cId, idList, deme, hstring=yh);
-  }
-
-  proc __mergeNodeList__(cId: string, ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
-    // we're getting a list of nodes, so we need to calculate
-    var vstring: ygglog.yggHeader;
-    vstring = hstring + '__mergeNodeList__';
-    var deltaDomain: domain(string);
-    var deltaList: [deltaDomain] genes.deltaRecord;
-    for id in idList {
-      deltaDomain.add(id);
-      deltaList[id] = this.calculateHistory(id, vstring);
-    }
-
-    //this.log.debug('deltaA:', deltaA : string, 'deltaB:', deltaB : string, hstring=vstring);
-    // spawn the node; we're making arbitrary decisions.
-    var node = new shared genes.GeneNode(id='', ctype='merge', parentSeedNode='', parent=idList[1]);
-    // Remember that we're sending in logging capabilities for debug purposes.
-    node.log = this.log;
-    node.l.log = this.log;
-    node.demeDomain.add(deme);
-    node.chromosomes.add(cId);
-    // Why is it in the reverse, you ask?  Because the calculateHistory method
-    // returns the information necessary to go BACK to the seed node from the id given.
-    // So this delta allows us to go from node A to the new node.
-    for i in idList {
-      var delta: genes.deltaRecord;
-      for j in idList {
-        if i != j {
-          delta += deltaList[j];
-        } else {
-          // make sure we end up subtracting N-1/N such that we have 1/Nth left.
-          delta += deltaList[i]*-1*(idList.size-1);
-        }
-      }
-      delta /= idList.size;
-      node.join(this.nodes[i], delta, vstring);
-      // Now, don't forget to connect it to the existing nodes.
-      this.lock.wl(vstring);
-      this.edges[i].add(node.id);
-      this.lock.uwl(vstring);
-    }
-    // this function locks, so.
-    this.add_node(node, vstring);
-    // Return the id, as that's all we need.
-    return node.id;
   }
 
   proc clone() {

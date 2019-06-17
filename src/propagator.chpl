@@ -345,21 +345,11 @@ class Propagator {
           var nG = new shared network.networkGenerator();
           // we're gonna want a list of network IDs we can use.
           this.initChromosomes(nG);
+          nG.addUnprocessed();
+          // now, make sure we know we have to process all of these.
+          this.inCurrentGeneration.add(nG.currentId);
           this.log.debug("About to add existing nodes to the processing list", this.yh);
           var ids = this.ygg.ids;
-          this.log.debug(this.ygg.ids : string, this.yh);
-          for i in this.ygg.ids {
-            if i != 'root' {
-              if i != this.ygg.testNodeId {
-                // Adding special nodes is a pain.  I should probably set a processing flag.
-                this.nodesToProcess.add(i);
-                this.processedArray[i].write(false);
-                this.inCurrentGeneration.add(1);
-              }
-            }
-          }
-          this.log.debug(this.nodesToProcess: string, this.yh);
-          this.log.debug('INITIALIZED', this.inCurrentGeneration.read() : string, 'seeds.', this.yh);
           //ref YNC = yggNodeCopy;
           //var yggNodeCopy: network.GeneNetwork;
           //begin with (ref yggNodeCopy) this.ygg.clone(yggNodeCopy);
@@ -409,11 +399,19 @@ class Propagator {
                 vLog.debug('Assessing nodes that must be handled', hstring=v.header);
                 currToProc = '';
                 toProcess.clear();
-                for id in this.nodesToProcess {
-                    toProcess.add(id);
+
+                for id in nG.currentGeneration {
+                  toProcess.add(id);
                 }
-                if !(v.priorityNodes & toProcess).isEmpty() {
-                  toProcess = toProcess & v.priorityNodes;
+
+                if toProcess.isEmpty() {
+                  // This checks atomics, so it's gonna be slow.
+                  // In an ideal world, we rarely call it.
+                  for id in network.globalUnprocessed {
+                    if !network.globalIsProcessed.testAndSet() {
+                      toProcess.add(id);
+                    }
+                  }
                 }
                 // Assuming we have some things to process, do it!
                 vLog.debug('toProcess created', hstring=v.header);
@@ -422,9 +420,16 @@ class Propagator {
                   var existsInDomainAndCanProcess: bool = false;
                   // This function now does the atomic test.
                   vLog.debug('Returning nearest unprocessed', hstring=v.header);
-                  (currToProc, path) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, this.processedArray);
+                  (currToProc, path) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
                   vLog.debug('Unprocessed found.', hstring=v.header);
                   if currToProc != '' {
+                    // If this node is one of the ones in our priority queue, remove it
+                    // as we clearly processing it now.
+                    if v.priorityNodes.contains(currToProc) {
+                      v.priorityNodes.remove(currToProc);
+                      v.nPriorityNodesProcessed += 1;
+                    }
+                    nG.removeUnprocessed(currToProc);
                     for deme in yggLocalCopy.nodes[currToProc].demeDomain {
                       // Actually, reduce the count BEFORE we do this.
                       // Otherwise we could have threads stealing focus that should
@@ -432,12 +437,6 @@ class Propagator {
                       vLog.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
                       this.inCurrentGeneration.sub(1);
                       vLog.debug('inCurrentGeneration successfully reduced', hstring=v.header);
-                      // If this node is one of the ones in our priority queue, remove it
-                      // as we clearly processing it now.
-                      if v.priorityNodes.contains(currToProc) {
-                        v.priorityNodes.remove(currToProc);
-                        v.nPriorityNodesProcessed += 1;
-                      }
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
                       var d = yggLocalCopy.deltaFromPath(path, path.key(0), hstring=v.header);
                       d.to = currToProc;

@@ -36,14 +36,18 @@ record mapperByLocale {
 // okay, it should be spread out.  Just nodes everywhere.
 var globalIDs: domain(string) dmapped Hashed(idxType=string, mapper = new mapperByLocale());
 var globalNodes: [globalIDs] shared genes.GeneNode;
+var globalUnprocessed: domain(string) dmapped Hashed(idxType=string, mapper = new mapperByLocale());
+var globalIsProcessed: [globalUnprocessed] atomic bool = false;
 
 class networkGenerator {
 
   var NUUID = new owned uuid.UUID();
   var idSet: [1..0] string;
   var IDs: domain(string);
+  var processed: [IDs] bool = false;
   var nodes: [IDs] shared genes.GeneNode;
   var currentId: atomic int = 1;
+  var firstUnprocessed: atomic int = 1;
   var l = new shared spinlock.SpinLock();
   var isUpdating: atomic bool = false;
   var irng = new owned rng.UDevRandomHandler();
@@ -66,6 +70,28 @@ class networkGenerator {
     this.currentId.write(1);
     this.isUpdating.write(false);
     this.l.uwl();
+  }
+
+  iter currentGeneration {
+    for i in this.firstUnprocessed.read()..this.currentId.read() {
+      this.l.rl();
+      var id = this.idSet[i];
+      if this.processed[id] {
+        this.l.url();
+        yield id;
+      }
+      this.l.url();
+    }
+  }
+
+  proc removeUnprocessed(id : string) {
+    this.l.wl();
+    this.processed[i] = true;
+    this.l.uwl();
+  }
+
+  proc setCurrentGeneration() {
+    this.firstUnprocessed.write(this.currentId.read()));
   }
 
   proc generateID {
@@ -130,6 +156,14 @@ class networkGenerator {
     for node in removeSet {
       this.IDs.remove();
     }
+  }
+
+  proc addUnprocessed() {
+    globalLock.wl();
+    for node in currentGeneration {
+      globalUnprocessed.add(node);
+    }
+    globalLock.uwl();
   }
 
   proc newSeed() {
