@@ -212,10 +212,10 @@ record Chromosome {
         this.actualGenes[i].add(z);
       }
     }
-    writeln("Genes!");
-    for i in this.geneNumbers {
-      writeln(i : string, " ", this.actualGenes[i] : string);
-    }
+    //writeln("Genes!");
+    //for i in this.geneNumbers {
+    //  writeln(i : string, " ", this.actualGenes[i] : string);
+    //}
     this.nRootGenes = nRootGenes;
     this.nFunctionGenes = nFunctionGenes;
     //this.totalGenes = this.nRootGenes + this.nFunctionGenes;
@@ -253,12 +253,6 @@ record Chromosome {
     for i in 1..totalGenes {
       yield this.actualGenes[i];
     }
-  }
-
-  // This is an initialization function; we generate a set of instructions and
-  // nodes such that we can generate the appropriate nodes.
-  // yields: cType, gene position, and what genes to operate on, if necessary.
-  iter generateGeneInstructions() {
   }
 
   //proc generateNodes(ref nG: shared network.networkGenerator) {
@@ -326,27 +320,6 @@ record Chromosome {
   proc advanceNodes(ref nG: shared network.networkGenerator) {
     this.__generateNodes__(nG, initial=false);
   }
-
-  /*
-  var nRootGenes: int = propagator.startingSeeds;
-  var nFunctionGenes: int = propagator.chromosomeSize - propagator.startingSeeds;
-  var totalGenes: int = propagator.chromosomeSize;
-  var currentGenes: int;
-  var l: shared spinlock.SpinLock;
-  var log: shared ygglog.YggdrasilLogging;
-  var lowestIsBest: bool=false;
-  var currentDeme: int = 0;
-
-  // these are just the genes
-  var geneNumbers: domain(int);
-  var geneIDs: [geneNumbers] string;
-
-  // shadow genes.  These are the nodes that represented the previous state;
-  // this is particularly useful for merge operations, as we have _already_
-  // done a lot of the work to merge genes.
-  var shadowGenes: [geneNumbers] string;
-  var combinations = new geneCombo(propagator.startingSeeds);
-  */
 
   proc clone () {
     // This is the copy operator, right?

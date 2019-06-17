@@ -165,8 +165,8 @@ class YggdrasilLogging {
     this.complete();
     //this.filesOpened = new domain(string);
     //this.channelsOpened = [filesOpened] channel(true,iokind.dynamic,true);
-    this.filesOpened.add('stdout');
-    this.channelsOpened['stdout'] = stdout;
+    //this.filesOpened.add('stdout');
+    //this.channelsOpened['stdout'] = stdout;
   }
 
   proc exitRoutine() throws {
@@ -258,6 +258,7 @@ class YggdrasilLogging {
       wc.writeln(this.formatHeader(debugLevel));
       if useStdout {
         this.channelsOpened[id].writeln(this.formatHeader(debugLevel));
+        //wc.writeln(this.formatHeader(debugLevel));
       }
       this.channelDebugHeader[id] = debugLevel;
     }

@@ -282,8 +282,7 @@ class Propagator {
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'Ragnarok';
     this.lock.log = this.log;
-    this.log.debug("Initialising chromosomes", this.yh);
-    this.ygg.initializeRoot();
+    //this.ygg.initializeRoot();
     // basically, re-add the root node to make sure its connections are up to date
   }
 
@@ -334,6 +333,7 @@ class Propagator {
     this.header();
     this.yh.header = 'NormalRuntime';
     this.yh += 'run';
+    this.log.debug("Setting up locales and valkyries", this.yh);
     // I think the other valkyries should be able to do their thing.
     // should probably do this for each task but hey whatever.
     // We're catching a signal interrupt, which is slightly mangled for some reason.
@@ -341,15 +341,19 @@ class Propagator {
     coforall L in Locales {
       on L do {
         if true {
+          this.log.debug("Spawn local network and networkGenerator", this.yh);
           var yggLocalCopy = new shared network.GeneNetwork();
           var nG = new shared network.networkGenerator();
           // we're gonna want a list of network IDs we can use.
+          this.log.debug("Local networks spawned; creating chromosomes", this.yh);
           this.initChromosomes(nG);
+          this.log.debug("Adding new nodes to unprocessed list", this.yh);
           nG.addUnprocessed();
+          this.log.debug("Setting the current generation count", this.yh);
           // now, make sure we know we have to process all of these.
           this.inCurrentGeneration.add(nG.currentId.read());
-          this.log.debug("About to add existing nodes to the processing list", this.yh);
-          var ids = this.ygg.ids;
+          //this.log.debug("About to add existing nodes to the processing list", this.yh);
+          //var ids = this.ygg.ids;
           //ref YNC = yggNodeCopy;
           //var yggNodeCopy: network.GeneNetwork;
           //begin with (ref yggNodeCopy) this.ygg.clone(yggNodeCopy);
