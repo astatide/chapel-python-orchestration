@@ -461,7 +461,7 @@ class GeneNetwork {
 
   }
 
-  proc deltaFromPath(in path: network.pathHistory, id: string, hstring: ygglog.yggHeader) throws {
+  proc deltaFromPath(in path: network.pathHistory, id: string, hstring: ygglog.yggHeader) : genes.deltaRecord throws {
     // This is an attempt to automatically create a deltaRecord from
     // a path.  We pass in a copy as we want to remove the id from it.
     // Not sure how that'll affect performance, but worth keeping an eye on.
@@ -513,7 +513,7 @@ class GeneNetwork {
     return d;
   }
 
-  proc calculateHistory(id: string, hstring: ygglog.yggHeader) {
+  proc calculateHistory(id: string, hstring: ygglog.yggHeader) : genes.deltaRecord {
     // Since all nodes carry their ancestor,
     // simply calculate the path back to the seed node.
     var vstring: ygglog.yggHeader;

@@ -274,8 +274,8 @@ class GeneEdge {
   proc init(idList: [] string, c: int) {
     // this means we're adding in a path.
     this.edgeType = PATH;
-    this.pathCoefficient = c;
     this.path = [1..idList.size] : string;
+    this.pathCoefficient = c;
     for i in 1..idList.size {
       this.path[i] = idList[i];
     }
@@ -288,8 +288,8 @@ class GeneEdge {
 
   proc init(delta, direction) {
     this.delta = delta;
-    this.direction = direction;
     this.edgeType = DELTA;
+    this.direction = direction;
   }
 
   proc seedInDelta(seed: int) {
@@ -408,7 +408,14 @@ class GeneNode {
     vstring += '__join__';
     this.l.wl(vstring);
     node.l.wl(vstring);
-    idList.remove(node.id);
+    var z: int = 1;
+    for i in idList {
+      if i == node.id {
+        idList.remove(z);
+      }
+      z += 1;
+    }
+    //idList.remove(node.id);
     var e = new shared GeneEdge(idList, 1);
     var re = new shared GeneEdge(idList, -1);
     // okay, cool.  So.
@@ -492,13 +499,13 @@ class GeneNode {
     for s in seedList {
       delta += (s, -1.0);
     }
-    delta /= seedList.size();
+    delta /= seedList.size;
     this.join(gN[oldId], delta, new ygglog.yggHeader() + "newCombinationNode");
     // now, we add 1/N of that to each other one.
     // except... that's pretty tough.  We'll calculate this stuff on the fly.
     // We _know_ that we have these connections, so.
     for id in idList {
-      joinPaths(gN[id], idList)
+      joinPaths(gN[id], idList);
     }
   }
 

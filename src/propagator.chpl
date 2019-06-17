@@ -365,7 +365,7 @@ class Propagator {
           //begin with (ref yggNodeCopy) this.ygg.clone(yggNodeCopy);
           //this.ygg.clone(yggLocalCopy);
 
-          coforall i in 1..maxValkyries {
+          forall i in 1..maxValkyries with (ref nG, ref yggLocalCopy) {
             // spin up the Valkyries!
             var vLog = new shared ygglog.YggdrasilLogging();
             vLog.currentDebugLevel = debug;
@@ -540,7 +540,7 @@ class Propagator {
                     }
                   }
                   vLog.debug('Advancing the chromosomes.', vheader);
-                  forall chrome in chromosomesToAdvance {
+                  forall chrome in chromosomesToAdvance with (ref nG) {
                     var nc = this.chromes[chrome];
                     vLog.debug('Pushing forward chromosome ID', nc.id : string , vheader);
                     for node in nc.geneIDs {
@@ -553,7 +553,7 @@ class Propagator {
                       //var cc: chromosomes.Chromosome;
                       var cc = nc.clone();
                       vLog.debug('New chromosome ID', cc.id : string , vheader);
-                      cc.advanceNodes(this.ygg);
+                      cc.advanceNodes(nG);
                       for node in cc.geneIDs {
                         this.lock.wl(vheader);
                         this.nextGeneration.add(node);
