@@ -347,7 +347,7 @@ class Propagator {
           this.initChromosomes(nG);
           nG.addUnprocessed();
           // now, make sure we know we have to process all of these.
-          this.inCurrentGeneration.add(nG.currentId);
+          this.inCurrentGeneration.add(nG.currentId.read());
           this.log.debug("About to add existing nodes to the processing list", this.yh);
           var ids = this.ygg.ids;
           //ref YNC = yggNodeCopy;
@@ -408,7 +408,7 @@ class Propagator {
                   // This checks atomics, so it's gonna be slow.
                   // In an ideal world, we rarely call it.
                   for id in network.globalUnprocessed {
-                    if !network.globalIsProcessed.testAndSet() {
+                    if !network.globalIsProcessed[id].testAndSet() {
                       toProcess.add(id);
                     }
                   }

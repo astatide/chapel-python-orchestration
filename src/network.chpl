@@ -37,7 +37,7 @@ record mapperByLocale {
 var globalIDs: domain(string) dmapped Hashed(idxType=string, mapper = new mapperByLocale());
 var globalNodes: [globalIDs] shared genes.GeneNode;
 var globalUnprocessed: domain(string) dmapped Hashed(idxType=string, mapper = new mapperByLocale());
-var globalIsProcessed: [globalUnprocessed] atomic bool = false;
+var globalIsProcessed: [globalUnprocessed] atomic bool;
 
 class networkGenerator {
 
@@ -86,7 +86,7 @@ class networkGenerator {
 
   proc removeUnprocessed(id : string) {
     this.l.wl();
-    this.processed[i] = true;
+    this.processed[id] = true;
     this.l.uwl();
   }
 
@@ -162,6 +162,7 @@ class networkGenerator {
     globalLock.wl();
     for node in currentGeneration {
       globalUnprocessed.add(node);
+      globalIsProcessed[node].write(false);
     }
     globalLock.uwl();
   }
