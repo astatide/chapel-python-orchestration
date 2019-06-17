@@ -91,7 +91,7 @@ class networkGenerator {
   }
 
   proc setCurrentGeneration() {
-    this.firstUnprocessed.write(this.currentId.read()));
+    this.firstUnprocessed.write(this.currentId.read());
   }
 
   proc generateID {
