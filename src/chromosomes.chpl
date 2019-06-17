@@ -183,11 +183,13 @@ record Chromosome {
   // these are just the genes
   var geneNumbers: domain(int);
   var geneIDs: [geneNumbers] string;
+  var geneSeeds: [geneNumbers] int;
 
   // shadow genes.  These are the nodes that represented the previous state;
   // this is particularly useful for merge operations, as we have _already_
   // done a lot of the work to merge genes.
   var shadowGenes: [geneNumbers] string;
+  //var shadowSeeds: [geneNumbers] int;
   var combinations = new geneCombo(propagator.startingSeeds);
 
   //var geneNumbers: domain(int);
@@ -259,40 +261,55 @@ record Chromosome {
   iter generateGeneInstructions() {
   }
 
-  proc generateNodes(ref ygg: shared network.GeneNetwork) {
+  //proc generateNodes(ref nG: shared network.networkGenerator) {
+  //  this.generateNodes(nG);
+  //}
+
+  proc generateNodes(ref nG: shared network.networkGenerator, initial=false) {
     // chromosomes should build nodes according to their desires.
     // first, prep all the initial nodes.
-    //var n: int;
-    //for c in this.geneSets() {
-    writeln("generateNodes ", totalGenes : string, " ", this.nRootGenes);
     for n in 1..totalGenes {
-      writeln(n);
-      var c = this.actualGenes[n];
-      //select n {
-        //if n == 0 do {} // yeah, go home!  No one likes you!
-        if n > 0 && n <= this.nRootGenes {
-          // prep the root seeds.
-          //this.geneNumbers.add(n);
-          writeln("NEW SEED GENE");
-          this.geneIDs[n] = ygg.newSeedGene(this.id, this.currentDeme);
+      if n > 0 && n <= this.nRootGenes {
+        // prep the root seeds.
+        // handy function to return a node id.
+        var id = nG.getNode();
+        var seed = nG.newSeed();
+        // just nab the node pointer.
+        ref node = network.globalNodes[id];
+        node.revision = genes.SPAWNED;
+        if initial {
+          node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes['root']);
+        } else {
+          node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = this.geneIds[n]);
         }
-        if n > this.nRootGenes {
-          // now we use the combo.  We should pack it into a list and send it.
-          // is there a better way?  I'm sure.
-          var idList: [1..c.size] string;
-          var i: int = 1;
-          for id in c {
-            idList[i] = this.geneIDs[id];
-            i += 1;
-          }
-          //this.geneNumbers.add(n);
-          writeln("MERGE GENE!");
-          this.geneIDs[n] = ygg.mergeNodeList(this.id, idList, this.currentDeme);
+        this.geneIDs[n] = id;
+        this.geneSeeds[n] = seed;
+      }
+      if n > this.nRootGenes {
+        // now we use the combo.  We should pack it into a list and send it.
+        // is there a better way?  I'm sure.
+        var c = this.actualGenes[n];
+        //var idList: [1..c.size] string;
+        var idList: [1..c.size] string;
+        var seedList: [1..c.size] int;
+        var i: int = 1;
+        for id in c {
+          idList[i] = this.geneIDs[id];
+          seedList[i] = this.geneSeeds[id];
+          i += 1;
         }
-      //}
-      //n += 1;
+        var newId = nG.getNode();
+        ref node = network.globalNodes[id];
+        node.revision = genes.SPAWNED;
+        //this.geneIDs[n] = ygg.mergeNodeList(this.id, idList, this.currentDeme);
+        if initial {
+          node.newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
+        } else {
+
+        }
+        this.geneIDs[n] = newId;
+      }
     }
-    //writeln(this.geneNumbers)
   }
 
   proc advanceNodes(ref ygg: shared network.GeneNetwork) {

@@ -11,10 +11,134 @@ use ygglog;
 use spinlock;
 use SysError;
 use chromosomes;
+use HashedDist;
 
 class NodeNotInEdgesError : Error {
   proc init() { }
 }
+
+var globalLock = new shared spinlock.SpinLock();
+globalLock.t = 'Ragnarok';
+globalLock.log = new shared ygglog.YggdrasilLogging();
+
+config const nodeBlockSize = 100000;
+
+// here's some stuff to spread out the array.
+
+record mapperByLocale {
+  proc this(ind : string, targetLocs: [?D] locale) : D.idxType {
+    // we just map according to the first 4 numbers of the ID.
+    // the ID is just the locale, padded out to 4, followed by a UUID.
+    return ind[1..4] : int;
+  }
+}
+
+// okay, it should be spread out.  Just nodes everywhere.
+var globalIDs: domain(string) dmapped Hashed(idxType=string, mapper = new mapperByLocale());
+var globalNodes: [globalIDs] shared genes.GeneNode;
+
+class networkGenerator {
+
+  var NUUID = new owned uuid.UUID();
+  var idSet: [1..0] string;
+  var IDs: domain(string);
+  var nodes: [IDs] shared genes.GeneNode;
+  var currentId: atomic int = 1;
+  var l = new shared spinlock.SpinLock();
+  var isUpdating: atomic bool = false;
+  var irng = new owned rng.UDevRandomHandler();
+
+  proc init() {
+    this.complete();
+    this.l.t = 'networkGenerator';
+    this.l.log = new shared ygglog.YggdrasilLogging();
+    this.generateEmptyNodes(nodeBlockSize);
+    this.addToGlobal();
+  }
+
+  proc spawn() {
+    this.l.wl();
+    this.IDs.clear();
+    // probably won't work, but hey.
+    this.idSet.clear();
+    this.generateEmptyNodes(nodeBlockSize);
+    this.addToGlobal();
+    this.currentId.write(1);
+    this.isUpdating.write(false);
+    this.l.uwl();
+  }
+
+  proc generateID {
+    // returns a UUID, prepended by the locale.
+    return '%04i'.format(here.id) + '-' + NUUID.UUID4();
+  }
+
+  proc generateEmptyNodes(n: int) {
+    // this will pre-generate a large set of UUIDs for us.
+    // this is designed for the global arrays.
+    for i in 1..n {
+      // generate new nodes.  And UUIDs.
+      var node = new shared genes.GeneNode();
+      node.id = this.generateID;
+      IDs.add(node.id);
+      nodes[node.id] = node;
+      this.idSet.push_front(node.id);
+    }
+  }
+
+  proc getNode() : string {
+    // this will return an unused node.
+    this.l.rl();
+    var nId : int = 1;
+    while nId < nodeBlockSize {
+      var nId = this.currentId.fetchAdd(1);
+      // check and see whether it exists.
+      if this.idSet.domain.contains(nId) {
+        var node = this.idSet[nId];
+        if !globalNodes[node].initialized.testAndSet() {
+          // we can use it!
+          this.l.url();
+          return node;
+        }
+      }
+    }
+    this.l.url();
+    // if we're here, we need more nodes!
+    // make sure the call doesn't fail by returning this function again.
+    if !this.isUpdating.testAndSet() {
+      // avoid a race condition where we clear the flag after nodes have been generated,
+      // but tried to grab one before things were ready.  Not likely, but hey.
+      if this.currentId.read() >= nodeBlockSize {
+        this.spawn();
+      }
+    }
+    return this.getNode();
+  }
+
+  proc addToGlobal() {
+    var removeSet: domain(string);
+    globalLock.wl();
+    for node in this.IDs {
+      if !globalIDs.contains(node) {
+        globalIDs.add(node);
+        globalNodes[node] = this.nodes[node];
+      } else {
+        removeSet.add(node);
+      }
+    }
+    globalLock.uwl();
+    for node in removeSet {
+      this.IDs.remove();
+    }
+  }
+
+  proc newSeed() {
+    // Generates a new seed for use with deltas, etc.
+    // we're returning a long.
+    return this.irng.getrandbits(64);
+  }
+}
+
 
 record pathHistory {
   // This is basically an ordered dictionary.
@@ -75,19 +199,16 @@ record pathSet {
 class GeneNetwork {
   // Hash table for our nodes and edges.  Basically, it's a dictionary of lists;
   // kind of easy to think of it that way, for those of us coming from Python.
+  var id: string;
   var ids: domain(string);
   var edges: [ids] domain(string);
-  // We're going to have to be careful about object ownership.  Might not matter
-  // too much at the moment, but.
-
-  // Yep, we don't have to be careful because this is Chapel and holy fuck.
-  // aaahahahaha, suck it languages built not for HPC!
   var nodes: [ids] shared genes.GeneNode;
+  // this tells us who was responsible for doing the last update.
+  // or actually, just whether we have the most up to date version of the node.
+  var nodeVersion: [ids] int;
   var lock: shared spinlock.SpinLock;
-
-  var newIDs: domain(string);
-
   var irng = new owned rng.UDevRandomHandler();
+  var NUUID = new owned uuid.UUID();
 
   var rootNode: shared genes.GeneNode;
   var log: shared ygglog.YggdrasilLogging;
@@ -97,7 +218,7 @@ class GeneNetwork {
   var isCopyComplete: bool = false;
 
   proc add_node(ref node: shared genes.GeneNode) {
-    this.__addNode__(node, hstring='');
+    this.__addNode__(node, hstring=new ygglog.yggHeader());
   }
 
   proc add_node(ref node: shared genes.GeneNode, hstring: ygglog.yggHeader) {
@@ -114,24 +235,22 @@ class GeneNetwork {
     this.lock.wl(vstring);
     this.log.debug('Adding node', node.id : string, 'to GeneNetwork', hstring=vstring);
     this.ids.add(node.id);
-    this.nodes[node.id] = node;
+    this.nodeVersion[node.id] = node.revision;
+    //this.nodes[node.id] = node;
     for edge in node.nodes {
       this.edges[node.id].add(edge);
     }
-    this.newIDs.add(node.id);
+    //this.newIDs.add(node.id);
     this.lock.uwl(vstring);
-  }
-
-  proc newSeed() {
-    // Generates a new seed for use with deltas, etc.
-    // we're returning a long.
-    return this.irng.getrandbits(64);
   }
 
   proc init() {
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'GeneNetwork';
     this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
+    this.complete();
+    // create a new
+    this.id = this.NUUID.UUID4();
   }
 
   proc initializeRoot() {
@@ -199,20 +318,6 @@ class GeneNetwork {
     }
   }
 
-  proc newSeedGene(cId: string, deme: int) {
-    var seed = this.newSeed();
-    var node = new shared genes.GeneNode(id='', ctype='seed', parentSeedNode='', parent='root');
-    var delta = new genes.deltaRecord();
-    delta += (seed, 1.0);
-    node.demeDomain.add(deme);
-    node.log = this.log;
-    node.l.log = this.log;
-    node.chromosomes.add(cId);
-    this.rootNode.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
-    this.add_node(node, new ygglog.yggHeader() + 'newSeedGene');
-    return node.id;
-  }
-
   proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, processedArray) {
     var vstring = hstring + 'returnNearestUnprocessed';
     return this.__calculatePath__(id_A, id_B, hstring=vstring, processedArray=processedArray, checkArray=true);
@@ -233,10 +338,10 @@ class GeneNetwork {
 
   proc __calculatePath__(id_A: string, in id_B: domain(string), hstring: ygglog.yggHeader, processedArray, checkArray: bool) throws {
     // This is an implementation of djikstra's algorithm.
-    var nodes: domain(string);
-    var visited: [nodes] bool;
-    var dist: [nodes] real;
-    var paths: [nodes] pathHistory;
+    //var nodes: domain(string);
+    var visited: [this.ids] bool;
+    var dist: [this.ids] real;
+    var paths: [this.ids] pathHistory;
     var currentNode = id_A;
     var unvisited: domain(string);
     var unvisited_d: domain(real);
@@ -248,7 +353,7 @@ class GeneNetwork {
     var vstring: ygglog.yggHeader;
     var thisIsACopy: bool = true;
     vstring = hstring + '__calculatePath__';
-    nodes.add[id_A];
+    //nodes.add[id_A];
     dist[id_A] = 0;
     paths[id_A].n.add(0);
     paths[id_A].node[0] = id_A;
@@ -266,17 +371,19 @@ class GeneNetwork {
       if !thisIsACopy {
         this.lock.rl(vstring);
       }
-      //this.log.debug('Attempting to pass through node', currentNode, 'does it exist?', this.ids.contains(currentNode) : string, vstring);
-      if this.ids.contains(currentNode) {
-        //assert(this.ids.contains(currentNode));
-      } else {
-        //this.log.critical('NODE', currentNode : string, 'NOT IN LIST.  WHAT.  Existing nodes:', this.ids : string, hstring=vstring);
+      // If we need to update, trigger it.
+      if this.nodeVersion[currentNode] < genes.FINALIZED {
+        if globalNodes[currentNode].revision > this.nodeVersion[currentNode] {
+          this.add_node(globalNodes[currentNode]);
+        }
       }
+      // we now assume this is an incomplete network.
       for edge in this.edges[currentNode] do {
-        if !nodes.contains(edge) {
-            nodes.add(edge);
-            visited[edge] = false;
-            dist[edge] = Math.INFINITY;
+        if !this.ids.contains(edge) {
+          // add the edge to our network if we haven't done so.
+          this.add_node(globalNodes[edge]);
+          visited[edge] = false;
+          dist[edge] = Math.INFINITY;
         }
         if !visited[edge] {
           var d = min(dist[edge], dist[currentNode]+1);
@@ -313,10 +420,8 @@ class GeneNetwork {
       if id_B.contains(currentNode) {
         if checkArray {
           // We should actually do the testAndSet here, although I sort of
-          // dislike having the network access the array.
-          //if processedArray[currentNode].read() {
+          // dislike having the network access the array.  If false, we can use it!
           if !processedArray[currentNode].testAndSet() {
-            // If it's false, we can use it!
             break;
           } else {
             // This means we've actually already processed it, so
@@ -356,56 +461,6 @@ class GeneNetwork {
 
   }
 
-  proc move(ref v: shared propagator.valkyrie, id: string, createEdgeOnMove: bool, edgeDistance: int) throws {
-    // This is the pathless one.  We just need the path, then we're good.
-    var path = this.calculatePath(v.currentNode, id, hstring=v.header);
-    return this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
-  }
-
-  proc move(ref v: shared propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
-    return this.__move__(v, id, path, createEdgeOnMove, edgeDistance);
-  }
-
-  proc __move__(ref v: shared propagator.valkyrie, id: string, path: pathHistory, createEdgeOnMove: bool, edgeDistance: int) throws {
-    // This is a overloaded move function if we already have a path.
-    // The other move function is for if we DON'T have a path.
-    var vstring = v.header + '__move__';
-    //this.log.debug('Attempting to move from', path.key(0), 'to', id : string, hstring=vstring);
-    //this.log.debug('PATH', path : string, hstring=vstring);
-    // Now we just process the path into a delta, and confirm that it is valid.
-    // this is node we're moving FROM, not to, by the way.
-    var d = this.deltaFromPath(path, path.key(0), hstring=vstring);
-    var pl = path.distance();
-    v.nMoves += 1;
-    if createEdgeOnMove {
-      if pl > edgeDistance {
-        // If our edge distance is particularly long, create a shortcut.
-        // This can greatly improve
-        this.lock.wl(vstring);
-        this.nodes[v.currentNode].join(this.nodes[id], d, vstring);
-        this.edges[id].add(v.currentNode);
-        this.edges[v.currentNode].add(id);
-        this.lock.uwl(vstring);
-      }
-    }
-    if propagator.unitTestMode {
-      //this.log.debug('Delta to move to is:', d : string, hstring=vstring);
-    }
-    // this is actually the command that moves us.
-    // rather than actually handling the move, let's just send the delta back.
-    /*
-    var success = v.move(d, id);
-    // for now, hardcode the errors.
-    if success == 0 {
-      this.log.debug('move successful', hstring=vstring);
-    } else if success == 1 {
-      this.log.critical('CRITICAL FAILURE: Valkyrie did not move correctly!', hstring=vstring);
-      this.log.critical('Matrix should be:', id : string, 'but is:', v.matrixValues : string, hstring=vstring);
-    }
-    */
-    return d;
-  }
-
   proc deltaFromPath(in path: network.pathHistory, id: string, hstring: ygglog.yggHeader) throws {
     // This is an attempt to automatically create a deltaRecord from
     // a path.  We pass in a copy as we want to remove the id from it.
@@ -420,23 +475,30 @@ class GeneNetwork {
       //this.log.debug(i: string, pt: string, hstring=vstring);
       this.lock.rl(vstring);
       // LOCK THE NODES.
-      this.nodes[currentNode].l.rl(vstring);
-      if this.nodes[currentNode].nodes.contains(pt) {
-        edge = this.nodes[currentNode].edges[pt : string];
+      globalNodes[currentNode].l.rl(vstring);
+      if globalNodes[currentNode].nodes.contains(pt) {
+        edge = globalNodes[currentNode].edges[pt : string];
         //this.log.debug('EDGE:', edge : string, hstring=vstring);
       } else {
         this.log.critical('EDGE', pt : string, 'NOT IN EDGE LIST FOR', currentNode, hstring=vstring);
-        this.log.critical('EDGELIST for 1st:', this.nodes[pt : string].nodes : string, hstring=vstring);
-        this.log.critical('EDGELIST for 2nd:', this.nodes[currentNode].nodes : string, hstring=vstring);
+        this.log.critical('EDGELIST for 1st:', globalNodes[pt : string].nodes : string, hstring=vstring);
+        this.log.critical('EDGELIST for 2nd:', globalNodes[currentNode].nodes : string, hstring=vstring);
         this.log.critical('PATH WAS:', path : string, hstring=vstring);
-        this.nodes[currentNode].l.url(vstring);
+        globalNodes[currentNode].l.url(vstring);
         this.lock.url(vstring);
         //throw new owned NodeNotInEdgesError();
       }
-      this.nodes[currentNode].l.url(vstring);
+      globalNodes[currentNode].l.url(vstring);
       this.lock.url(vstring);
-      for (s, c) in edge.delta {
-        d += (s, c);
+      if edge.edgeType == genes.DELTA {
+        for (s, c) in edge.delta {
+          d += (s, c);
+        }
+      } else if edge.edgeType == genes.PATH {
+        for edgeId in edge.path {
+          // trace back to root, convert to a delta, add it in.
+          d += this.calculateHistory(edgeId, vstring);
+        }
       }
       currentNode = pt;
       pl += 1;
@@ -456,175 +518,12 @@ class GeneNetwork {
     // simply calculate the path back to the seed node.
     var vstring: ygglog.yggHeader;
     vstring = hstring + 'calculateHistory';
-    //var path = this.calculatePath(id, this.nodes[id].parentSeedNode, hstring=vstring);
-    //var delta = this.deltaFromPath(path, this.nodes[id].parentSeedNode, hstring=vstring);
     // Actually, can we just do back to root?
     var path = this.calculatePath(id, 'root', hstring=vstring);
     this.log.debug('Path calculated:', path : string, hstring=vstring);
     var delta = this.deltaFromPath(path, id, hstring=vstring);
 
     return delta;
-  }
-
-  // Here's a function for merging two nodes.
-
-  proc mergeNodes(id_A: string, id_B: string) {
-    return this.__mergeNodes__(id_A, id_B, hstring='');
-  }
-
-  proc mergeNodes(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
-    return this.__mergeNodes__(id_A, id_B, hstring=hstring);
-  }
-
-  proc __mergeNodes__(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
-    var vstring: ygglog.yggHeader;
-    vstring = hstring + '__mergeNodes__';
-    var deltaA = this.calculateHistory(id_A, vstring);
-    var deltaB = this.calculateHistory(id_B, vstring);
-    this.log.debug('deltaA:', deltaA : string, 'deltaB:', deltaB : string, hstring=vstring);
-    var nId: string;
-    if propagator.unitTestMode {
-      // Remember, this is a MERGE function.  Dumbass.
-      nId = ((id_A : real + id_B : real)/2) : string;
-    }
-    var node = new shared genes.GeneNode(id=nId, ctype='merge', parentSeedNode=this.nodes[id_A].parentSeedNode, parent=id_A);
-    // Remember that we're sending in logging capabilities for debug purposes.
-    node.log = this.log;
-    node.l.log = this.log;
-    // Why is it in the reverse, you ask?  Because the calculateHistory method
-    // returns the information necessary to go BACK to the seed node from the id given.
-    // So this delta allows us to go from node A to the new node.
-    var delta = ((deltaA*-1) + deltaB)/2;
-    this.log.debug('Delta to move from', id_A : string, 'to', node.id : string, '-', (delta*-1) : string, hstring=vstring);
-    node.join(this.nodes[id_A], delta, vstring);
-    // Now, reverse the delta to join B.  I love the records in Chapel.
-    node.join(this.nodes[id_B], delta*-1, vstring);
-    this.add_node(node, vstring);
-    // Now, don't forget to connect it to the existing nodes.
-    this.lock.wl(vstring);
-    this.edges[id_A].add(node.id);
-    this.edges[id_B].add(node.id);
-    this.lock.uwl(vstring);
-    // Return the id, as that's all we need.
-    return node.id;
-  }
-
-  proc mergeNodeList(cId: string, ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
-    return this.__mergeNodeList__(cId, idList, deme, hstring=ygglog.yggHeader);
-  }
-
-  proc mergeNodeList(cId: string, ref idList : [] string, deme: int) {
-    var yh = new ygglog.yggHeader();
-    return this.__mergeNodeList__(cId, idList, deme, hstring=yh);
-  }
-
-  proc __mergeNodeList__(cId: string, ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
-    // we're getting a list of nodes, so we need to calculate
-    var vstring: ygglog.yggHeader;
-    vstring = hstring + '__mergeNodeList__';
-    var deltaDomain: domain(string);
-    var deltaList: [deltaDomain] genes.deltaRecord;
-    for id in idList {
-      deltaDomain.add(id);
-      deltaList[id] = this.calculateHistory(id, vstring);
-    }
-
-    //this.log.debug('deltaA:', deltaA : string, 'deltaB:', deltaB : string, hstring=vstring);
-    // spawn the node; we're making arbitrary decisions.
-    var node = new shared genes.GeneNode(id='', ctype='merge', parentSeedNode=this.nodes[idList[1]].parentSeedNode, parent=idList[1]);
-    // Remember that we're sending in logging capabilities for debug purposes.
-    node.log = this.log;
-    node.l.log = this.log;
-    node.demeDomain.add(deme);
-    node.chromosomes.add(cId);
-    // Why is it in the reverse, you ask?  Because the calculateHistory method
-    // returns the information necessary to go BACK to the seed node from the id given.
-    // So this delta allows us to go from node A to the new node.
-    for i in idList {
-      var delta: genes.deltaRecord;
-      for j in idList {
-        if i != j {
-          delta += deltaList[j];
-        } else {
-          // make sure we end up subtracting N-1/N such that we have 1/Nth left.
-          delta += deltaList[i]*-1*(idList.size-1);
-        }
-      }
-      delta /= idList.size;
-      node.join(this.nodes[i], delta, vstring);
-      // Now, don't forget to connect it to the existing nodes.
-      this.lock.wl(vstring);
-      this.edges[i].add(node.id);
-      this.lock.uwl(vstring);
-    }
-    // this function locks, so.
-    this.add_node(node, vstring);
-    // Return the id, as that's all we need.
-    return node.id;
-  }
-
-
-  proc nextNode(cId: string, id: string, deme: int, hstring: ygglog.yggHeader) {
-    return this.__nextNode__(cId, id, deme, hstring);
-  }
-  proc nextNode(id: string, hstring: ygglog.yggHeader) {
-    return this.__nextNode__('', id, 0, hstring);
-  }
-
-  proc nextNode(cId: string, id: string, deme: int) {
-    var yh = new ygglog.yggHeader();
-    return this.__nextNode__(cId, id, deme, hstring=yh);
-  }
-  proc nextNode(id: string) {
-    var yh = new ygglog.yggHeader();
-    return this.__nextNode__('', id, 0, hstring=yh);
-  }
-
-  proc __nextNode__(cId: string, id: string, deme: int, hstring: ygglog.yggHeader) throws {
-    var vstring: ygglog.yggHeader;
-    vstring = hstring + '__nextNode__';
-    this.log.debug('Adding a seed on to ID', id : string, hstring);
-    // MIGHT NOT NEED TO BE A THING
-    var seed: int;
-    var nId: string;
-    //var node = new shared genes.GeneNode(id='');
-    if propagator.unitTestMode {
-      //nId = (this.nodes[id].debugOrderOfCreation+1) : string;
-      nId = (id : real + 1) : string;
-      seed = 1;
-    } else {
-      nId = '';
-      seed = this.newSeed();
-    }
-    // DEBUG ME
-    var node = this.nodes[id].new_node(seed=seed, coefficient=1, id=nId, hstring=vstring);
-    if propagator.unitTestMode {
-      node.debugOrderOfCreation = this.nodes[id].debugOrderOfCreation+1;
-    }
-    // Again, send the logger to both the lock and the node.
-    node.log = this.log;
-    node.l.log = this.log;
-    node.demeDomain.add(deme);
-    node.chromosomes.add(cId);
-    // Add to current node!  I can't believe you forgot this.
-    this.lock.wl(hstring);
-    this.edges[id].add(node.id);
-    this.lock.uwl(hstring);
-    if this.ids.contains(node.id) {
-      writeln('WHAT THE FUCK');
-    }
-    this.add_node(node, vstring);
-    // Make sure it happened properly.
-    assert(node.nodeInEdges(id, vstring));
-    assert(this.nodes[id].nodeInEdges(node.id, vstring));
-    if !this.nodes[node.id].nodeInEdges(id, vstring) {
-      writeln(id, ' ', node.id);
-      writeln(this.nodes[node.id]);
-      writeln(node);
-    }
-    assert(this.nodes[node.id].nodeInEdges(id, vstring));
-    this.log.debug('Successfully added', (seed+1) : string, 'to ID', id : string, 'to create ID', node.id : string, hstring=hstring);
-    return node.id;
   }
 
   proc clone(ref networkCopy: shared GeneNetwork) {
@@ -638,7 +537,6 @@ class GeneNetwork {
       for edge in this.edges[i] {
         networkCopy.edges[i].add(edge);
       }
-      networkCopy.nodes[i] = this.nodes[i].clone();
     }
     networkCopy.isCopyComplete = true;
     return networkCopy;
@@ -658,20 +556,3 @@ class GeneNetwork {
   }
 
 }
-
-/*
-proc =(a : GeneNetwork, b : GeneNetwork) {
-  // make this serial.
-  a.log = b.log;
-  //a.initializeRoot();
-  for i in b.ids {
-    a.ids.add(i);
-    a.edges[i] = b.edges[i];
-    a.nodes[i] = b.nodes[i].clone();
-  }
-  //a.ids = b.ids;
-  //a.edges = b.edges;
-  // we don't need nodes.
-  //a.nodes = b.nodes;
-}
-*/

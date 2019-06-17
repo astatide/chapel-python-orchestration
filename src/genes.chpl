@@ -15,6 +15,13 @@ var udevrandom = new shared rng.UDevRandomHandler();
 var newrng = udevrandom.returnRNG();
 //writeln(UUID.UUID4());
 
+const NEW = 0;
+const SPAWNED = 1;
+const FINALIZED = 3;
+
+const DELTA = 0;
+const PATH = 1;
+
 record cType {
   var ROOTNODE = -1;
   // Used for normal, 'add a seed' types.
@@ -249,6 +256,9 @@ class GeneEdge {
   //var seeds : domain(int);
   //var delta : [seeds] int;
   var delta : deltaRecord;
+  var edgeType: int;
+  var path: [1..0] string;
+  var pathCoefficient: int = 1;
   // These are values for the noise function that we'll be using.
   var mu: real;
   var sigma: real;
@@ -259,16 +269,27 @@ class GeneEdge {
   var noise_function: int;
 
   proc init() {
+  }
 
+  proc init(idList: [] string, c: int) {
+    // this means we're adding in a path.
+    this.edgeType = PATH;
+    this.pathCoefficient = c;
+    this.path = [1..idList.size] : string;
+    for i in 1..idList.size {
+      this.path[i] = idList[i];
+    }
   }
 
   proc init(delta) {
     this.delta = delta;
+    this.edgeType = DELTA;
   }
 
   proc init(delta, direction) {
     this.delta = delta;
     this.direction = direction;
+    this.edgeType = DELTA;
   }
 
   proc seedInDelta(seed: int) {
@@ -335,7 +356,18 @@ class GeneNode {
   var chromosomes: domain(string);
   var scores: [demeDomain] real;
 
-  proc init(id='', ctype='', parent='', parentSeedNode='') {
+  var initialized: atomic bool = false;
+
+  var revision: int = NEW;
+
+  proc init() {
+    // Blank initializer so that we can check on it later.
+    // do set the lock, though.
+    this.l = new shared spinlock.SpinLock();
+    this.l.t = ' '.join('GENE', this.id);
+  }
+
+  proc init(id, ctype='', parent='', parentSeedNode='') {
     this.ctype = ctype;
     this.parent = parent;
     // Here, we make an ID if we don't already have one.
@@ -366,6 +398,28 @@ class GeneNode {
     var ie = this.nodes.contains(id);
     this.l.url(hstring);
     return ie;
+  }
+
+  proc joinPaths(node: shared GeneNode, idList: [] string) {
+    // we're going to make path edge connections between all the wee nodes.
+    // This is because we might not ever actually need them.  So just store
+    // the information necessary to reconstruct a delta, if necessary.
+    var vstring: ygglog.yggHeader;
+    vstring += '__join__';
+    this.l.wl(vstring);
+    node.l.wl(vstring);
+    idList.remove(node.id);
+    var e = new shared GeneEdge(idList, 1);
+    var re = new shared GeneEdge(idList, -1);
+    // okay, cool.  So.
+    this.nodes.add(node.id);
+    node.nodes.add(this.id);
+
+    this.edges[node.id] = e;
+    node.edges[this.id] = re;
+
+    this.l.uwl(vstring);
+    node.l.uwl(vstring);
   }
 
   // Now, the functions to handle the nodes!
@@ -415,58 +469,94 @@ class GeneNode {
     return d;
   }
 
-  proc new_node(seed: int, coefficient: real, id='': string) {
-    return this.__newNode__(seed, coefficient, id, hstring='');
+  proc addSeed(seed: int, cId: string, deme: int, ref node: shared GeneNode) {
+    this.ctype = 'seed';
+    this.parentSeedNode = node.parentSeedNode;
+    this.parent = node.id;
+
+    var delta = new genes.deltaRecord();
+
+    // It's reverse because we're creating the connection from the new node backwards;
+    // ergo, you must _undo_ the change.
+    delta += (seed, -1.0);
+    node.demeDomain.add(deme);
+    node.chromosomes.add(cId);
+    //node.join(this, delta, new ygglog.yggHeader() + 'newSeedGene');
+    this.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
   }
 
-  proc new_node(seed: int, coefficient: real, id='': string, hstring: ygglog.yggHeader) {
-    return this.__newNode__(seed, coefficient, id, hstring);
+  proc newCombinationNode(idList, seedList, oldId, ref gN) {
+    //node.newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
+    // so, for each seed in the seedlist, we add it to the oldId link node.
+    var delta = new genes.deltaRecord();
+    for s in seedList {
+      delta += (s, -1.0);
+    }
+    delta /= seedList.size();
+    this.join(gN[oldId], delta, new ygglog.yggHeader() + "newCombinationNode");
+    // now, we add 1/N of that to each other one.
+    // except... that's pretty tough.  We'll calculate this stuff on the fly.
+    // We _know_ that we have these connections, so.
+    for id in idList {
+      joinPaths(gN[id], idList)
+    }
   }
 
-  proc __newNode__(seed: int, coefficient: real, id='': string, hstring: ygglog.yggHeader) {
-    // This function is a generic call for whenever we make a modification
-    // Mutations, adding a new seed, whatever.  We just create a new node
-    // and join them properly.
-    var node = new shared GeneNode(id=id);
-    var delta = new deltaRecord();
+  // Here's a function for merging nodes.
 
-    node.parentSeedNode = this.parentSeedNode;
-    node.parent = this.id;
+  proc mergeNodeList(cId: string, ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
+    return this.__mergeNodeList__(cId, idList, deme, hstring=ygglog.yggHeader);
+  }
+
+  proc mergeNodeList(cId: string, ref idList : [] string, deme: int) {
+    var yh = new ygglog.yggHeader();
+    return this.__mergeNodeList__(cId, idList, deme, hstring=yh);
+  }
+
+  proc __mergeNodeList__(cId: string, ref idList : [] string, deme: int, hstring: ygglog.yggHeader) {
+    // we're getting a list of nodes, so we need to calculate
+    var vstring: ygglog.yggHeader;
+    vstring = hstring + '__mergeNodeList__';
+    var deltaDomain: domain(string);
+    var deltaList: [deltaDomain] genes.deltaRecord;
+    for id in idList {
+      deltaDomain.add(id);
+      deltaList[id] = this.calculateHistory(id, vstring);
+    }
+
+    //this.log.debug('deltaA:', deltaA : string, 'deltaB:', deltaB : string, hstring=vstring);
+    // spawn the node; we're making arbitrary decisions.
+    var node = new shared genes.GeneNode(id='', ctype='merge', parentSeedNode='', parent=idList[1]);
+    // Remember that we're sending in logging capabilities for debug purposes.
     node.log = this.log;
     node.l.log = this.log;
-    // Not sure whether I always want to do this, but hey.
-    node.generation = this.generation + 1;
-
-    delta.delta[seed] = coefficient;
-    var vstring: ygglog.yggHeader;
-    vstring = hstring + '__newNode__';
-    this.join(node, delta, vstring);
-    return node;
+    node.demeDomain.add(deme);
+    node.chromosomes.add(cId);
+    // Why is it in the reverse, you ask?  Because the calculateHistory method
+    // returns the information necessary to go BACK to the seed node from the id given.
+    // So this delta allows us to go from node A to the new node.
+    for i in idList {
+      var delta: genes.deltaRecord;
+      for j in idList {
+        if i != j {
+          delta += deltaList[j];
+        } else {
+          // make sure we end up subtracting N-1/N such that we have 1/Nth left.
+          delta += deltaList[i]*-1*(idList.size-1);
+        }
+      }
+      delta /= idList.size;
+      node.join(this.nodes[i], delta, vstring);
+      // Now, don't forget to connect it to the existing nodes.
+      this.lock.wl(vstring);
+      this.edges[i].add(node.id);
+      this.lock.uwl(vstring);
+    }
+    // this function locks, so.
+    this.add_node(node, vstring);
+    // Return the id, as that's all we need.
+    return node.id;
   }
-
-  /*
-  var nodes: domain(string);
-  var edges: [nodes] shared GeneEdge;
-  var generation: int;
-  var ctype: string;
-  var parent: string;
-  // we need a node ID.  I like the ability of being able to specify them.
-  // but we should generate them by default.
-  var id: string;
-  var debugOrderOfCreation: int;
-
-  // Here, we're gonna track our parent at history 0
-  // should make it easier to return histories.
-  var parentSeedNode: string;
-
-  var l: shared spinlock.SpinLock;
-  var log: shared ygglog.YggdrasilLogging;
-
-  // We want to hold scores on the nodes.
-  var demeDomain: domain(int);
-  var chromosomes: domain(string);
-  var scores: [demeDomain] real;
-  */
 
   proc clone() {
     var node = new shared GeneNode();

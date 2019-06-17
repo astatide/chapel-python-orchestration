@@ -208,31 +208,13 @@ class Propagator {
   var authors: domain(string) = ['Audrey Pratt', 'Benjamin Robbins'];
   var version: real = 0.1;
   // I guess this is protected or important in Chapel, in some way?
-  //var release: string; // alpha
   var shutdown: bool = false;
-  //var currentGe
 
   // Because the chromosomes are an abstraction of the gene network, and are
   // in many respects related more to the movement rather than graph problems,
   // the propagator is responsible for it.
   var chromosomeDomain: domain(string);
   var chromes: [chromosomeDomain] chromosomes.Chromosome;
-
-  //var sendPorts: [0..maxValkyries] string;
-  //var recvPorts: [0..maxValkyries] string;
-
-  //var sendSocket: [0..maxValkyries] Socket;
-  //var recvSocket: [0..maxValkyries] Socket;
-  //var nChannels: domain(int);
-
-
-  // this is from the msgHandler class.
-  //proc init(n: int) {
-    // basically, the inheritance isn't working as I would have expected.
-    // see https://github.com/chapel-lang/chapel/issues/8232
-    //super.init(maxValkyries*Locales.size);
-    //this.size = maxValkyries;
-  //}
 
 
   proc logo() {
@@ -300,33 +282,14 @@ class Propagator {
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'Ragnarok';
     this.lock.log = this.log;
-    //this.ygg.initializeNetwork(n_seeds=startingSeeds);
     this.log.debug("Initialising chromosomes", this.yh);
     this.ygg.initializeRoot();
-    this.initChromosomes();
     // basically, re-add the root node to make sure its connections are up to date
-    this.ygg.add_node(this.ygg.rootNode, this.yh);
-    this.log.debug("Initialising root node", this.yh);
-    this.log.debug("About to add existing nodes to the processing list", this.yh);
-    var ids = this.ygg.ids;
-    this.log.debug(this.ygg.ids : string, this.yh);
-    for i in this.ygg.ids {
-      if i != 'root' {
-        if i != this.ygg.testNodeId {
-          // Adding special nodes is a pain.  I should probably set a processing flag.
-          this.nodesToProcess.add(i);
-          this.processedArray[i].write(false);
-          this.inCurrentGeneration.add(1);
-        }
-      }
-    }
-    this.log.debug(this.nodesToProcess: string, this.yh);
-    this.log.debug('INITIALIZED', this.inCurrentGeneration.read() : string, 'seeds.', this.yh);
   }
 
-  proc initChromosomes() {
-    forall deme in 0..4 {
-      forall i in 1..nChromosomes {
+  proc initChromosomes(ref nG: shared network.networkGenerator) {
+    forall deme in 0..4 with (ref nG) {
+      forall i in 1..nChromosomes with (ref nG) {
         // Here, we're going to be given the instructions for generating chromosomes.
         // No reason this can't be parallel, so let's do it.
         this.log.debug('Spawning chromosome', this.yh);
@@ -337,12 +300,7 @@ class Propagator {
         this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, this.yh);
         nc.log = this.log;
         var n: int = 1;
-        nc.generateNodes(this.ygg);
-        //for combo in nc.geneSets() {
-        //  var c = combo : string;
-          //this.log.debug('LOC IN GENE:', n : string, 'SET:', hstring=this.yh);
-        //  n += 1;
-        //}
+        nc.generateNodes(nG);
         this.lock.wl();
         this.chromosomeDomain.add(nc.id);
         this.chromes[nc.id] = nc;
@@ -383,36 +341,36 @@ class Propagator {
     coforall L in Locales {
       on L do {
         if true {
-          //super.init(maxValkyries*Locales.size);
-          // create a logger, just for us!
-          //var vLog = new shared ygglog.YggdrasilLogging();
-          //vLog.currentDebugLevel = debug;
-          //var localeUpdated: [1..generations] atomic bool;
-          //this.log.debug("Copying network onto locale", here.id : string, this.yh);
-          // why the fuck is this suddenly a problem?
-          //this.log.debug("Network copied onto locale ", here.id : string, this.yh);
-          //var nodeHasCopy: single bool;
-          //vLock.log = vLog;
-          // they really do not like to do this.  Why?
           var yggLocalCopy = new shared network.GeneNetwork();
+          var nG = new shared network.networkGenerator();
+          // we're gonna want a list of network IDs we can use.
+          this.initChromosomes(nG);
+          this.log.debug("About to add existing nodes to the processing list", this.yh);
+          var ids = this.ygg.ids;
+          this.log.debug(this.ygg.ids : string, this.yh);
+          for i in this.ygg.ids {
+            if i != 'root' {
+              if i != this.ygg.testNodeId {
+                // Adding special nodes is a pain.  I should probably set a processing flag.
+                this.nodesToProcess.add(i);
+                this.processedArray[i].write(false);
+                this.inCurrentGeneration.add(1);
+              }
+            }
+          }
+          this.log.debug(this.nodesToProcess: string, this.yh);
+          this.log.debug('INITIALIZED', this.inCurrentGeneration.read() : string, 'seeds.', this.yh);
           //ref YNC = yggNodeCopy;
           //var yggNodeCopy: network.GeneNetwork;
           //begin with (ref yggNodeCopy) this.ygg.clone(yggNodeCopy);
-          this.ygg.clone(yggLocalCopy);
-          //var yggLocalCopy = new shared network.GeneNetwork();
+          //this.ygg.clone(yggLocalCopy);
+
           coforall i in 1..maxValkyries {
             // spin up the Valkyries!
-            //var yggLocalCopy = this.ygg.clone();
-            //var mH = new messaging.msgHandler(1);
-            //var mH = new shared yggMsgHandler(1);
             var vLog = new shared ygglog.YggdrasilLogging();
             vLog.currentDebugLevel = debug;
             var vLock = new shared spinlock.SpinLock();
             vLock.t = 'Valkyrie';
-            //var yggLocalCopy: network.GeneNetwork;
-            // ?? This doesn't seem to actually be working.
-            //yggLocalCopy.log = vLog;
-            //yggLocalCopy.lock.log = vLog;
             var v = new shared valkyrie(1);
             v.currentTask = i;
             v.currentLocale = L : string;
@@ -420,32 +378,8 @@ class Propagator {
             for iL in v.logo {
               vLog.header(iL, hstring=v.header);
             }
-            // also, spin up the tasks.
-            //this.lock.wl(v.header);
-            //var yggLocalCopy: network.GeneNetwork;
-            // spin it off baby.
-            //begin with (ref yggLocalCopy) yggLocalCopy = this.ygg.clone();
-            //nodeHasCopy;
-            //var yggLocalCopy = this.ygg;
-            //yggLocalCopy = yggNodeCopy.clone();
-            //yggLocalCopy = this.ygg.clone();
-            //var ayh = new ygglog.yggHeader();
             vLog.log('Initiating spawning sequence', hstring=v.header);
             var vp = v.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
-            vLog.log('Spawn function complete; awaiting node copy of network', hstring=v.header);
-            vLog.log('Cloning network for task', i : string, hstring=v.header);
-            //var yggLocalCopy = this.ygg.clone();
-            //var yggLocalCopy = yggNodeCopy.clone();
-            //writeln("Original");
-            //writeln(this.ygg : string);
-            //writeln("Node copy");
-            //writeln(yggNodeCopy : string);
-            //var yggLocalCopy = new shared network.GeneNetwork();
-            //ref YLC = yggLocalCopy;
-            //while !(yggNodeCopy.isCopyComplete) do chpl_task_yield();
-            vLog.log('Network has the following IDs', yggLocalCopy.ids : string, hstring=v.header);
-            //yggLocalCopy = yggNodeCopy.clone();
-            //yggNodeCopy.clone(yggLocalCopy);
             vLog.log('Clone complete; awaiting arrival of other valkyries', hstring=v.header);
             if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
@@ -453,7 +387,6 @@ class Propagator {
             } else {
               this.areSpawned = true;
             }
-            //this.lock.uwl(v.header);
             v.moveToRoot();
 
             for gen in 1..generations {
@@ -464,16 +397,6 @@ class Propagator {
               var toProcess: domain(string);
               var path: network.pathHistory;
               toProcess.clear();
-              //this.lock.wl(v.header);
-              //if this.generationTime == 0 : real {
-              //  this.generationTime = Time.getCurrentTime();
-              //}
-              //if !localeUpdated[gen].testAndSet() {
-              //yggLocalCopy = this.ygg;
-              //yggLocalCopy = this.ygg.clone();
-              //this.ygg.update(yggLocalCopy);
-              //}
-              //this.lock.uwl(v.header);
               vLog.debug('Beginning processing', hstring=v.header);
               vLog.debug(this.nodesToProcess : string, hstring=v.header);
               var prioritySize = v.priorityNodes.size;
@@ -517,7 +440,6 @@ class Propagator {
                       }
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
                       var d = yggLocalCopy.deltaFromPath(path, path.key(0), hstring=v.header);
-                      //var d = yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
                       d.to = currToProc;
                       var newMsg = new messaging.msg(d);
                       newMsg.i = deme;
@@ -526,65 +448,10 @@ class Propagator {
                       vLog.debug("Sending the following msg:", newMsg : string, hstring=v.header);
                       v.SEND(newMsg);
                       vLog.debug("Message & delta sent; awaiting instructions", hstring=v.header);
-                      //v.RECV(newMsg, i);
-                      /*
-                      var vheader = v.header;
-                      vheader += "ValkyriePython";
-                      var l: string;
-                      while vp.stdout.readline(l) {
-                        if l == "VALKYRIE PROCESSED MSG\n" {
-                          // Do nothing.  Don't read again, that's for sure.
-                          // probably have a race condition here, so.
-                          break;
-                        } else {
-                          this.log.log(l, hstring=vheader);
-                        }
-                      }*/
-                      //var retMsg = mH.RECV();
-                      //mH.receiveMessage();
-                      //mH.receiveMessage();
-                      //v.receiveMessage();
                       var m = v.RECV();
                       var score = m.r;
-
-                      //var score: real;
-                      //var scoreString: real;
-                      //scoreString = retMsg.open(score);
                       vLog.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
-                      //vLog.debug('SCORE FOR', currToProc : string, 'IS', retMsg.r : string, hstring=v.header);
-                      //vLog.debug('MSG FOR', currToProc : string, 'IS', retMsg : string, hstring=v.header);
-                      //vLog.debug('SCORE FOR', currToProc : string, 'IS', scoreString : string, hstring=v.header);
-
-                      //this.lock.wl(v.header);
-                      /*if false {
-                        var (maxVal, maxLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
-                        if score < maxVal {
-                          this.scoreArray[maxLoc] = score;
-                          this.idArray[maxLoc] = currToProc;
-                        }
-                      } else {*/
-                      // set the score on the node.
-                      // this is thread safe.
                       this.ygg.nodes[currToProc].scores[deme] = score;
-                      /*
-                      var sA = this.scoreArray[deme, 1..maxPerGeneration];
-                      // Is that a problem?
-                      //var (minVal, minLoc) = minloc reduce zip(sA, sA.domain);
-                      var minVal : real = Math.INFINITY;
-                      var minLoc : int;
-                      for (v,l) in zip(sA, sA.domain) {
-                        if v <= minVal {
-                          minVal = v;
-                          minLoc = l;
-                        }
-                      }
-                      if score >= minVal {
-                        this.scoreArray[deme,minLoc] = score;
-                        this.idArray[deme, minLoc] = currToProc;
-                      }
-                      //}
-                      this.lock.uwl(v.header);
-                      */
                     }
                   }
                   // While it seems odd we might try this twice, this helps us keep
@@ -643,25 +510,6 @@ class Propagator {
                 // do global cleanup to ensure the global arrays are ready.
                 vLog.debug('Handling cleanup on gen', gen : string, v.header);
                 v.moved = false;
-
-                /*
-                // first, get the best!
-                var sA = this.scoreArray[deme, 1..maxPerGeneration];
-                // Is that a problem?
-                //var (minVal, minLoc) = minloc reduce zip(sA, sA.domain);
-                var minVal : real = Math.INFINITY;
-                var minLoc : int;
-                for (v,l) in zip(sA, sA.domain) {
-                  if v <= minVal {
-                    minVal = v;
-                    minLoc = l;
-                  }
-                }
-                if score >= minVal {
-                  this.scoreArray[deme,minLoc] = score;
-                  this.idArray[deme, minLoc] = currToProc;
-                }*/
-
                 // we'll just throw this in here for now.
                 // Only do the max!
                 //var bestInGen: real = this.scoreArray[1];
@@ -718,51 +566,6 @@ class Propagator {
                     }
                   }
                 }
-                /*
-                for ij in 1..maxPerGeneration {
-                  currToProc = this.idArray[ij];
-                  //if this.scoreArray[ij] == Math.INFINITY {
-                  //  break;
-                  //}
-                  if this.scoreArray[ij] == 0 {
-                    break;
-                  }
-                  this.log.debug('Attempting to move ID', currToProc, 'into the next generation.', hstring=v.header);
-                  var nextNode = this.ygg.nextNode(currToProc, hstring=v.header);
-                  // They should really know about each other, I mean, come on.
-                  assert(this.ygg.nodes[currToProc].nodeInEdges(nextNode, v.header));
-                  assert(this.ygg.nodes[nextNode].nodeInEdges(currToProc, v.header));
-                  var mergeTest: string;
-                  this.log.debug('Node', nextNode : string, 'added', hstring=v.header);
-                  v.nProcessed += 1;
-                  v.moved = true;
-                  // test it!
-                  //if unitTestMode {
-                  if currToProc != this.idArray[minLoc] {
-                    this.log.debug('Attempting to merge ID', currToProc, 'with', this.idArray[minLoc], hstring=v.header);
-                    mergeTest = this.ygg.mergeNodes(currToProc, this.idArray[minLoc], hstring=v.header);
-                    this.log.debug('Node', mergeTest : string, 'added', hstring=v.header);
-                    //}
-                  }
-                  //this.lock.wl(v.header);
-                  // We're testing to see if we can do this.
-                  // I want this in there ultimately, but it needs to
-                  // not result in a race condition.
-                  //this.nodesToProcess.remove(currToProc);
-                  // We only want to add to an empty domain here such that we only
-                  // prioritize nodes which are close to the current node.
-                  // Eventually, if we mutate, we'll add that in, too.
-                  //v.priorityNodes.clear();
-                  v.priorityNodes.add(nextNode);
-                  this.nextGeneration.add(nextNode);
-                  //if unitTestMode {
-                  if currToProc != this.idArray[minLoc] {
-                    v.priorityNodes.add(mergeTest);
-                    this.nextGeneration.add(mergeTest);
-                  }
-                  //}
-                }*/
-                //this.scoreArray = Math.INFINITY;
                 this.scoreArray = -1;
 
                 vLog.debug('Switching generations', v.header);
