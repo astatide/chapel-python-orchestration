@@ -365,6 +365,8 @@ class GeneNode {
     // do set the lock, though.
     this.l = new shared spinlock.SpinLock();
     this.l.t = ' '.join('GENE', this.id);
+    this.complete();
+    this.l.log = this.log;
   }
 
   proc init(id, ctype='', parent='', parentSeedNode='') {
@@ -442,8 +444,9 @@ class GeneNode {
     //writeln(node, delta);
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__join__';
-    this.l.wl(vstring);
-    node.l.wl(vstring);
+    writeln("ABOUT TO LOCK: ", this.id);
+    this.l.wl();
+    node.l.wl();
     var d = (this.id, node.id);
     node.nodes.add(this.id);
     this.nodes.add(node.id);
@@ -452,8 +455,8 @@ class GeneNode {
     // -1.
     d = (node.id, this.id);
     node.edges[this.id] = new shared GeneEdge(delta*-1, d);
-    node.l.uwl(vstring);
-    this.l.uwl(vstring);
+    node.l.uwl();
+    this.l.uwl();
   }
 
   proc return_edge(id:string) {

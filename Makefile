@@ -8,9 +8,11 @@ HOST=$(shell hostname)
 ifeq ($(HOST), cicero)
  	COMM:=--comm ugni --launcher slurm-srun
 	MACLUDE:=
+	DEBUG:=
 else
 	COMM:=--comm gasnet
 	MACLUDE:= -L ZMQHelper/ -L /usr/local/lib -I /usr/local/include
+	DEBUG:=-g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks
 endif
 
 all:
@@ -24,10 +26,10 @@ clean:
 	rm yggdrasil
 
 valkyrie:
-	chpl -o valkyrie valkyrie.chpl $(LINCLUDE) $(MACLUDE) --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" --comm none --launcher none
+	chpl -o valkyrie valkyrie.chpl $(LINCLUDE) $(MACLUDE) --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" --comm none --launcher none $(DEBUG)
 
 yggdrasil:
-	chpl -o yggdrasil main.chpl $(LINCLUDE)    $(MACLUDE) --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" $(COMM)
+	chpl -o yggdrasil main.chpl $(LINCLUDE)    $(MACLUDE) --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" $(COMM) $(DEBUG)
 
 spawn:
 	env CHPL_DEVELOPER=true chpl -o spawn -L /usr/local/lib -I /usr/local/include -M src/ -M python/ sp.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks

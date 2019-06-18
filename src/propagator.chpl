@@ -412,7 +412,7 @@ class Propagator {
                   // This checks atomics, so it's gonna be slow.
                   // In an ideal world, we rarely call it.
                   for id in network.globalUnprocessed {
-                    if !network.globalIsProcessed[id].testAndSet() {
+                    if !network.globalIsProcessed[id].read() {
                       toProcess.add(id);
                     }
                   }

@@ -29,7 +29,15 @@ record mapperByLocale {
   proc this(ind : string, targetLocs: [?D] locale) : D.idxType {
     // we just map according to the first 4 numbers of the ID.
     // the ID is just the locale, padded out to 4, followed by a UUID.
-    return ind[1..4] : int;
+    writeln('Just doing my thing and being a mapper: ', ind);
+    //writeln(ind);
+    if ind == 'root'{
+      return 0;
+    } else if ind != '' {
+      return ind[1..4] : int;
+    }
+    // you should never be called, but hey.
+    return 0;
   }
 }
 
@@ -54,6 +62,7 @@ class networkGenerator {
 
   proc init() {
     this.complete();
+    this.initializeRoot();
     this.l.t = 'networkGenerator';
     this.l.log = new shared ygglog.YggdrasilLogging();
     this.generateEmptyNodes(nodeBlockSize);
@@ -71,6 +80,21 @@ class networkGenerator {
     this.firstUnprocessed.write(1);
     this.isUpdating.write(false);
     this.l.uwl();
+  }
+
+  proc initializeRoot() {
+    // this is to init root.
+    // We'll call this numerous times, but only one will win.
+    // Not that it matters.
+    globalLock.wl();
+    if !globalIDs.contains('root') {
+      var rootNode = new shared genes.GeneNode();
+      rootNode.id = 'root';
+      rootNode.revision = genes.SPAWNED;
+      globalIDs.add('root');
+      globalNodes['root'] = rootNode;
+    }
+    globalLock.uwl();
   }
 
   iter currentGeneration {
@@ -105,29 +129,38 @@ class networkGenerator {
     // this is designed for the global arrays.
     for i in 1..n {
       // generate new nodes.  And UUIDs.
-      var node = new shared genes.GeneNode();
-      node.id = this.generateID;
-      IDs.add(node.id);
-      nodes[node.id] = node;
-      this.idSet.push_front(node.id);
+      var id = this.generateID;
+      this.IDs.add(id);
+      this.nodes[id] = new shared genes.GeneNode();;
+      this.nodes[id].id = id;
+      this.idSet.push_back(id);
     }
+    writeln("generateEmptyNodes");
+    writeln(this.idSet);
+    writeln(this.idSet.domain);
+    writeln(this.IDs);
   }
 
   proc getNode() : string {
     // this will return an unused node.
+    // block if we're updating.
+    while this.isUpdating.read() do chpl_task_yield();
     this.l.rl();
     var nId : int = 1;
     writeln(nId : string);
-    while nId < nodeBlockSize {
+    while nId < nodeBlockSize-1 {
       var nId = this.currentId.fetchAdd(1);
       writeln(nId : string);
       // check and see whether it exists.
       //if this.idSet.domain.contains(nId) {
       var node = this.idSet[nId];
-      writeln(node);
+      writeln('getNode function; do we have anything? NODE ID: ', node, " nId: ", nId : string);
       if !globalNodes[node].initialized.testAndSet() {
         // we can use it!
         this.l.url();
+        // test the node lock.
+        globalNodes[node].l.wl();
+        globalNodes[node].l.uwl();
         writeln(node);
         return node;
       }
@@ -139,7 +172,7 @@ class networkGenerator {
     if !this.isUpdating.testAndSet() {
       // avoid a race condition where we clear the flag after nodes have been generated,
       // but tried to grab one before things were ready.  Not likely, but hey.
-      if this.currentId.read() >= nodeBlockSize {
+      if this.currentId.read() >= nodeBlockSize-1 {
         this.spawn();
       }
     }
