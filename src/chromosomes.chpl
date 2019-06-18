@@ -255,36 +255,43 @@ record Chromosome {
     }
   }
 
-  //proc generateNodes(ref nG: shared network.networkGenerator) {
-  //  this.generateNodes(nG);
-  //}
-
-  proc __generateNodes__(ref nG: shared network.networkGenerator, initial=false) {
+  proc __generateNodes__(ref nG: shared network.networkGenerator, initial=false, hstring: ygglog.yggHeader) {
     // chromosomes should build nodes according to their desires.
     // first, prep all the initial nodes.
+    var vstring = hstring + '__generateNodes__';
+    if initial {
+      this.log.debug("Initializing nodes.", hstring=vstring);
+    }
     for n in 1..totalGenes {
       if n > 0 && n <= this.nRootGenes {
         // prep the root seeds.
         // handy function to return a node id.
+        this.log.debug('Getting seeds and ID', hstring=vstring);
         var id = nG.getNode();
         var seed = nG.newSeed();
+        this.log.debug('ID: %s, SEED: %i'.format(id, seed), hstring=vstring);
         // just nab the node pointer.
         ref node = network.globalNodes[id];
+        this.log.debug("Setting node revision", hstring=vstring);
         node.revision = genes.SPAWNED;
         if initial {
+          this.log.debug("INITIAL GO; adding seed to root.", hstring=vstring);
           node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes['root']);
         } else {
+          this.log.debug("NOT INITIAL; advancing old node.", hstring=vstring);
           node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes[this.geneIDs[n]]);
           network.globalNodes[this.geneIDs[n]].l.wl();
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
           network.globalNodes[this.geneIDs[n]].l.uwl();
         }
+        this.log.debug('Node successfully advanced', hstring=vstring);
         this.geneIDs[n] = id;
         this.geneSeeds[n] = seed;
       }
       if n > this.nRootGenes {
         // now we use the combo.  We should pack it into a list and send it.
         // is there a better way?  I'm sure.
+        this.log.debug('COMBINATION GENES', hstring=vstring);
         var c = this.actualGenes[n];
         //var idList: [1..c.size] string;
         var idList: [1..c.size] string;
@@ -295,30 +302,34 @@ record Chromosome {
           seedList[i] = this.geneSeeds[id];
           i += 1;
         }
+        this.log.debug('Getting node!', hstring=vstring);
         var newId = nG.getNode();
         ref node = network.globalNodes[id];
         node.revision = genes.SPAWNED;
         //this.geneIDs[n] = ygg.mergeNodeList(this.id, idList, this.currentDeme);
         if initial {
+          this.log.debug('Calling combination node', hstring=vstring);
           node.newCombinationNode(idList, seedList, 'root', network.globalNodes);
         } else {
+          this.log.debug('Calling combination node', hstring=vstring);
           node.newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
           // finalize it.
           network.globalNodes[this.geneIDs[n]].l.wl();
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
           network.globalNodes[this.geneIDs[n]].l.uwl();
         }
+        this.log.debug('Combination complete; setting node', hstring=vstring);
         this.geneIDs[n] = newId;
       }
     }
   }
 
-  proc generateNodes(ref nG: shared network.networkGenerator) {
-    this.__generateNodes__(nG, initial=true);
+  proc generateNodes(ref nG: shared network.networkGenerator, hstring: ygglog.yggHeader) {
+    this.__generateNodes__(nG, initial=true, hstring=hstring);
   }
 
-  proc advanceNodes(ref nG: shared network.networkGenerator) {
-    this.__generateNodes__(nG, initial=false);
+  proc advanceNodes(ref nG: shared network.networkGenerator, hstring: ygglog.yggHeader) {
+    this.__generateNodes__(nG, initial=false, hstring=hstring);
   }
 
   proc clone () {

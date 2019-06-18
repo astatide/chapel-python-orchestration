@@ -68,6 +68,7 @@ class networkGenerator {
     this.generateEmptyNodes(nodeBlockSize);
     this.addToGlobal();
     this.currentId.write(1);
+    this.firstUnprocessed.write(1);
     this.isUpdating.write(false);
     this.l.uwl();
   }
@@ -116,17 +117,21 @@ class networkGenerator {
     // this will return an unused node.
     this.l.rl();
     var nId : int = 1;
+    writeln(nId : string);
     while nId < nodeBlockSize {
       var nId = this.currentId.fetchAdd(1);
+      writeln(nId : string);
       // check and see whether it exists.
-      if this.idSet.domain.contains(nId) {
-        var node = this.idSet[nId];
-        if !globalNodes[node].initialized.testAndSet() {
-          // we can use it!
-          this.l.url();
-          return node;
-        }
+      //if this.idSet.domain.contains(nId) {
+      var node = this.idSet[nId];
+      writeln(node);
+      if !globalNodes[node].initialized.testAndSet() {
+        // we can use it!
+        this.l.url();
+        writeln(node);
+        return node;
       }
+      //}
     }
     this.l.url();
     // if we're here, we need more nodes!

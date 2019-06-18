@@ -299,7 +299,7 @@ class Propagator {
         this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, this.yh);
         nc.log = this.log;
         var n: int = 1;
-        nc.generateNodes(nG);
+        nc.generateNodes(nG, this.yh);
         this.lock.wl();
         this.chromosomeDomain.add(nc.id);
         this.chromes[nc.id] = nc;
@@ -556,7 +556,7 @@ class Propagator {
                       //var cc: chromosomes.Chromosome;
                       var cc = nc.clone();
                       vLog.debug('New chromosome ID', cc.id : string , vheader);
-                      cc.advanceNodes(nG);
+                      cc.advanceNodes(nG, this.yh);
                       for node in cc.geneIDs {
                         this.lock.wl(vheader);
                         this.nextGeneration.add(node);
