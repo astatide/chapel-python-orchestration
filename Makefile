@@ -1,6 +1,6 @@
 NUMPY:=`python3 -c 'import numpy.distutils.misc_util as m; print(m.get_numpy_include_dirs()[0])'`
 PYTHONC:=`python3-config --cflags`
-PYTHONL:=`python3-config --ldflags`
+PYTHONL:=`python3-config --ldflags` 
 LINCLUDE:=--warn-unstable --fast -M src -M python
 ENVSTATE:=env CHPL_COMM_SUBSTRATE=udp CHPL_COMM=gasnet
 HOST=$(shell hostname)

@@ -21,7 +21,7 @@ var globalLock = new shared spinlock.SpinLock();
 globalLock.t = 'Ragnarok';
 globalLock.log = new shared ygglog.YggdrasilLogging();
 
-config const nodeBlockSize = 100000;
+config const nodeBlockSize = 10000;
 
 // here's some stuff to spread out the array.
 
@@ -121,7 +121,7 @@ class networkGenerator {
 
   proc generateID {
     // returns a UUID, prepended by the locale.
-    return '%04i'.format(here.id) + '-' + NUUID.UUID4();
+    return '%04i'.format(here.id) + '-GENE-' + NUUID.UUID4();
   }
 
   proc generateEmptyNodes(n: int) {
@@ -131,14 +131,15 @@ class networkGenerator {
       // generate new nodes.  And UUIDs.
       var id = this.generateID;
       this.IDs.add(id);
-      this.nodes[id] = new shared genes.GeneNode();;
-      this.nodes[id].id = id;
+      //this.nodes[id] = new shared genes.GeneNode();;
+      //this.nodes[id].id = id;
       this.idSet.push_back(id);
     }
     writeln("generateEmptyNodes");
     writeln(this.idSet);
     writeln(this.idSet.domain);
     writeln(this.IDs);
+    //this.addToGlobal();
   }
 
   proc getNode() : string {
@@ -147,21 +148,23 @@ class networkGenerator {
     while this.isUpdating.read() do chpl_task_yield();
     this.l.rl();
     var nId : int = 1;
-    writeln(nId : string);
+    //writeln(nId : string);
     while nId < nodeBlockSize-1 {
       var nId = this.currentId.fetchAdd(1);
-      writeln(nId : string);
+      if nId > nodeBlockSize {
+        // ya'll need breaksus.
+        break;
+      }
+      //writeln(nId : string);
       // check and see whether it exists.
       //if this.idSet.domain.contains(nId) {
       var node = this.idSet[nId];
-      writeln('getNode function; do we have anything? NODE ID: ', node, " nId: ", nId : string);
+      //writeln('getNode function; do we have anything? NODE ID: ', node, " nId: ", nId : string);
       if !globalNodes[node].initialized.testAndSet() {
         // we can use it!
         this.l.url();
         // test the node lock.
-        globalNodes[node].l.wl();
-        globalNodes[node].l.uwl();
-        writeln(node);
+        //writeln(node);
         return node;
       }
       //}
@@ -184,8 +187,18 @@ class networkGenerator {
     globalLock.wl();
     for node in this.IDs {
       if !globalIDs.contains(node) {
-        globalIDs.add(node);
-        globalNodes[node] = this.nodes[node];
+        // we _might_ need to recreate the log.
+        // and lock.
+        // because this is _definitely_ a copy operation, but it's possible
+        // that somehow the lock doesn't copy over properly.
+        on this.locale {
+          globalIDs.add(node);
+          globalNodes[node] = new shared genes.GeneNode();
+          globalNodes[node].id = node;
+          globalNodes[node].l = new shared spinlock.SpinLock();
+          globalNodes[node].l.t = ' '.join('GENE', node);
+          globalNodes[node].l.log = globalNodes[node].log;
+        }
       } else {
         removeSet.add(node);
       }
@@ -330,65 +343,6 @@ class GeneNetwork {
     this.rootNode.log = this.log;
     this.rootNode.l.log = this.log;
     this.add_node(this.rootNode, new ygglog.yggHeader() + 'initializeNetwork');
-  }
-
-  proc initializeNetwork(n_seeds=10: int, gen_seeds=true: bool) {
-    var seed: int;
-    var id: string;
-    var delta: genes.deltaRecord;
-    // We send each gene a logger; it's useful for debugging, but likely not
-    // production.
-    this.rootNode.log = this.log;
-    this.rootNode.l.log = this.log;
-    for n in 1..n_seeds {
-      if propagator.unitTestMode {
-        seed = n*1000;
-        id = (n*1000) : string;
-      } else {
-        seed = this.newSeed();
-        // With a blank ID, the gene will assign itself a UUID.
-        id = '';
-      }
-      var node = new shared genes.GeneNode(id=id, ctype='seed', parentSeedNode='', parent='root');
-      node.log = this.log;
-      node.l.log = this.log;
-      //writeln(this.log : string, node.log : string, node.l.log : string);
-      if propagator.unitTestMode {
-        node.debugOrderOfCreation = n*1000;
-      } else {
-        node.debugOrderOfCreation = n;
-      }
-      delta = new genes.deltaRecord();
-      delta.seeds.add(seed);
-      delta.delta[seed] = 1;
-      this.rootNode.join(node, delta, new ygglog.yggHeader() + 'initializeNetwork');
-      this.add_node(node, new ygglog.yggHeader() + 'initializeNetwork');
-    }
-    if propagator.unitTestMode {
-      seed = ((n_seeds+1)*1000)+10000;
-      this.testNodeId = seed : string;
-      var node = new shared genes.GeneNode(id=seed : string, ctype='seed', parentSeedNode='', parent='root');
-      node.log = this.log;
-      node.l.log = this.log;
-      node.debugOrderOfCreation = seed;
-      delta = new genes.deltaRecord();
-      delta.seeds.add(seed);
-      delta.delta[seed] = 1;
-      this.log.debug('Adding testMergeNode, delta:', delta : string, hstring=new ygglog.yggHeader() + 'initializeNetwork');
-      this.rootNode.join(node, delta, new ygglog.yggHeader() + 'initializeNetwork');
-      this.add_node(node, new ygglog.yggHeader() + 'initializeNetwork');
-    }
-    this.add_node(this.rootNode, new ygglog.yggHeader() + 'initializeNetwork');
-  }
-
-  proc initializeSeedGenes(seeds: domain(int)) {
-    // We're going to create a whole host of seed type nodes.
-    // These have a special deltaRecord; I'm going to encode an INFINITY
-    // as 'blow away the matrix', then ... or should I?
-    for seed in seeds {
-      var node = new shared genes.GeneNode(seed);
-      this.add_node(node, new ygglog.yggHeader() + 'initializeSeedGenes');
-    }
   }
 
   proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, processedArray) {
@@ -570,7 +524,7 @@ class GeneNetwork {
       } else if edge.edgeType == genes.PATH {
         for edgeId in edge.path {
           // trace back to root, convert to a delta, add it in.
-          d += this.calculateHistory(edgeId, vstring);
+          d += (this.calculateHistory(edgeId[1], vstring) * edgeId[2]);
         }
       }
       currentNode = pt;

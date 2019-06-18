@@ -1,7 +1,7 @@
 use ygglog;
 use SysError;
 
-config var lockLog = false;
+//config var lockLog = false;
 
 class TooManyLocksError : Error {
   proc init() { }
@@ -15,8 +15,10 @@ class SpinLock {
   var t: string;
   var writeLock: atomic int;
   var readHandles: atomic int;
+  var lockLog: bool = false;
 
-  inline proc lock(hstring: ygglog.yggHeader) throws {
+
+  proc lock(hstring: ygglog.yggHeader) throws {
     if lockLog {
       this.log.debug('locking', this.t, hstring);
     }
@@ -31,7 +33,7 @@ class SpinLock {
     }
   }
 
-  inline proc unlock(hstring: ygglog.yggHeader) throws {
+  proc unlock(hstring: ygglog.yggHeader) throws {
     this.n.sub(1);
     if this.n.read() != 0 {
       this.log.critical('CRITICAL FAILURE: During unlock, spinlock has been acquired multiple times on', this.t, hstring);
@@ -44,15 +46,15 @@ class SpinLock {
   }
 
   // Ha, we're still using this for the logs.
-  inline proc lock() {
+  proc lock() {
     while l.testAndSet(memory_order_acquire) do chpl_task_yield();
   }
 
-  inline proc unlock() {
+  proc unlock() {
     l.clear(memory_order_release);
   }
 
-  inline proc rl(hstring: ygglog.yggHeader) {
+  proc rl(hstring: ygglog.yggHeader) {
     // This checks to see whether the write lock is active, and if not,
     // allows reads.
     while this.writeLock.read() >= 1 do chpl_task_yield();
@@ -62,7 +64,7 @@ class SpinLock {
     }
   }
 
-  inline proc url(hstring: ygglog.yggHeader) {
+  proc url(hstring: ygglog.yggHeader) {
     if lockLog {
       this.log.debug('Releasing read lock on', this.t, hstring);
     }
@@ -72,7 +74,7 @@ class SpinLock {
     }
   }
 
-  inline proc wl(hstring: ygglog.yggHeader) {
+  proc wl(hstring: ygglog.yggHeader) {
     // While we are actively reading, we do not write.
     if lockLog {
       this.log.debug('Requesting write lock on', this.t, 'current RL', this.readHandles.read() : string, hstring);
@@ -85,7 +87,7 @@ class SpinLock {
     this.lock(hstring);
   }
 
-  inline proc uwl(hstring: ygglog.yggHeader) {
+  proc uwl(hstring: ygglog.yggHeader) {
     this.writeLock.sub(1);
     if lockLog {
       this.log.debug('Releasing write lock on', this.t, 'current WL', this.writeLock.read() : string, hstring);
@@ -93,19 +95,19 @@ class SpinLock {
     this.unlock(hstring);
   }
 
-  inline proc wl() {
+  proc wl() {
     this.wl(new ygglog.yggHeader());
   }
 
-  inline proc uwl() {
+  proc uwl() {
     this.uwl(new ygglog.yggHeader());
   }
 
-  inline proc rl() {
+  proc rl() {
     this.rl(new ygglog.yggHeader());
   }
 
-  inline proc url() {
+  proc url() {
     this.url(new ygglog.yggHeader());
   }
 }

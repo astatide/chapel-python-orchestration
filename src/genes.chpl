@@ -257,8 +257,8 @@ class GeneEdge {
   //var delta : [seeds] int;
   var delta : deltaRecord;
   var edgeType: int;
-  var path: [1..0] string;
-  var pathCoefficient: int = 1;
+  var path: [1..0] (string, real);
+  //var pathCoefficient: int = 1;
   // These are values for the noise function that we'll be using.
   var mu: real;
   var sigma: real;
@@ -271,13 +271,14 @@ class GeneEdge {
   proc init() {
   }
 
-  proc init(idList: [] string, c: int) {
+  proc init(idList: [] (string, real)) {
     // this means we're adding in a path.
     this.edgeType = PATH;
-    this.path = [1..idList.size] : string;
-    this.pathCoefficient = c;
+    //this.path: [1..idList.size] (string, real);
+    //this.pathCoefficient = c;
+    this.complete();
     for i in 1..idList.size {
-      this.path[i] = idList[i];
+      this.path.push_back(idList[i]);
     }
   }
 
@@ -410,15 +411,19 @@ class GeneNode {
     vstring += '__join__';
     this.l.wl(vstring);
     var z: int = 1;
+    var shortList: [1..0] (string, real);
+    var revList: [1..0] (string, real);
     for i in idList {
-      if i == node.id {
-        idList.remove(z);
+      if i != node.id {
+        //idList.remove(z);
+        shortList.push_back((i, 1/(idList.size-1:real)));
+        revList.push_back((i, -1/(idList.size-1:real)));
       }
       z += 1;
     }
     //idList.remove(node.id);
-    var e = new shared GeneEdge(idList, 1);
-    var re = new shared GeneEdge(idList, -1);
+    var e = new shared GeneEdge(shortList);
+    var re = new shared GeneEdge(revList);
     // okay, cool.  So.
     node.l.wl(vstring);
     this.nodes.add(node.id);

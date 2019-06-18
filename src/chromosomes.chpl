@@ -196,7 +196,7 @@ record Chromosome {
   var actualGenes: [geneNumbers] domain(int);
 
   proc init() {
-    this.id = CUUID.UUID4();
+    this.id = '%04i'.format(here.id) + "-CHRO-" + CUUID.UUID4();
     this.l = new shared spinlock.SpinLock();
     this.l.t = ' '.join('CHROMOSOME', this.id);
   }
@@ -304,7 +304,7 @@ record Chromosome {
         }
         this.log.debug('Getting node!', hstring=vstring);
         var newId = nG.getNode();
-        ref node = network.globalNodes[id];
+        ref node = network.globalNodes[newId];
         node.revision = genes.SPAWNED;
         //this.geneIDs[n] = ygg.mergeNodeList(this.id, idList, this.currentDeme);
         if initial {
