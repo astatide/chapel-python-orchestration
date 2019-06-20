@@ -271,7 +271,11 @@ record Chromosome {
         var seed = nG.newSeed();
         this.log.debug('ID: %s, SEED: %i'.format(id, seed), hstring=vstring);
         // just nab the node pointer.
+        // oh, we need to... right.
+        network.globalLock.rl();
         ref node = network.globalNodes[id];
+        network.globalLock.url();
+        // stupid race condition.
         this.log.debug("Setting node revision", hstring=vstring);
         node.revision = genes.SPAWNED;
         if initial {

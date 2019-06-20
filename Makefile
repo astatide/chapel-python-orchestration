@@ -1,18 +1,19 @@
 NUMPY:=`python3 -c 'import numpy.distutils.misc_util as m; print(m.get_numpy_include_dirs()[0])'`
 PYTHONC:=`python3-config --cflags`
 PYTHONL:=`python3-config --ldflags` 
-LINCLUDE:=--warn-unstable --fast -M src -M python
+LINCLUDE:=--warn-unstable -M src -M python
 ENVSTATE:=env CHPL_COMM_SUBSTRATE=udp CHPL_COMM=gasnet
 HOST=$(shell hostname)
 
 ifeq ($(HOST), cicero)
  	COMM:=--comm ugni --launcher slurm-srun
 	MACLUDE:=
-	DEBUG:=
+	DEBUG:=--fast
 else
-	COMM:=--comm gasnet
+	#COMM:=--comm gasnet
+	COMM:=--comm none --launcher none
 	MACLUDE:= -L ZMQHelper/ -L /usr/local/lib -I /usr/local/include
-	DEBUG:=-g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks
+	DEBUG:=-g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks --devel
 endif
 
 all:

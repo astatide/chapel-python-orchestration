@@ -404,9 +404,11 @@ class Propagator {
                 currToProc = '';
                 toProcess.clear();
 
-                for id in nG.currentGeneration {
+                for id in nG.all {
                   toProcess.add(id);
+                  vLog.debug('Adding node ID: ', id : string, hstring=v.header);
                 }
+                vLog.debug('What is up, fellow nodes? NODES: ', toProcess : string, hstring=v.header);
 
                 if toProcess.isEmpty() {
                   // This checks atomics, so it's gonna be slow.

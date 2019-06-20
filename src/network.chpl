@@ -59,6 +59,8 @@ class networkGenerator {
   var l = new shared spinlock.SpinLock();
   var isUpdating: atomic bool = false;
   var irng = new owned rng.UDevRandomHandler();
+  var N: int = 0;
+  var newNodeStartingPoint: int = 1;
 
   proc init() {
     this.complete();
@@ -70,14 +72,17 @@ class networkGenerator {
   }
 
   proc spawn() {
+    writeln("Spawn it!");
     this.l.wl();
-    this.IDs.clear();
-    // probably won't work, but hey.
-    this.idSet.clear();
+    writeln("Ditch the ids...");
+    writeln("Okay, generate new ones");
     this.generateEmptyNodes(nodeBlockSize);
+    writeln("Okay, add them to the global array");
     this.addToGlobal();
-    this.currentId.write(1);
-    this.firstUnprocessed.write(1);
+    // right.  That's not going to work, because we haven't processed them.
+    //writeln("Now, add them to the global unprocessed arrayß");
+    //this.addUnprocessed();
+    writeln("Allow things to move.  IDs: ", this.IDs : string);
     this.isUpdating.write(false);
     this.l.uwl();
   }
@@ -98,10 +103,42 @@ class networkGenerator {
   }
 
   iter currentGeneration {
-    for i in this.firstUnprocessed.read()..this.currentId.read() {
+    var cId: int;
+    cId = this.currentId.read();
+    if cId > this.N {
+      // do not go higher than the actual number of nodes we have.
+      cId = this.N;
+    }
+    writeln("Taking from our currentGeneration! What's our starting point? ", this.firstUnprocessed.read() : string);
+    var addToUnprocessed: int = this.firstUnprocessed.read();
+    for i in this.firstUnprocessed.read()..cId {
       this.l.rl();
       var id = this.idSet[i];
       if this.processed[id] {
+        this.l.url();
+        this.firstUnprocessed.write(addToUnprocessed);
+        yield id;
+      } else {
+        addToUnprocessed += 1;
+      }
+      this.l.url();
+    }
+    this.firstUnprocessed.write(addToUnprocessed);
+  }
+
+  iter all {
+    var cId: int;
+    cId = this.currentId.read();
+    writeln("What is our current ID?: ", this.currentId.read() : string);
+    if cId > this.N {
+      // do not go higher than the actual number of nodes we have.
+      cId = this.N;
+    }
+    for i in 1..cId {
+      this.l.rl();
+      var id = this.idSet[i];
+      //writeln(this.processed[id] : string);
+      if !this.processed[id] {
         this.l.url();
         yield id;
       }
@@ -131,15 +168,9 @@ class networkGenerator {
       // generate new nodes.  And UUIDs.
       var id = this.generateID;
       this.IDs.add(id);
-      //this.nodes[id] = new shared genes.GeneNode();;
-      //this.nodes[id].id = id;
       this.idSet.push_back(id);
     }
-    writeln("generateEmptyNodes");
-    writeln(this.idSet);
-    writeln(this.idSet.domain);
-    writeln(this.IDs);
-    //this.addToGlobal();
+    this.N += n;
   }
 
   proc getNode() : string {
@@ -149,33 +180,36 @@ class networkGenerator {
     this.l.rl();
     var nId : int = 1;
     //writeln(nId : string);
-    while nId < nodeBlockSize-1 {
+    while nId <= this.N {
       var nId = this.currentId.fetchAdd(1);
-      if nId > nodeBlockSize {
-        // ya'll need breaksus.
+      if nId > this.N {
         break;
       }
-      //writeln(nId : string);
-      // check and see whether it exists.
-      //if this.idSet.domain.contains(nId) {
       var node = this.idSet[nId];
-      //writeln('getNode function; do we have anything? NODE ID: ', node, " nId: ", nId : string);
       if !globalNodes[node].initialized.testAndSet() {
         // we can use it!
         this.l.url();
-        // test the node lock.
-        //writeln(node);
+        // before we return, we need to ensure we're not updating.
+        // avoid a race condition.
+        // I mean, maybe!  So stochastic!  Sometimes we get nodes and they don't exist.
+        // in the global space!  So that's a thing.
+        // BUT IT SHOULD.  BECAUSE IT DOES.  WHAT THE EFF YO.
+        while this.isUpdating.read() do chpl_task_yield();
         return node;
       }
       //}
     }
+    writeln("If you're seeing this, it's because we're out of nodes.  READ LOCK");
     this.l.url();
     // if we're here, we need more nodes!
     // make sure the call doesn't fail by returning this function again.
     if !this.isUpdating.testAndSet() {
+      writeln("If you're seeing this, it's because we successfully nabbed the lock.");
       // avoid a race condition where we clear the flag after nodes have been generated,
       // but tried to grab one before things were ready.  Not likely, but hey.
-      if this.currentId.read() >= nodeBlockSize-1 {
+      writeln("What's our current count up to? ", this.currentId.read() : string);
+      if this.currentId.read() >= this.N {
+        writeln("Running spawm function");
         this.spawn();
       }
     }
@@ -185,20 +219,19 @@ class networkGenerator {
   proc addToGlobal() {
     var removeSet: domain(string);
     globalLock.wl();
-    for node in this.IDs {
+    for i in this.newNodeStartingPoint..this.N {
+      var node = this.idSet[i];
       if !globalIDs.contains(node) {
         // we _might_ need to recreate the log.
         // and lock.
         // because this is _definitely_ a copy operation, but it's possible
         // that somehow the lock doesn't copy over properly.
-        on this.locale {
-          globalIDs.add(node);
-          globalNodes[node] = new shared genes.GeneNode();
-          globalNodes[node].id = node;
-          globalNodes[node].l = new shared spinlock.SpinLock();
-          globalNodes[node].l.t = ' '.join('GENE', node);
-          globalNodes[node].l.log = globalNodes[node].log;
-        }
+        globalIDs.add(node);
+        globalNodes[node] = new shared genes.GeneNode();
+        globalNodes[node].id = node;
+        globalNodes[node].l = new shared spinlock.SpinLock();
+        globalNodes[node].l.t = ' '.join('GENE', node);
+        globalNodes[node].l.log = globalNodes[node].log;
       } else {
         removeSet.add(node);
       }
@@ -207,6 +240,7 @@ class networkGenerator {
     for node in removeSet {
       this.IDs.remove();
     }
+    this.newNodeStartingPoint = this.N+1;
   }
 
   proc addUnprocessed() {
@@ -303,15 +337,15 @@ class GeneNetwork {
 
   var isCopyComplete: bool = false;
 
-  proc add_node(ref node: shared genes.GeneNode) {
-    this.__addNode__(node, hstring=new ygglog.yggHeader());
+  proc add_node(id: string) {
+    this.__addNode__(id, hstring=new ygglog.yggHeader());
   }
 
-  proc add_node(ref node: shared genes.GeneNode, hstring: ygglog.yggHeader) {
-    this.__addNode__(node, hstring);
+  proc add_node(id: string, hstring: ygglog.yggHeader) {
+    this.__addNode__(id, hstring);
   }
 
-  proc __addNode__(ref node: shared genes.GeneNode, hstring: ygglog.yggHeader) : void {
+  proc __addNode__(id: string, hstring: ygglog.yggHeader) : void {
     //writeln(nodes);
     // We are working with the actual node objects, here.
     // Add to our domain!
@@ -319,12 +353,15 @@ class GeneNetwork {
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__addNode__';
     this.lock.wl(vstring);
-    this.log.debug('Adding node', node.id : string, 'to GeneNetwork', hstring=vstring);
-    this.ids.add(node.id);
-    this.nodeVersion[node.id] = node.revision;
+    //this.log.debug('Adding node', id : string, 'to GeneNetwork', hstring=vstring);
+    this.ids.add(id);
+    globalLock.rl();
+    var node = globalNodes[id];
+    globalLock.url();
+    this.nodeVersion[id] = node.revision;
     //this.nodes[node.id] = node;
     for edge in node.nodes {
-      this.edges[node.id].add(edge);
+      this.edges[id].add(edge);
     }
     //this.newIDs.add(node.id);
     this.lock.uwl(vstring);
@@ -342,7 +379,7 @@ class GeneNetwork {
   proc initializeRoot() {
     this.rootNode.log = this.log;
     this.rootNode.l.log = this.log;
-    this.add_node(this.rootNode, new ygglog.yggHeader() + 'initializeNetwork');
+    //this.add_node(this.rootNode, new ygglog.yggHeader() + 'initializeNetwork');
   }
 
   proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, processedArray) {
@@ -381,6 +418,10 @@ class GeneNetwork {
     var thisIsACopy: bool = true;
     vstring = hstring + '__calculatePath__';
     //nodes.add[id_A];
+    if !this.ids.contains(id_A) {
+      writeln(globalNodes[id_A]);
+      this.add_node(id_A);
+    }
     dist[id_A] = 0;
     paths[id_A].n.add(0);
     paths[id_A].node[0] = id_A;
@@ -399,16 +440,22 @@ class GeneNetwork {
         this.lock.rl(vstring);
       }
       // If we need to update, trigger it.
+      if !this.ids.contains(currentNode) {
+        this.add_node(currentNode);
+      }
       if this.nodeVersion[currentNode] < genes.FINALIZED {
         if globalNodes[currentNode].revision > this.nodeVersion[currentNode] {
-          this.add_node(globalNodes[currentNode]);
+          this.add_node(currentNode);
         }
       }
       // we now assume this is an incomplete network.
+      writeln(currentNode);
+      writeln(this.edges[currentNode]);
       for edge in this.edges[currentNode] do {
+        writeln(edge);
         if !this.ids.contains(edge) {
           // add the edge to our network if we haven't done so.
-          this.add_node(globalNodes[edge]);
+          this.add_node(edge);
           visited[edge] = false;
           dist[edge] = Math.INFINITY;
         }
@@ -430,8 +477,8 @@ class GeneNetwork {
             // That'll also help us calculate how many hops we have to make,
             // which will be convenient when we're trying to determine who
             // should do what.
-            paths[edge].n.add(d: int);
-            paths[edge].node[d: int] = edge;
+            //paths[edge].n.add(d: int);
+            //paths[edge].node[d: int] = edge;
           }
         }
       }

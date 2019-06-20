@@ -486,7 +486,7 @@ class GeneNode {
 
   proc addSeed(seed: int, cId: string, deme: int, ref node: shared GeneNode) {
     this.ctype = 'seed';
-    this.parentSeedNode = node.parentSeedNode;
+    this.parentSeedNode = 'root';
     this.parent = node.id;
 
     var delta = new genes.deltaRecord();
