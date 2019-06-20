@@ -29,7 +29,7 @@ record mapperByLocale {
   proc this(ind : string, targetLocs: [?D] locale) : D.idxType {
     // we just map according to the first 4 numbers of the ID.
     // the ID is just the locale, padded out to 4, followed by a UUID.
-    writeln('Just doing my thing and being a mapper: ', ind);
+    //writeln('Just doing my thing and being a mapper: ', ind);
     //writeln(ind);
     if ind == 'root'{
       return 0;
@@ -45,7 +45,7 @@ record mapperByLocale {
 var globalIDs: domain(string) dmapped Hashed(idxType=string, mapper = new mapperByLocale());
 var globalNodes: [globalIDs] shared genes.GeneNode;
 var globalUnprocessed: domain(string) dmapped Hashed(idxType=string, mapper = new mapperByLocale());
-var globalIsProcessed: [globalUnprocessed] atomic bool;
+var globalIsProcessed: [globalIDs] atomic bool;
 
 class networkGenerator {
 
@@ -54,6 +54,7 @@ class networkGenerator {
   var IDs: domain(string);
   var processed: [IDs] bool = false;
   var nodes: [IDs] shared genes.GeneNode;
+  var initialized: [IDs] atomic bool;
   var currentId: atomic int = 1;
   var firstUnprocessed: atomic int = 1;
   var l = new shared spinlock.SpinLock();
@@ -72,18 +73,15 @@ class networkGenerator {
   }
 
   proc spawn() {
-    writeln("Spawn it!");
     this.l.wl();
-    writeln("Ditch the ids...");
-    writeln("Okay, generate new ones");
+    writeln("Spawn begin. READ LOCK HANDLES: ", this.l.readHandles.read() : string);
     this.generateEmptyNodes(nodeBlockSize);
-    writeln("Okay, add them to the global array");
     this.addToGlobal();
     // right.  That's not going to work, because we haven't processed them.
     //writeln("Now, add them to the global unprocessed arrayß");
     //this.addUnprocessed();
-    writeln("Allow things to move.  IDs: ", this.IDs : string);
-    this.isUpdating.write(false);
+    this.isUpdating.clear();
+    writeln("Spawn end. READ LOCK HANDLES: ", this.l.readHandles.read() : string);
     this.l.uwl();
   }
 
@@ -109,13 +107,13 @@ class networkGenerator {
       // do not go higher than the actual number of nodes we have.
       cId = this.N;
     }
-    writeln("Taking from our currentGeneration! What's our starting point? ", this.firstUnprocessed.read() : string);
+    //writeln("Taking from our currentGeneration! What's our starting point? ", this.firstUnprocessed.read() : string);
     var addToUnprocessed: int = this.firstUnprocessed.read();
     for i in this.firstUnprocessed.read()..cId {
       this.l.rl();
       var id = this.idSet[i];
-      if this.processed[id] {
-        this.l.url();
+      if !this.processed[id] {
+        //this.l.url();
         this.firstUnprocessed.write(addToUnprocessed);
         yield id;
       } else {
@@ -129,17 +127,18 @@ class networkGenerator {
   iter all {
     var cId: int;
     cId = this.currentId.read();
-    writeln("What is our current ID?: ", this.currentId.read() : string);
+    //writeln("What is our current ID?: ", this.currentId.read() : string);
     if cId > this.N {
       // do not go higher than the actual number of nodes we have.
       cId = this.N;
     }
     for i in 1..cId {
+      //writeln("Current readHandles: ", this.l.readHandles.read() : string);
       this.l.rl();
       var id = this.idSet[i];
       //writeln(this.processed[id] : string);
       if !this.processed[id] {
-        this.l.url();
+        //this.l.url();
         yield id;
       }
       this.l.url();
@@ -147,8 +146,11 @@ class networkGenerator {
   }
 
   proc removeUnprocessed(id : string) {
+    writeln("readHandles on nG: ", this.l.readHandles.read() : string);
     this.l.wl();
-    this.processed[id] = true;
+    if this.IDs.contains(id) {
+      this.processed[id] = true;
+    }
     this.l.uwl();
   }
 
@@ -169,6 +171,7 @@ class networkGenerator {
       var id = this.generateID;
       this.IDs.add(id);
       this.idSet.push_back(id);
+      this.initialized[id].write(false);
     }
     this.N += n;
   }
@@ -176,17 +179,18 @@ class networkGenerator {
   proc getNode() : string {
     // this will return an unused node.
     // block if we're updating.
-    while this.isUpdating.read() do chpl_task_yield();
+    //while this.isUpdating.read() do chpl_task_yield();
     this.l.rl();
     var nId : int = 1;
     //writeln(nId : string);
-    while nId <= this.N {
+    while nId < this.N {
       var nId = this.currentId.fetchAdd(1);
-      if nId > this.N {
+      if nId >= this.N {
+        //this.currentId.sub(1);
         break;
       }
       var node = this.idSet[nId];
-      if !globalNodes[node].initialized.testAndSet() {
+      if !this.initialized[node].testAndSet() {
         // we can use it!
         this.l.url();
         // before we return, we need to ensure we're not updating.
@@ -199,21 +203,27 @@ class networkGenerator {
       }
       //}
     }
-    writeln("If you're seeing this, it's because we're out of nodes.  READ LOCK");
-    this.l.url();
+    this.currentId.sub(1);
+    writeln("If you're seeing this, it's because we're out of nodes.  READ LOCK HANDLES: ", this.l.readHandles.read() : string);
+    //this.l.url();
     // if we're here, we need more nodes!
     // make sure the call doesn't fail by returning this function again.
+    this.l.url();
     if !this.isUpdating.testAndSet() {
       writeln("If you're seeing this, it's because we successfully nabbed the lock.");
       // avoid a race condition where we clear the flag after nodes have been generated,
       // but tried to grab one before things were ready.  Not likely, but hey.
       writeln("What's our current count up to? ", this.currentId.read() : string);
-      if this.currentId.read() >= this.N {
-        writeln("Running spawm function");
-        this.spawn();
-      }
+      //if this.currentId.read() >= this.N {
+      writeln("Running spawn function");
+      //this.l.url();
+      this.spawn();
+      //}
     }
-    return this.getNode();
+    // hold it, you whiny assholes.
+    this.isUpdating.waitFor(false);
+    var returnString = this.getNode();
+    return returnString;
   }
 
   proc addToGlobal() {
@@ -322,7 +332,7 @@ class GeneNetwork {
   var id: string;
   var ids: domain(string);
   var edges: [ids] domain(string);
-  var nodes: [ids] shared genes.GeneNode;
+  //var nodes: [ids] shared genes.GeneNode;
   // this tells us who was responsible for doing the last update.
   // or actually, just whether we have the most up to date version of the node.
   var nodeVersion: [ids] int;
@@ -353,7 +363,7 @@ class GeneNetwork {
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__addNode__';
     this.lock.wl(vstring);
-    //this.log.debug('Adding node', id : string, 'to GeneNetwork', hstring=vstring);
+    this.log.debug('Adding node', id : string, 'to GeneNetwork', hstring=vstring);
     this.ids.add(id);
     globalLock.rl();
     var node = globalNodes[id];
@@ -382,7 +392,7 @@ class GeneNetwork {
     //this.add_node(this.rootNode, new ygglog.yggHeader() + 'initializeNetwork');
   }
 
-  proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, processedArray) {
+  proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray) {
     var vstring = hstring + 'returnNearestUnprocessed';
     return this.__calculatePath__(id_A, id_B, hstring=vstring, processedArray=processedArray, checkArray=true);
   }
@@ -400,7 +410,7 @@ class GeneNetwork {
     return path;
   }
 
-  proc __calculatePath__(id_A: string, in id_B: domain(string), hstring: ygglog.yggHeader, processedArray, checkArray: bool) throws {
+  proc __calculatePath__(id_A: string, in id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray, checkArray: bool) throws {
     // This is an implementation of djikstra's algorithm.
     //var nodes: domain(string);
     var visited: [this.ids] bool;
@@ -419,7 +429,6 @@ class GeneNetwork {
     vstring = hstring + '__calculatePath__';
     //nodes.add[id_A];
     if !this.ids.contains(id_A) {
-      writeln(globalNodes[id_A]);
       this.add_node(id_A);
     }
     dist[id_A] = 0;
@@ -432,102 +441,113 @@ class GeneNetwork {
     }
     while true {
       i += 1;
+      var addToEdges: bool = false;
+      var toAdd: domain(string);
       // Seems sometimes this locks, but doesn't unlock.
       // Is this from thread switching, I wonder?
       // AH!  I think it was from thread switching at the OS level, maybe.
       // I should apparently speak with Elliot about this, if I'm curious.
-      if !thisIsACopy {
-        this.lock.rl(vstring);
-      }
       // If we need to update, trigger it.
+      this.lock.rl(vstring);
       if !this.ids.contains(currentNode) {
+        this.lock.url(vstring);
         this.add_node(currentNode);
-      }
-      if this.nodeVersion[currentNode] < genes.FINALIZED {
+        this.lock.rl(vstring);
+      } else if this.nodeVersion[currentNode] < genes.FINALIZED {
         if globalNodes[currentNode].revision > this.nodeVersion[currentNode] {
+          this.lock.url(vstring);
           this.add_node(currentNode);
+          this.lock.rl(vstring);
         }
       }
       // we now assume this is an incomplete network.
-      writeln(currentNode);
-      writeln(this.edges[currentNode]);
       for edge in this.edges[currentNode] do {
-        writeln(edge);
+        // why are we a big, errortastical bitch?
         if !this.ids.contains(edge) {
           // add the edge to our network if we haven't done so.
+          addToEdges = true;
+          toAdd.add(edge);
+        } else {
+          if !visited[edge] {
+            var d = min(dist[edge], dist[currentNode]+1);
+            unvisited.add(edge);
+            unvisited_d.add(d);
+            dist[edge] = d;
+
+            if d == dist[currentNode]+1 {
+              paths[edge].n.clear();
+              var z: int;
+              for (j, e) in paths[currentNode] {
+                paths[edge].n.add(j : int);
+                paths[edge].node[j : int] = e;
+                z += 1;
+              }
+              // We're doing this as a tuple to help sorting later.
+              // That'll also help us calculate how many hops we have to make,
+              // which will be convenient when we're trying to determine who
+              // should do what.
+              paths[edge].n.add(d: int);
+              paths[edge].node[d: int] = edge;
+            }
+          }
+        }
+      }
+      this.lock.url(vstring);
+      if addToEdges {
+        //this.lock.url(vstring);
+        // add the node, and try, try again.
+        for edge in toAdd {
           this.add_node(edge);
           visited[edge] = false;
           dist[edge] = Math.INFINITY;
         }
-        if !visited[edge] {
-          var d = min(dist[edge], dist[currentNode]+1);
-          unvisited.add(edge);
-          unvisited_d.add(d);
-          dist[edge] = d;
-
-          if d == dist[currentNode]+1 {
-            paths[edge].n.clear();
-            var z: int;
-            for (j, e) in paths[currentNode] {
-              paths[edge].n.add(j : int);
-              paths[edge].node[j : int] = e;
-              z += 1;
-            }
-            // We're doing this as a tuple to help sorting later.
-            // That'll also help us calculate how many hops we have to make,
-            // which will be convenient when we're trying to determine who
-            // should do what.
-            //paths[edge].n.add(d: int);
-            //paths[edge].node[d: int] = edge;
-          }
-        }
-      }
-      if !thisIsACopy {
-        this.lock.url(vstring);
-      }
-      visited[currentNode] = true;
-      // Doing it like this means we never have a race condition.
-      // Should help with load balancing and efficiency.
-      // Oh man, and does it ever.  Basically, we don't leave this routine
-      // untl we have one we KNOW can process, or there's nothing left to
-      // process.
-      if id_B.contains(currentNode) {
-        if checkArray {
-          // We should actually do the testAndSet here, although I sort of
-          // dislike having the network access the array.  If false, we can use it!
-          if !processedArray[currentNode].testAndSet() {
-            break;
-          } else {
-            // This means we've actually already processed it, so
-            // we'll pretend it's not a part of id_B by removing it.
-            // This will help us in the event that we've been beaten to this node.
-            id_B.remove(currentNode);
-            if id_B.isEmpty() {
-              // If we've removed everything, then we can't process anything.
-              // Returning an empty string dodges the processing logic.
-              return ('', paths[id_A]);
-            }
-          }
-        } else {
-          break;
-        }
-      }
-      if unvisited.isEmpty() {
+        //this.lock.rl(vstring);
+        addToEdges = false;
       } else {
-        // get the current minimum from here.
-        i = 0;
-        currMinDist = Math.INFINITY;
-        for node in unvisited {
-          i += 1;
-          if currMinDist > dist[node] {
-            currMinDist = dist[node];
-            currMinNode = node;
-            currMinNodeIndex = i;
+        visited[currentNode] = true;
+        // Doing it like this means we never have a race condition.
+        // Should help with load balancing and efficiency.
+        // Oh man, and does it ever.  Basically, we don't leave this routine
+        // untl we have one we KNOW can process, or there's nothing left to
+        // process.
+        if id_B.contains(currentNode) {
+          if checkArray {
+            // We should actually do the testAndSet here, although I sort of
+            // dislike having the network access the array.  If false, we can use it!
+            if !processedArray[currentNode].testAndSet() {
+              break;
+            } else {
+              // This means we've actually already processed it, so
+              // we'll pretend it's not a part of id_B by removing it.
+              // This will help us in the event that we've been beaten to this node.
+              id_B.remove(currentNode);
+              if id_B.isEmpty() {
+                // If we've removed everything, then we can't process anything.
+                // Returning an empty string dodges the processing logic.
+                return ('', paths[id_A]);
+              }
+            }
+          } else {
+            break;
           }
         }
-        currentNode = currMinNode;
-        unvisited_d.remove(currMinDist);
-        unvisited.remove(currMinNode);
+        if unvisited.isEmpty() {
+        } else {
+          // get the current minimum from here.
+          i = 0;
+          currMinDist = Math.INFINITY;
+          for node in unvisited {
+            i += 1;
+            if currMinDist > dist[node] {
+              currMinDist = dist[node];
+              currMinNode = node;
+              currMinNodeIndex = i;
+            }
+          }
+          currentNode = currMinNode;
+          unvisited_d.remove(currMinDist);
+          unvisited.remove(currMinNode);
+        }
       }
     }
     //this.log.debug('id_B:', id_B : string, 'currentNode:', currentNode, 'id_A:', id_A, hstring=vstring);
@@ -614,19 +634,6 @@ class GeneNetwork {
     }
     networkCopy.isCopyComplete = true;
     return networkCopy;
-  }
-
-  proc update(ref otherNetwork: shared GeneNetwork) {
-    for node in this.newIDs {
-      for edge in this.nodes[node].nodes {
-        // these are all the edges it's connected to.
-        otherNetwork.edges[node].add(edge);
-        otherNetwork.edges[edge].add(node);
-        otherNetwork.nodes[edge].nodes.add(node);
-        otherNetwork.nodes[edge].edges[node] = this.nodes[node].edges[edge].reverse();
-      }
-    }
-    this.newIDs.clear();
   }
 
 }

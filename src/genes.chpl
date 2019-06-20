@@ -423,7 +423,9 @@ class GeneNode {
     }
     //idList.remove(node.id);
     var e = new shared GeneEdge(shortList);
+    e.direction = (this.id, node.id);
     var re = new shared GeneEdge(revList);
+    re.direction = (node.id, this.id);
     // okay, cool.  So.
     node.l.wl(vstring);
     this.nodes.add(node.id);

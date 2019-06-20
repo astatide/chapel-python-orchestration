@@ -343,6 +343,9 @@ class Propagator {
         if true {
           this.log.debug("Spawn local network and networkGenerator", this.yh);
           var yggLocalCopy = new shared network.GeneNetwork();
+          // CHANGE ME
+          yggLocalCopy.log = this.log;
+          yggLocalCopy.lock.log = this.log;
           var nG = new shared network.networkGenerator();
           // we're gonna want a list of network IDs we can use.
           this.log.debug("Local networks spawned; creating chromosomes", this.yh);
@@ -427,7 +430,7 @@ class Propagator {
                   // This function now does the atomic test.
                   vLog.debug('Returning nearest unprocessed', hstring=v.header);
                   (currToProc, path) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
-                  vLog.debug('Unprocessed found.', hstring=v.header);
+                  vLog.debug('Unprocessed found.  ID:', currToProc : string, hstring=v.header);
                   if currToProc != '' {
                     // If this node is one of the ones in our priority queue, remove it
                     // as we clearly processing it now.
@@ -435,8 +438,10 @@ class Propagator {
                       v.priorityNodes.remove(currToProc);
                       v.nPriorityNodesProcessed += 1;
                     }
+                    vLog.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
                     nG.removeUnprocessed(currToProc);
-                    for deme in yggLocalCopy.nodes[currToProc].demeDomain {
+                    for deme in network.globalNodes[currToProc].demeDomain {
+                      vLog.debug('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
                       // Actually, reduce the count BEFORE we do this.
                       // Otherwise we could have threads stealing focus that should
                       // actually be idle.
@@ -456,7 +461,7 @@ class Propagator {
                       var m = v.RECV();
                       var score = m.r;
                       vLog.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
-                      this.ygg.nodes[currToProc].scores[deme] = score;
+                      network.globalNodes[currToProc].scores[deme] = score;
                     }
                   }
                   // While it seems odd we might try this twice, this helps us keep
@@ -527,7 +532,7 @@ class Propagator {
                   if node != '' {
                     // this is in the event that all of our genes suck.
                     // do we really care about saving genes if the entire set sucks?
-                    for nc in this.ygg.nodes[node].chromosomes {
+                    for nc in network.globalNodes[node].chromosomes {
                       if !chromosomesToAdvance.contains(nc) {
                         chromosomesToAdvance.add(nc);
                         //c[nc] = this.chromes[nc];
