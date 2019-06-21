@@ -440,6 +440,7 @@ class Propagator {
                     }
                     vLog.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
                     nG.removeUnprocessed(currToProc);
+                    writeln('What are our demes? ', network.globalNodes[currToProc].demeDomain : string);
                     for deme in network.globalNodes[currToProc].demeDomain {
                       vLog.debug('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
                       // Actually, reduce the count BEFORE we do this.

@@ -277,13 +277,13 @@ record Chromosome {
         network.globalLock.url();
         // stupid race condition.
         this.log.debug("Setting node revision", hstring=vstring);
-        node.revision = genes.SPAWNED;
+        network.globalNodes[id].revision = genes.SPAWNED;
         if initial {
           this.log.debug("INITIAL GO; adding seed to root.", hstring=vstring);
-          node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes['root']);
+          network.globalNodes[id].addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes['root']);
         } else {
           this.log.debug("NOT INITIAL; advancing old node.", hstring=vstring);
-          node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes[this.geneIDs[n]]);
+          network.globalNodes[id].addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes[this.geneIDs[n]]);
           network.globalNodes[this.geneIDs[n]].l.wl();
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
           network.globalNodes[this.geneIDs[n]].l.uwl();
@@ -309,14 +309,14 @@ record Chromosome {
         this.log.debug('Getting node!', hstring=vstring);
         var newId = nG.getNode();
         ref node = network.globalNodes[newId];
-        node.revision = genes.SPAWNED;
+        network.globalNodes[newId].revision = genes.SPAWNED;
         //this.geneIDs[n] = ygg.mergeNodeList(this.id, idList, this.currentDeme);
         if initial {
           this.log.debug('Calling combination node', hstring=vstring);
-          node.newCombinationNode(idList, seedList, 'root', network.globalNodes);
+          network.globalNodes[newId].newCombinationNode(idList, seedList, 'root', network.globalNodes);
         } else {
           this.log.debug('Calling combination node', hstring=vstring);
-          node.newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
+          network.globalNodes[newId].newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
           // finalize it.
           network.globalNodes[this.geneIDs[n]].l.wl();
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
