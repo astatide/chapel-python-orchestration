@@ -488,25 +488,25 @@ class GeneNode {
   }
 
   iter returnEdgeIDs() {
-    on this.locale {
+    //on this.locale {
       this.l.rl();
       for edge in this.nodes {
         yield edge;
       }
       this.l.url();
-    }
+    //}
   }
 
   iter returnDemes() {
     // do it on our locale.  For _us_.
     // I prefer to think of it as our locale.
-    on this.locale {
+    //on this.locale {
       this.l.rl();
       for deme in this.demeDomain {
         yield deme;
       }
       this.l.url();
-    }
+    //}
   }
 
   proc setDeme(deme: int) {
