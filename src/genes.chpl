@@ -403,7 +403,7 @@ class GeneNode {
     return ie;
   }
 
-  proc joinPaths(node: shared GeneNode, idList: [] string, deme: int) {
+  proc joinPaths(ref node: shared GeneNode, idList: [] string, deme: int) {
     // we're going to make path edge connections between all the wee nodes.
     // This is because we might not ever actually need them.  So just store
     // the information necessary to reconstruct a delta, if necessary.
