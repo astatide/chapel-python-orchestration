@@ -313,10 +313,10 @@ record Chromosome {
         //this.geneIDs[n] = ygg.mergeNodeList(this.id, idList, this.currentDeme);
         if initial {
           this.log.debug('Calling combination node', hstring=vstring);
-          network.globalNodes[newId].newCombinationNode(idList, seedList, 'root', network.globalNodes);
+          network.globalNodes[newId].newCombinationNode(idList, seedList, this.currentDeme, 'root', network.globalNodes);
         } else {
           this.log.debug('Calling combination node', hstring=vstring);
-          network.globalNodes[newId].newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
+          network.globalNodes[newId].newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes);
           // finalize it.
           network.globalNodes[this.geneIDs[n]].l.wl();
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;

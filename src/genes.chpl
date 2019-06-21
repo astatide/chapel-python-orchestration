@@ -403,7 +403,7 @@ class GeneNode {
     return ie;
   }
 
-  proc joinPaths(node: shared GeneNode, idList: [] string) {
+  proc joinPaths(node: shared GeneNode, idList: [] string, deme: int) {
     // we're going to make path edge connections between all the wee nodes.
     // This is because we might not ever actually need them.  So just store
     // the information necessary to reconstruct a delta, if necessary.
@@ -426,6 +426,7 @@ class GeneNode {
     e.direction = (this.id, node.id);
     var re = new shared GeneEdge(revList);
     re.direction = (node.id, this.id);
+    node.demeDomain.add(deme);
     // okay, cool.  So.
     node.l.wl(vstring);
     this.nodes.add(node.id);
@@ -502,7 +503,7 @@ class GeneNode {
     this.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
   }
 
-  proc newCombinationNode(idList, seedList, oldId, ref gN) {
+  proc newCombinationNode(idList, seedList, deme, oldId, ref gN) {
     //node.newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
     // so, for each seed in the seedlist, we add it to the oldId link node.
     var delta = new genes.deltaRecord();
@@ -515,7 +516,7 @@ class GeneNode {
     // except... that's pretty tough.  We'll calculate this stuff on the fly.
     // We _know_ that we have these connections, so.
     for id in idList {
-      joinPaths(gN[id], idList);
+      joinPaths(gN[id], idList, deme);
     }
   }
 
