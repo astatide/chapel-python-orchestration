@@ -179,6 +179,7 @@ record Chromosome {
   var log: shared ygglog.YggdrasilLogging;
   var lowestIsBest: bool=false;
   var currentDeme: int = 0;
+  var isProcessed: atomic bool = false;
 
   // these are just the genes
   var geneNumbers: domain(int);
