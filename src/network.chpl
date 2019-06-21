@@ -364,17 +364,26 @@ class GeneNetwork {
     vstring = hstring + '__addNode__';
     this.lock.wl(vstring);
     this.log.debug('Adding node', id : string, 'to GeneNetwork', hstring=vstring);
-    this.ids.add(id);
+    if !this.ids.contains(id) {
+      this.ids.add(id);
+    }
     globalLock.rl();
     var node = globalNodes[id];
     globalLock.url();
-    this.nodeVersion[id] = node.revision;
+    this.nodeVersion[id] = node.returnRevision();
     //this.nodes[node.id] = node;
-    for edge in node.nodes {
-      this.edges[id].add(edge);
+    for edge in node.returnEdgeIDs() {
+      if !this.edges[id].contains(edge) {
+        this.edges[id].add(edge);
+      }
     }
     //this.newIDs.add(node.id);
     this.lock.uwl(vstring);
+  }
+
+  proc generateID {
+    // returns a UUID, prepended by the locale.
+    return '%04i'.format(here.id) + '-NETM-' + this.NUUID.UUID4();
   }
 
   proc init() {
@@ -383,7 +392,7 @@ class GeneNetwork {
     this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
     this.complete();
     // create a new
-    this.id = this.NUUID.UUID4();
+    this.id = this.generateID;
   }
 
   proc initializeRoot() {
@@ -413,8 +422,8 @@ class GeneNetwork {
   proc __calculatePath__(id_A: string, in id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray, checkArray: bool) throws {
     // This is an implementation of djikstra's algorithm.
     //var nodes: domain(string);
-    var visited: [this.ids] bool;
-    var dist: [this.ids] real;
+    var visited: [this.ids] bool = false;
+    var dist: [this.ids] real = Math.INFINITY;
     var paths: [this.ids] pathHistory;
     var currentNode = id_A;
     var unvisited: domain(string);
@@ -437,6 +446,7 @@ class GeneNetwork {
     // catch an empty id_B!
     if id_B.isEmpty() {
       //this.log.debug('id_B is empty; is this okay?', hstring=vstring);
+
       return (id_A, paths[id_A]);
     }
     while true {
@@ -454,7 +464,7 @@ class GeneNetwork {
         this.add_node(currentNode);
         this.lock.rl(vstring);
       } else if this.nodeVersion[currentNode] < genes.FINALIZED {
-        if globalNodes[currentNode].revision > this.nodeVersion[currentNode] {
+        if globalNodes[currentNode].returnRevision() > this.nodeVersion[currentNode] {
           this.lock.url(vstring);
           this.add_node(currentNode);
           this.lock.rl(vstring);
@@ -494,6 +504,7 @@ class GeneNetwork {
       }
       this.lock.url(vstring);
       if addToEdges {
+        i -= 1;
         //this.lock.url(vstring);
         // add the node, and try, try again.
         for edge in toAdd {
@@ -551,6 +562,7 @@ class GeneNetwork {
       }
     }
     //this.log.debug('id_B:', id_B : string, 'currentNode:', currentNode, 'id_A:', id_A, hstring=vstring);
+    writeln("What are our paths?: ", paths : string);
     return (currentNode, paths[currentNode]);
 
   }

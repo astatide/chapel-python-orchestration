@@ -409,7 +409,6 @@ class GeneNode {
     // the information necessary to reconstruct a delta, if necessary.
     var vstring: ygglog.yggHeader;
     vstring += '__join__';
-    this.l.wl(vstring);
     var z: int = 1;
     var shortList: [1..0] (string, real);
     var revList: [1..0] (string, real);
@@ -421,22 +420,22 @@ class GeneNode {
       }
       z += 1;
     }
-    //idList.remove(node.id);
-    var e = new shared GeneEdge(shortList);
-    e.direction = (this.id, node.id);
-    var re = new shared GeneEdge(revList);
-    re.direction = (node.id, this.id);
-    // okay, cool.  So.
-    node.l.wl(vstring);
-    node.demeDomain.add(deme);
-    this.nodes.add(node.id);
-    node.nodes.add(this.id);
-
-    this.edges[node.id] = e;
-    node.edges[this.id] = re;
-
-    node.l.uwl(vstring);
-    this.l.uwl(vstring);
+    on this.locale {
+      var e = new shared GeneEdge(shortList);
+      e.direction = (this.id, node.id);
+      this.l.wl(vstring);
+      this.nodes.add(node.id);
+      this.edges[node.id] = e;
+      this.l.uwl(vstring);
+    }
+    on node.locale {
+      var re = new shared GeneEdge(revList);
+      re.direction = (node.id, this.id);
+      node.l.wl(vstring);
+      node.nodes.add(this.id);
+      node.edges[this.id] = re;
+      node.l.uwl(vstring);
+    }
   }
 
   // Now, the functions to handle the nodes!
@@ -450,28 +449,29 @@ class GeneNode {
   proc __join__(ref node: shared GeneNode, delta: deltaRecord, hstring: ygglog.yggHeader) {
     // did I call that function correctly?
     //writeln(node, delta);
-    var vstring: ygglog.yggHeader;
-    vstring = hstring + '__join__';
-    writeln("ABOUT TO LOCK: ", this.id);
-    this.l.wl();
-    node.l.wl();
-    var d = (this.id, node.id);
-    node.nodes.add(this.id);
-    this.nodes.add(node.id);
-    this.edges[node.id] = new shared GeneEdge(delta, d);
-    // Now, reverse the delta.  Which we can do by multiplying it by
-    // -1.
-    d = (node.id, this.id);
-    node.edges[this.id] = new shared GeneEdge(delta*-1, d);
-    node.l.uwl();
-    this.l.uwl();
+    on this.locale {
+      var vstring: ygglog.yggHeader;
+      vstring = hstring + '__join__';
+      this.l.wl();
+      var d = (this.id, node.id);
+      this.nodes.add(node.id);
+      this.edges[node.id] = new shared GeneEdge(delta, d);
+      this.l.uwl();
+    }
+    on node.locale {
+      node.l.wl();
+      var d = (node.id, this.id);
+      node.nodes.add(this.id);
+      node.edges[this.id] = new shared GeneEdge(delta*-1, d);
+      node.l.uwl();
+    }
   }
 
-  proc return_edge(id:string) {
+  proc returnEdge(id:string) {
     return this.__returnEdge__(id, hstring='');
   }
 
-  proc return_edge(id:string, hstring: ygglog.yggHeader) {
+  proc returnEdge(id:string, hstring: ygglog.yggHeader) {
     return this.__returnEdge__(id, hstring);
   }
 
@@ -487,38 +487,84 @@ class GeneNode {
     return d;
   }
 
+  iter returnEdgeIDs() {
+    on this.locale {
+      this.l.rl();
+      for edge in this.nodes {
+        yield edge;
+      }
+      this.l.url();
+    }
+  }
+
+  iter returnDemes() {
+    // do it on our locale.  For _us_.
+    // I prefer to think of it as our locale.
+    on this.locale {
+      this.l.rl();
+      for deme in this.demeDomain {
+        yield deme;
+      }
+      this.l.url();
+    }
+  }
+
+  proc setDeme(deme: int) {
+    on this.locale {
+      this.l.wl();
+      this.demeDomain.add(deme);
+      this.l.uwl();
+    }
+  }
+
+  proc returnRevision() {
+    //on this.locale {
+    var rev: int;
+    this.l.rl();
+    rev = this.revision;
+    this.l.url();
+    return rev;
+    //}
+  }
+
   proc addSeed(seed: int, cId: string, deme: int, ref node: shared GeneNode) {
-    this.ctype = 'seed';
-    this.parentSeedNode = 'root';
-    this.parent = node.id;
+    on this.locale {
+      this.ctype = 'seed';
+      this.parentSeedNode = 'root';
+      this.parent = node.id;
 
-    var delta = new genes.deltaRecord();
+      var delta = new genes.deltaRecord();
 
-    // It's reverse because we're creating the connection from the new node backwards;
-    // ergo, you must _undo_ the change.
-    delta += (seed, -1.0);
-    node.l.wl();
-    node.demeDomain.add(deme);
-    node.chromosomes.add(cId);
-    node.l.uwl();
-    //node.join(this, delta, new ygglog.yggHeader() + 'newSeedGene');
-    this.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
+      // It's reverse because we're creating the connection from the new node backwards;
+      // ergo, you must _undo_ the change.
+      delta += (seed, -1.0);
+      node.l.wl();
+      //node.demeDomain.add(deme);
+      this.setDeme(deme);
+      node.chromosomes.add(cId);
+      node.l.uwl();
+      //node.join(this, delta, new ygglog.yggHeader() + 'newSeedGene');
+      this.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
+    }
   }
 
   proc newCombinationNode(idList, seedList, deme, oldId, ref gN) {
     //node.newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
     // so, for each seed in the seedlist, we add it to the oldId link node.
-    var delta = new genes.deltaRecord();
-    for s in seedList {
-      delta += (s, -1.0);
-    }
-    delta /= seedList.size;
-    this.join(gN[oldId], delta, new ygglog.yggHeader() + "newCombinationNode");
-    // now, we add 1/N of that to each other one.
-    // except... that's pretty tough.  We'll calculate this stuff on the fly.
-    // We _know_ that we have these connections, so.
-    for id in idList {
-      joinPaths(gN[id], idList, deme);
+    on this.locale {
+      var delta = new genes.deltaRecord();
+      for s in seedList {
+        delta += (s, -1.0);
+      }
+      delta /= seedList.size;
+      this.setDeme(deme);
+      this.join(gN[oldId], delta, new ygglog.yggHeader() + "newCombinationNode");
+      // now, we add 1/N of that to each other one.
+      // except... that's pretty tough.  We'll calculate this stuff on the fly.
+      // We _know_ that we have these connections, so.
+      for id in idList {
+        this.joinPaths(gN[id], idList, deme);
+      }
     }
   }
 

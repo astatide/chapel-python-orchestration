@@ -441,7 +441,7 @@ class Propagator {
                     vLog.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
                     nG.removeUnprocessed(currToProc);
                     writeln('What are our demes? ', network.globalNodes[currToProc].demeDomain : string);
-                    for deme in network.globalNodes[currToProc].demeDomain {
+                    for deme in network.globalNodes[currToProc].returnDemes() {
                       vLog.debug('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
                       // Actually, reduce the count BEFORE we do this.
                       // Otherwise we could have threads stealing focus that should
@@ -450,6 +450,7 @@ class Propagator {
                       this.inCurrentGeneration.sub(1);
                       vLog.debug('inCurrentGeneration successfully reduced', hstring=v.header);
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
+                      vLog.debug('PATH:', path : string, hstring=v.header);
                       var d = yggLocalCopy.deltaFromPath(path, path.key(0), hstring=v.header);
                       d.to = currToProc;
                       var newMsg = new messaging.msg(d);

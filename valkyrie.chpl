@@ -143,7 +143,7 @@ class valkyrieExecutor: msgHandler {
         var score: real = gj.lockAndRun(this.matrixValues, this.currentTask, m.i, hstring=this.header);
         writeln("score in valkyrie: " + score : string);
         var newMsg = new messaging.msg(score);
-        newMsg.s = "blah blah fucken sie";
+        //newMsg.s = "";
         newMsg.r = score;
         newMsg.COMMAND = messaging.command.RECEIVE_SCORE;
         writeln("what is our msg?: " + newMsg : string);

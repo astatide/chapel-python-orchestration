@@ -17,6 +17,13 @@ class SpinLock {
   var readHandles: atomic int;
   var lockLog: bool = false;
 
+  //proc init() {
+  //  this.complete();
+    // set it with a log.
+  //  this.log = new shared ygglog.YggdrasilLogging();
+  //  this.log.currentDebugLevel = 0;
+  //}
+
 
   proc lock(hstring: ygglog.yggHeader) throws {
     if lockLog {
@@ -36,6 +43,7 @@ class SpinLock {
   proc unlock(hstring: ygglog.yggHeader) throws {
     this.n.sub(1);
     if this.n.read() != 0 {
+      writeln("Too many locks on: ", this.t : string, " N: ", this.n.read());
       this.log.critical('CRITICAL FAILURE: During unlock, spinlock has been acquired multiple times on', this.t, hstring);
       throw new owned TooManyLocksError();
     }
