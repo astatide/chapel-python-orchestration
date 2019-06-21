@@ -426,9 +426,9 @@ class GeneNode {
     e.direction = (this.id, node.id);
     var re = new shared GeneEdge(revList);
     re.direction = (node.id, this.id);
-    node.demeDomain.add(deme);
     // okay, cool.  So.
     node.l.wl(vstring);
+    node.demeDomain.add(deme);
     this.nodes.add(node.id);
     node.nodes.add(this.id);
 
@@ -497,8 +497,10 @@ class GeneNode {
     // It's reverse because we're creating the connection from the new node backwards;
     // ergo, you must _undo_ the change.
     delta += (seed, -1.0);
+    node.l.wl();
     node.demeDomain.add(deme);
     node.chromosomes.add(cId);
+    node.l.uwl();
     //node.join(this, delta, new ygglog.yggHeader() + 'newSeedGene');
     this.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
   }
