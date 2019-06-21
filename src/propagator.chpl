@@ -445,7 +445,7 @@ class Propagator {
                     }
                     vLog.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
                     nG.removeUnprocessed(currToProc);
-                    writeln('What are our demes? ', network.globalNodes[currToProc].demeDomain : string);
+                    //writeln('What are our demes? ', network.globalNodes[currToProc].demeDomain : string);
                     for deme in network.globalNodes[currToProc].returnDemes() {
                       vLog.debug('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
                       // Actually, reduce the count BEFORE we do this.
@@ -549,6 +549,10 @@ class Propagator {
                     }
                   }
                 }
+                nG.addUnprocessed();
+                this.log.debug("Setting the current generation count", this.yh);
+                // now, make sure we know we have to process all of these.
+                this.inCurrentGeneration.add(nG.currentId.read());
                 this.moveOn[gen];
                 this.lock.rl(v.header);
                 vLog.debug('MOVING ON in gen', gen : string, this.nodesToProcess : string, v.header);
@@ -620,6 +624,10 @@ class Propagator {
                 this.scoreArray = -1;
 
                 vLog.debug('Switching generations', v.header);
+                nG.addUnprocessed();
+                this.log.debug("Setting the current generation count", this.yh);
+                // now, make sure we know we have to process all of these.
+                this.inCurrentGeneration.add(nG.currentId.read());
                 // Clear out the current nodesToProcess domain, and swap it for the
                 // ones we've set to process for the next generation.
                 this.nodesToProcess.clear();
@@ -629,7 +637,7 @@ class Propagator {
                 }
                 this.nextGeneration.clear();
                 // Set the count variable.
-                this.inCurrentGeneration.write(this.nodesToProcess.size);
+                //this.inCurrentGeneration.write(this.nodesToProcess.size);
                 this.valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
                 // Compute some rough stats.  Buggy.
                 this.priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);

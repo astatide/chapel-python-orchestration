@@ -154,6 +154,11 @@ class networkGenerator {
       this.processed[id] = true;
     }
     this.l.uwl();
+    globalLock.wl();
+    if globalIDs.contains(id) {
+      globalUnprocessed.remove(id);
+    }
+    globalLock.uwl();
   }
 
   proc setCurrentGeneration() {
