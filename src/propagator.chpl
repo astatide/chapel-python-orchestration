@@ -393,35 +393,36 @@ class Propagator {
               var currToProc: string;
               var toProcess: domain(string);
               var path: network.pathHistory;
+              var removeFromSet: domain(string);
               toProcess.clear();
               vLog.debug('Beginning processing', hstring=v.header);
               //vLog.debug(this.nodesToProcess : string, hstring=v.header);
               var prioritySize = v.priorityNodes.size;
+              vLog.debug('Assessing nodes that must be handled', hstring=v.header);
+              currToProc = '';
+              //toProcess.clear();
+
+              for id in nG.all {
+                toProcess.add(id);
+                vLog.debug('Adding node ID: ', id : string, hstring=v.header);
+              }
+              //vLog.debug('What is up, fellow nodes? NODES: ', toProcess : string, hstring=v.header);
+
+              if toProcess.isEmpty() {
+                // This checks atomics, so it's gonna be slow.
+                // In an ideal world, we rarely call it.
+                for id in network.globalUnprocessed {
+                  if !network.globalIsProcessed[id].read() {
+                    toProcess.add(id);
+                  }
+                }
+              }
               while this.inCurrentGeneration.read() > 0 {
                 // We clear this out because it is faster to just re-enumerate the
                 // nodes that need processing, rather than explicitly calculating
                 // the path towards every node.  Particularly as that results in tasks
                 // performing a lot of unnecessary computations once a lot of nodes
                 // have been processed.
-                vLog.debug('Assessing nodes that must be handled', hstring=v.header);
-                currToProc = '';
-                toProcess.clear();
-
-                for id in nG.all {
-                  toProcess.add(id);
-                  vLog.debug('Adding node ID: ', id : string, hstring=v.header);
-                }
-                //vLog.debug('What is up, fellow nodes? NODES: ', toProcess : string, hstring=v.header);
-
-                if toProcess.isEmpty() {
-                  // This checks atomics, so it's gonna be slow.
-                  // In an ideal world, we rarely call it.
-                  for id in network.globalUnprocessed {
-                    if !network.globalIsProcessed[id].read() {
-                      toProcess.add(id);
-                    }
-                  }
-                }
                 // Assuming we have some things to process, do it!
                 vLog.debug('toProcess created', hstring=v.header);
                 if !toProcess.isEmpty() {
@@ -429,7 +430,10 @@ class Propagator {
                   var existsInDomainAndCanProcess: bool = false;
                   // This function now does the atomic test.
                   vLog.debug('Returning nearest unprocessed', hstring=v.header);
-                  (currToProc, path) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
+                  (currToProc, path, removeFromSet) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
+                  for i in removeFromSet {
+                    toProcess.remove(i);
+                  }
                   vLog.debug('Unprocessed found.  ID:', currToProc : string, hstring=v.header);
                   if currToProc != '' {
                     // If this node is one of the ones in our priority queue, remove it

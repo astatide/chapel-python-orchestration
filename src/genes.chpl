@@ -335,6 +335,7 @@ class GeneEdge {
 class GeneNode {
   // This is a node.  It contains the Chapel implementation of a hash table
   // (akin to a python dict); we're going to store the gene edges in it.
+  var id: string;
   var nodes: domain(string);
   var edges: [nodes] shared GeneEdge;
   var generation: int;
@@ -342,7 +343,6 @@ class GeneNode {
   var parent: string;
   // we need a node ID.  I like the ability of being able to specify them.
   // but we should generate them by default.
-  var id: string;
   var debugOrderOfCreation: int;
 
   // Here, we're gonna track our parent at history 0

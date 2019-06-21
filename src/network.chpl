@@ -65,11 +65,13 @@ class networkGenerator {
 
   proc init() {
     this.complete();
+    this.l.wl();
     this.initializeRoot();
     this.l.t = 'networkGenerator';
     this.l.log = new shared ygglog.YggdrasilLogging();
     this.generateEmptyNodes(nodeBlockSize);
     this.addToGlobal();
+    this.l.uwl();
   }
 
   proc spawn() {
@@ -363,7 +365,7 @@ class GeneNetwork {
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__addNode__';
     this.lock.wl(vstring);
-    this.log.debug('Adding node', id : string, 'to GeneNetwork', hstring=vstring);
+    this.log.debug('Adding node', id : string, 'to GeneNetwork ID:', this.id : string, hstring=vstring);
     if !this.ids.contains(id) {
       this.ids.add(id);
     }
@@ -411,11 +413,12 @@ class GeneNetwork {
     var vstring = hstring + 'calculatePath';
     var b_dom: domain(string);
     var b: string;
+    var removeFromSet: domain(string);
     var path: pathHistory;
     b_dom.add(id_B);
     var tmp: domain(string);
     var processedArray: [tmp] atomic bool;
-    (b, path) = this.__calculatePath__(id_A, b_dom, hstring=vstring, processedArray=processedArray, checkArray=false);
+    (b, path, removeFromSet) = this.__calculatePath__(id_A, b_dom, hstring=vstring, processedArray=processedArray, checkArray=false);
     return path;
   }
 
@@ -435,6 +438,7 @@ class GeneNetwork {
     var completed: [id_B] bool = false;
     var vstring: ygglog.yggHeader;
     var thisIsACopy: bool = true;
+    var removeFromSet: domain(string);
     vstring = hstring + '__calculatePath__';
     //nodes.add[id_A];
     if !this.ids.contains(id_A) {
@@ -447,7 +451,7 @@ class GeneNetwork {
     if id_B.isEmpty() {
       //this.log.debug('id_B is empty; is this okay?', hstring=vstring);
 
-      return (id_A, paths[id_A]);
+      return (id_A, paths[id_A], removeFromSet);
     }
     while true {
       i += 1;
@@ -507,6 +511,7 @@ class GeneNetwork {
         i -= 1;
         //this.lock.url(vstring);
         // add the node, and try, try again.
+        this.log.debug("ADDING N NODES:", toAdd.size : string, vstring);
         for edge in toAdd {
           this.add_node(edge);
           visited[edge] = false;
@@ -514,6 +519,7 @@ class GeneNetwork {
         }
         //this.lock.rl(vstring);
         addToEdges = false;
+        toAdd.clear();
       } else {
         visited[currentNode] = true;
         // Doing it like this means we never have a race condition.
@@ -531,11 +537,12 @@ class GeneNetwork {
               // This means we've actually already processed it, so
               // we'll pretend it's not a part of id_B by removing it.
               // This will help us in the event that we've been beaten to this node.
+              removeFromSet.add(currentNode);
               id_B.remove(currentNode);
               if id_B.isEmpty() {
                 // If we've removed everything, then we can't process anything.
                 // Returning an empty string dodges the processing logic.
-                return ('', paths[id_A]);
+                return ('', paths[id_A], removeFromSet);
               }
             }
           } else {
@@ -563,7 +570,7 @@ class GeneNetwork {
     }
     //this.log.debug('id_B:', id_B : string, 'currentNode:', currentNode, 'id_A:', id_A, hstring=vstring);
     //writeln("What are our paths?: ", paths : string);
-    return (currentNode, paths[currentNode]);
+    return (currentNode, paths[currentNode], removeFromSet);
 
   }
 
