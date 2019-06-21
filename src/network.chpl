@@ -370,7 +370,7 @@ class GeneNetwork {
       this.ids.add(id);
     }
     globalLock.rl();
-    var node = globalNodes[id];
+    ref node = globalNodes[id];
     globalLock.url();
     this.nodeVersion[id] = node.returnRevision();
     //this.nodes[node.id] = node;
