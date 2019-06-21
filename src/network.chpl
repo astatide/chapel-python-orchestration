@@ -74,14 +74,14 @@ class networkGenerator {
 
   proc spawn() {
     this.l.wl();
-    writeln("Spawn begin. READ LOCK HANDLES: ", this.l.readHandles.read() : string);
+    //writeln("Spawn begin. READ LOCK HANDLES: ", this.l.readHandles.read() : string);
     this.generateEmptyNodes(nodeBlockSize);
     this.addToGlobal();
     // right.  That's not going to work, because we haven't processed them.
     //writeln("Now, add them to the global unprocessed arrayß");
     //this.addUnprocessed();
     this.isUpdating.clear();
-    writeln("Spawn end. READ LOCK HANDLES: ", this.l.readHandles.read() : string);
+    //writeln("Spawn end. READ LOCK HANDLES: ", this.l.readHandles.read() : string);
     this.l.uwl();
   }
 
@@ -146,7 +146,7 @@ class networkGenerator {
   }
 
   proc removeUnprocessed(id : string) {
-    writeln("readHandles on nG: ", this.l.readHandles.read() : string);
+    //writeln("readHandles on nG: ", this.l.readHandles.read() : string);
     this.l.wl();
     if this.IDs.contains(id) {
       this.processed[id] = true;
@@ -204,18 +204,18 @@ class networkGenerator {
       //}
     }
     this.currentId.sub(1);
-    writeln("If you're seeing this, it's because we're out of nodes.  READ LOCK HANDLES: ", this.l.readHandles.read() : string);
+    //writeln("If you're seeing this, it's because we're out of nodes.  READ LOCK HANDLES: ", this.l.readHandles.read() : string);
     //this.l.url();
     // if we're here, we need more nodes!
     // make sure the call doesn't fail by returning this function again.
     this.l.url();
     if !this.isUpdating.testAndSet() {
-      writeln("If you're seeing this, it's because we successfully nabbed the lock.");
+      //writeln("If you're seeing this, it's because we successfully nabbed the lock.");
       // avoid a race condition where we clear the flag after nodes have been generated,
       // but tried to grab one before things were ready.  Not likely, but hey.
-      writeln("What's our current count up to? ", this.currentId.read() : string);
+      //writeln("What's our current count up to? ", this.currentId.read() : string);
       //if this.currentId.read() >= this.N {
-      writeln("Running spawn function");
+      //writeln("Running spawn function");
       //this.l.url();
       this.spawn();
       //}
@@ -562,7 +562,7 @@ class GeneNetwork {
       }
     }
     //this.log.debug('id_B:', id_B : string, 'currentNode:', currentNode, 'id_A:', id_A, hstring=vstring);
-    writeln("What are our paths?: ", paths : string);
+    //writeln("What are our paths?: ", paths : string);
     return (currentNode, paths[currentNode]);
 
   }

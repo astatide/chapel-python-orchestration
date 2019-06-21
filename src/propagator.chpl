@@ -291,9 +291,9 @@ class Propagator {
       forall i in 1..nChromosomes with (ref nG) {
         // Here, we're going to be given the instructions for generating chromosomes.
         // No reason this can't be parallel, so let's do it.
-        this.log.debug('Spawning chromosome', this.yh);
+        //this.log.debug('Spawning chromosome', this.yh);
         var nc = new chromosomes.Chromosome();
-        this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
+        //this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
         nc.prep(startingSeeds, chromosomeSize-startingSeeds);
         nc.currentDeme = deme;
         this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, this.yh);
@@ -395,7 +395,7 @@ class Propagator {
               var path: network.pathHistory;
               toProcess.clear();
               vLog.debug('Beginning processing', hstring=v.header);
-              vLog.debug(this.nodesToProcess : string, hstring=v.header);
+              //vLog.debug(this.nodesToProcess : string, hstring=v.header);
               var prioritySize = v.priorityNodes.size;
               while this.inCurrentGeneration.read() > 0 {
                 // We clear this out because it is faster to just re-enumerate the
@@ -411,7 +411,7 @@ class Propagator {
                   toProcess.add(id);
                   vLog.debug('Adding node ID: ', id : string, hstring=v.header);
                 }
-                vLog.debug('What is up, fellow nodes? NODES: ', toProcess : string, hstring=v.header);
+                //vLog.debug('What is up, fellow nodes? NODES: ', toProcess : string, hstring=v.header);
 
                 if toProcess.isEmpty() {
                   // This checks atomics, so it's gonna be slow.
