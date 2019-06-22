@@ -425,6 +425,7 @@ class Propagator {
                 // performing a lot of unnecessary computations once a lot of nodes
                 // have been processed.
                 // Assuming we have some things to process, do it!
+                currToProc = '';
                 vLog.debug('toProcess created', hstring=v.header);
                 if !toProcess.isEmpty() {
                   // We can remove nodes from the domain processedArray is built on, which means we need to catch and process.
@@ -499,13 +500,13 @@ class Propagator {
                 if currToProc != '' {
                   //yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
                   // Get rid of the priority nodes; we've moved, after all.
-                  v.priorityNodes.clear();
+                  //v.priorityNodes.clear();
                   // We just need to make the current priorityNodes the intersection
                   // of the current node's edges and what we're processing in the next
                   // generation.
-                  this.lock.rl(v.header);
-                  v.priorityNodes.add((this.ygg.edges[currToProc] & this.nextGeneration));
-                  this.lock.url(v.header);
+                  //this.lock.rl(v.header);
+                  //v.priorityNodes.add((this.ygg.edges[currToProc] & this.nextGeneration));
+                  //this.lock.url(v.header);
                   // We're not doing any processing; just moving.
                 }
               }
