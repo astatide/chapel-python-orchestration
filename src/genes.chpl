@@ -519,9 +519,10 @@ class GeneNode {
 
   proc setDemeScore(deme: int, score: real) {
     on this.locale {
-      this.l.wl();
+      // probably don't need to lock it as we're not gonna do concurrent access.
+      //this.l.wl();
       this.scores[deme] = score;
-      this.l.uwl();
+      //this.l.uwl();
     }
   }
 
