@@ -517,6 +517,14 @@ class GeneNode {
     }
   }
 
+  proc setDemeScore(deme: int, score: real) {
+    on this.locale {
+      this.l.wl();
+      this.scores[deme] = score;
+      this.l.uwl();
+    }
+  }
+
   proc returnRevision() {
     //on this.locale {
     var rev: int;

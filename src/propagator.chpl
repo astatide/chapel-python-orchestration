@@ -433,7 +433,9 @@ class Propagator {
                   vLog.debug('Returning nearest unprocessed', hstring=v.header);
                   (currToProc, path, removeFromSet) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
                   for i in removeFromSet {
-                    toProcess.remove(i);
+                    if toProcess.contains(i) {
+                      toProcess.remove(i);
+                    }
                   }
                   vLog.debug('Unprocessed found.  ID:', currToProc : string, hstring=v.header);
                   if currToProc != '' {
@@ -445,15 +447,16 @@ class Propagator {
                     }
                     vLog.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
                     nG.removeUnprocessed(currToProc);
+                    toProcess.remove(currToProc);
+                    // Actually, reduce the count BEFORE we do this.
+                    // Otherwise we could have threads stealing focus that should
+                    // actually be idle.
+                    vLog.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
+                    this.inCurrentGeneration.sub(1);
+                    vLog.debug('inCurrentGeneration successfully reduced', hstring=v.header);
                     //writeln('What are our demes? ', network.globalNodes[currToProc].demeDomain : string);
                     for deme in network.globalNodes[currToProc].returnDemes() {
                       vLog.debug('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
-                      // Actually, reduce the count BEFORE we do this.
-                      // Otherwise we could have threads stealing focus that should
-                      // actually be idle.
-                      vLog.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
-                      this.inCurrentGeneration.sub(1);
-                      vLog.debug('inCurrentGeneration successfully reduced', hstring=v.header);
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
                       vLog.debug('PATH:', path : string, hstring=v.header);
                       var d = yggLocalCopy.deltaFromPath(path, path.key(0), hstring=v.header);
@@ -468,15 +471,18 @@ class Propagator {
                       var m = v.RECV();
                       var score = m.r;
                       vLog.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
-                      network.globalNodes[currToProc].scores[deme] = score;
+                      // we should _not_ need to readlock these domains, as the global domains cannot be and ARE not resized during this loop.
+                      //network.globalLock.rl();
+                      network.globalNodes[currToProc].setDemeScore(deme, score);
+                      //network.globalLock.url();
                     }
                   }
                   // While it seems odd we might try this twice, this helps us keep
                   // track of algorithm efficiency by determining whether we're processing
                   // the nodes in our priority queue or not.
-                  if v.priorityNodes.contains(currToProc) {
-                    v.priorityNodes.remove(currToProc);
-                  }
+                  //if v.priorityNodes.contains(currToProc) {
+                  //  v.priorityNodes.remove(currToProc);
+                  //}
                 } else {
                   // Rest now, my child. Rest, and know your work is done.
                   vLog.debug('And now, I rest.  Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
