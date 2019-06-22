@@ -157,6 +157,7 @@ class networkGenerator {
     globalLock.wl();
     if globalIDs.contains(id) {
       globalUnprocessed.remove(id);
+      //globalIsProcessed[id].write(true);
     }
     globalLock.uwl();
   }
@@ -429,10 +430,10 @@ class GeneNetwork {
 
   proc __calculatePath__(id_A: string, in id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray, checkArray: bool) throws {
     // This is an implementation of djikstra's algorithm.
-    //var nodes: domain(string);
-    var visited: [this.ids] bool = false;
-    var dist: [this.ids] real = Math.INFINITY;
-    var paths: [this.ids] pathHistory;
+    var nodes: domain(string);
+    var visited: [nodes] bool = false;
+    var dist: [nodes] real = Math.INFINITY;
+    var paths: [nodes] pathHistory;
     var currentNode = id_A;
     var unvisited: domain(string);
     var unvisited_d: domain(real);
@@ -449,6 +450,7 @@ class GeneNetwork {
     if !this.ids.contains(id_A) {
       this.add_node(id_A);
     }
+    nodes.add(id_A);
     dist[id_A] = 0;
     paths[id_A].n.add(0);
     paths[id_A].node[0] = id_A;
@@ -458,7 +460,7 @@ class GeneNetwork {
 
       return (id_A, paths[id_A], removeFromSet);
     }
-    while true {
+    while !id_B.isEmpty() {
       i += 1;
       var addToEdges: bool = false;
       var toAdd: domain(string);
@@ -469,6 +471,7 @@ class GeneNetwork {
       // If we need to update, trigger it.
       this.lock.rl(vstring);
       if !this.ids.contains(currentNode) {
+        nodes.add(currentNode);
         this.lock.url(vstring);
         this.add_node(currentNode);
         this.lock.rl(vstring);
@@ -482,7 +485,13 @@ class GeneNetwork {
       // we now assume this is an incomplete network.
       for edge in this.edges[currentNode] do {
         // why are we a big, errortastical bitch?
-        if !this.ids.contains(edge) {
+        //if !this.ids.contains(edge) {
+        if !nodes.contains(edge) {
+          nodes.add(edge);
+          visited[edge] = false;
+          dist[edge] = Math.INFINITY;
+        }
+        if false {
           // add the edge to our network if we haven't done so.
           addToEdges = true;
           toAdd.add(edge);
@@ -537,7 +546,8 @@ class GeneNetwork {
             // We should actually do the testAndSet here, although I sort of
             // dislike having the network access the array.  If false, we can use it!
             if !processedArray[currentNode].testAndSet() {
-              break;
+              //break;
+              return (currentNode, paths[currentNode], removeFromSet);
             } else {
               // This means we've actually already processed it, so
               // we'll pretend it's not a part of id_B by removing it.
@@ -553,6 +563,11 @@ class GeneNetwork {
           } else {
             break;
           }
+        }
+        if id_B.isEmpty() {
+          // If we've removed everything, then we can't process anything.
+          // Returning an empty string dodges the processing logic.
+          return ('', paths[id_A], removeFromSet);
         }
         if unvisited.isEmpty() {
         } else {
@@ -575,7 +590,11 @@ class GeneNetwork {
     }
     //this.log.debug('id_B:', id_B : string, 'currentNode:', currentNode, 'id_A:', id_A, hstring=vstring);
     //writeln("What are our paths?: ", paths : string);
-    return (currentNode, paths[currentNode], removeFromSet);
+    if !id_B.isEmpty() {
+      return (currentNode, paths[currentNode], removeFromSet);
+    } else {
+      return ('', paths[id_A], removeFromSet);
+    }
 
   }
 

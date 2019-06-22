@@ -355,7 +355,7 @@ class Propagator {
           nG.addUnprocessed();
           this.log.debug("Setting the current generation count", this.yh);
           // now, make sure we know we have to process all of these.
-          this.inCurrentGeneration.add(nG.currentId.read());
+          this.inCurrentGeneration.add(nG.currentId.read()-1);
           //this.log.debug("About to add existing nodes to the processing list", this.yh);
           //var ids = this.ygg.ids;
           //ref YNC = yggNodeCopy;
@@ -552,7 +552,7 @@ class Propagator {
                 nG.addUnprocessed();
                 this.log.debug("Setting the current generation count", this.yh);
                 // now, make sure we know we have to process all of these.
-                this.inCurrentGeneration.add(nG.currentId.read());
+                this.inCurrentGeneration.add(nG.currentId.read()-1);
                 this.moveOn[gen];
                 this.lock.rl(v.header);
                 vLog.debug('MOVING ON in gen', gen : string, this.nodesToProcess : string, v.header);
@@ -627,7 +627,7 @@ class Propagator {
                 nG.addUnprocessed();
                 this.log.debug("Setting the current generation count", this.yh);
                 // now, make sure we know we have to process all of these.
-                this.inCurrentGeneration.add(nG.currentId.read());
+                this.inCurrentGeneration.add(nG.currentId.read()-1);
                 // Clear out the current nodesToProcess domain, and swap it for the
                 // ones we've set to process for the next generation.
                 this.nodesToProcess.clear();
