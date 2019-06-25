@@ -112,8 +112,8 @@ class valkyrieExecutor: msgHandler {
       // ... we pretty much read and process.
       this.receiveMessage();
       t.stop();
-      if t.elapsed(TimeUnits.milliseconds) < 1000 {
-        sleep((1000 - t.elapsed(TimeUnits.milliseconds)), TimeUnits.milliseconds);
+      if t.elapsed(TimeUnits.milliseconds) < 100 {
+        sleep((100 - t.elapsed(TimeUnits.milliseconds)), TimeUnits.milliseconds);
       }
     }
     gj.final();

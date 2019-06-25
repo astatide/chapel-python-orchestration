@@ -273,7 +273,7 @@ record Chromosome {
       network.globalLock.rl();
       ref node = network.globalNodes[id];
       network.globalLock.url();
-      network.globalNodes[id].revision = genes.SPAWNED;
+      node.revision = genes.SPAWNED;
       if n > 0 && n <= this.nRootGenes {
         // prep the root seeds.
         // handy function to return a node id.
@@ -282,20 +282,24 @@ record Chromosome {
         this.log.debug('ID: %s, SEED: %i'.format(id, seed), hstring=vstring);
         if initial {
           this.log.debug("INITIAL GO; adding seed to root.", hstring=vstring);
-          network.globalNodes[id].addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes['root']);
+          network.globalLock.rl();
+          ref rootNode = network.globalNodes['root'];
+          network.globalLock.url();
+          node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = rootNode);
         } else {
           this.log.debug("NOT INITIAL; advancing old node.", hstring=vstring);
-          network.globalNodes[id].addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes[this.geneIDs[n]]);
-          network.globalNodes[this.geneIDs[n]].l.wl();
-          network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
-          network.globalNodes[this.geneIDs[n]].l.uwl();
+          network.globalLock.rl();
+          ref oldNode = network.globalNodes[this.geneIDs[n]];
+          network.globalLock.url();
+          node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
+          oldNode.revision = genes.FINALIZED;
         }
         //this.log.debug('Node successfully advanced', hstring=vstring);
         this.geneIDs[n] = id;
         this.add(n, id);
         this.geneSeeds[n] = seed;
-        network.globalNodes[id].chromosomes.add(this.id);
-        network.globalNodes[id].chromosome = this.id;
+        node.chromosomes.add(this.id);
+        node.chromosome = this.id;
         this.geneIDSet.add(id);
       }
       if n > this.nRootGenes {
@@ -315,10 +319,10 @@ record Chromosome {
         this.log.debug('Getting node!', hstring=vstring);
         if initial {
           this.log.debug('Calling combination node', hstring=vstring);
-          network.globalNodes[id].newCombinationNode(idList, seedList, this.currentDeme, 'root', network.globalNodes);
+          node.newCombinationNode(idList, seedList, this.currentDeme, 'root', network.globalNodes);
         } else {
           this.log.debug('Calling combination node', hstring=vstring);
-          network.globalNodes[id].newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes);
+          node.newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes);
           // finalize it.
           network.globalNodes[this.geneIDs[n]].l.wl();
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
@@ -327,8 +331,8 @@ record Chromosome {
         this.log.debug('Combination complete; setting node', hstring=vstring);
         this.geneIDs[n] = id;
         this.add(n, id);
-        network.globalNodes[id].chromosomes.add(this.id);
-        network.globalNodes[id].chromosome = this.id;
+        node.chromosomes.add(this.id);
+        node.chromosome = this.id;
         this.geneIDSet.add(id);
       }
     }

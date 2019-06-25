@@ -339,7 +339,7 @@ class Propagator {
           writeln(globalNodes[node].chromosome, ' : ', chrome);
           writeln(node);
           writeln(globalNodes[node]);
-          assert(globalNodes[node].chromosome == chrome);  
+          assert(globalNodes[node].chromosome == chrome);
         }
       }
     }
@@ -450,11 +450,13 @@ class Propagator {
               if toProcess.isEmpty() {
                 // This checks atomics, so it's gonna be slow.
                 // In an ideal world, we rarely call it.
+                network.globalLock.rl();
                 for id in network.globalUnprocessed {
                   if !network.globalIsProcessed[id].read() {
                     toProcess.add(id);
                   }
                 }
+                network.globalLock.url();
               }
               while this.inCurrentGeneration.read() > 0 {
                 // We clear this out because it is faster to just re-enumerate the
@@ -495,7 +497,10 @@ class Propagator {
                     this.inCurrentGeneration.sub(1);
                     vLog.debug('inCurrentGeneration successfully reduced', hstring=v.header);
                     //writeln('What are our demes? ', network.globalNodes[currToProc].demeDomain : string);
-                    for deme in network.globalNodes[currToProc].returnDemes() {
+                    network.globalLock.rl();
+                    ref actualNode = network.globalNodes[currToProc];
+                    network.globalLock.url();
+                    for deme in actualNode.returnDemes() {
                       vLog.debug('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
                       vLog.debug('PATH:', path : string, hstring=v.header);
@@ -512,11 +517,14 @@ class Propagator {
                       var score = m.r;
                       vLog.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
                       // we should _not_ need to readlock these domains, as the global domains cannot be and ARE not resized during this loop.
-                      //network.globalLock.rl();
+                      network.globalLock.rl();
                       network.globalNodes[currToProc].setDemeScore(deme, score);
+                      network.globalLock.url();
                       // add to the chromosome.
                       vLog.debug('Adding to chromosome score.', hstring=v.header);
+                      network.globalLock.rl();
                       var nc = network.globalNodes[currToProc].chromosome;
+                      network.globalLock.url();
                       var inChromeID = this.chromes[nc].returnNodeNumber(currToProc);
                       //if inChromeID == -1 {
 

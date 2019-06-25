@@ -469,13 +469,16 @@ class GeneNetwork {
       // I should apparently speak with Elliot about this, if I'm curious.
       // If we need to update, trigger it.
       this.lock.rl(vstring);
+      globalLock.rl();
+      ref actualNode = globalNodes[currentNode];
+      globalLock.url();
       if !this.ids.contains(currentNode) {
         nodes.add(currentNode);
         this.lock.url(vstring);
         this.add_node(currentNode);
         this.lock.rl(vstring);
       } else if this.nodeVersion[currentNode] < genes.FINALIZED {
-        if globalNodes[currentNode].returnRevision() > this.nodeVersion[currentNode] {
+        if actualNode.returnRevision() > this.nodeVersion[currentNode] {
           this.lock.url(vstring);
           this.add_node(currentNode);
           this.lock.rl(vstring);
@@ -524,13 +527,16 @@ class GeneNetwork {
         if checkArray {
           // We should actually do the testAndSet here, although I sort of
           // dislike having the network access the array.  If false, we can use it!
+          globalLock.rl();
           if !processedArray[currentNode].testAndSet() {
             //break;
+            globalLock.url();
             return (currentNode, paths[currentNode], removeFromSet);
           } else {
             // This means we've actually already processed it, so
             // we'll pretend it's not a part of id_B by removing it.
             // This will help us in the event that we've been beaten to this node.
+            globalLock.url();
             removeFromSet.add(currentNode);
             id_B.remove(currentNode);
             if id_B.isEmpty() {
