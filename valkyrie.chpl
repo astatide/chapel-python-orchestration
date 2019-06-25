@@ -6,6 +6,7 @@ use propagator;
 use genes;
 use uuid;
 use messaging;
+use Time;
 
 var VUUID = new owned uuid.UUID();
 VUUID.UUID4();
@@ -34,6 +35,7 @@ class valkyrieExecutor: msgHandler {
   var nMoves: int;
   var nProcessed: int;
   var gen: int;
+  //var messageReceived: atomic bool = false;
   // reading and writing channels.
   //var cout: channel(true,iokind.dynamic,true);
   //var cin: channel(false,iokind.dynamic,true);
@@ -98,7 +100,9 @@ class valkyrieExecutor: msgHandler {
     // spawn the Python business.
     // python is initialized.  Yay.
     var writeOnce: bool = true;
+    var t: Timer;
     while true {
+      t.start();
       if writeOnce {
         //writeOnce = false;
         //c.writeln("we're in the loop yo");
@@ -107,6 +111,10 @@ class valkyrieExecutor: msgHandler {
       // basically, while we're able to read in a record...
       // ... we pretty much read and process.
       this.receiveMessage();
+      t.stop();
+      if t.elapsed(TimeUnits.milliseconds) < 1000 {
+        sleep((1000 - t.elapsed(TimeUnits.milliseconds)), TimeUnits.milliseconds);
+      }
     }
     gj.final();
   }

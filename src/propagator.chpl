@@ -205,6 +205,7 @@ class Propagator {
   var numSpawned: atomic int;
   var valkyriesProcessed: [1..maxValkyries*Locales.size] atomic int;
   var priorityValkyriesProcessed: [1..maxValkyries*Locales.size] atomic real;
+  var finishedChromoProp: atomic int;
   var generationTime: real;
   var authors: domain(string) = ['Audrey Pratt', 'Benjamin Robbins'];
   var version: real = 0.1;
@@ -307,6 +308,35 @@ class Propagator {
         this.lock.uwl();
       }
     }
+  }
+
+  proc advanceChromosomes(ref nG: shared network.networkGenerator) {
+    //vLog.debug('Advancing the chromosomes.', vheader);
+    var newCD: domain(string);
+    var newC: [newCD] chromosomes.Chromosome;
+    this.lock.rl();
+    for chrome in this.chromosomeDomain {
+      if !this.chromes[chrome].isProcessed.testAndSet() {
+        var nc = this.chromes[chrome];
+        for i in 1..nDuplicates {
+          var cc = nc.clone();
+          cc.log = this.log;
+          cc.advanceNodes(nG, this.yh);
+          newCD.add(cc.id);
+          newC[cc.id] = cc;
+        }
+      }
+    }
+    this.lock.url();
+    this.lock.wl();
+    for chrome in newCD {
+      this.chromosomeDomain.add(chrome);
+      this.chromes[chrome] = newC[chrome];
+      for node in newC[chrome].geneIDs {
+        this.nextGeneration.add(node);
+      }
+    }
+    this.lock.uwl();
   }
 
   proc exitRoutine() throws {
@@ -446,6 +476,7 @@ class Propagator {
                       v.priorityNodes.remove(currToProc);
                       v.nPriorityNodesProcessed += 1;
                     }
+                    v.moved = true;
                     vLog.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
                     nG.removeUnprocessed(currToProc);
                     toProcess.remove(currToProc);
@@ -475,6 +506,18 @@ class Propagator {
                       // we should _not_ need to readlock these domains, as the global domains cannot be and ARE not resized during this loop.
                       //network.globalLock.rl();
                       network.globalNodes[currToProc].setDemeScore(deme, score);
+                      // add to the chromosome.
+                      vLog.debug('Adding to chromosome score.', hstring=v.header);
+                      var nc = network.globalNodes[currToProc].chromosome;
+                      var inChromeID = this.chromes[nc].returnNodeNumber(currToProc);
+                      //if inChromeID == -1 {
+
+                      //}
+                      vLog.debug('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
+                      //vLog.debug('DemeDomain in chromosome:', this.chromes[nc].geneNumbers : string, hstring=v.header);
+                      vLog.debug('DemeDomain in chromosome:', this.chromes[nc].geneIDs : string, hstring=v.header);
+                      this.chromes[nc].scores[inChromeID] = score;
+
                       //network.globalLock.url();
                     }
                   }
@@ -496,19 +539,9 @@ class Propagator {
                 }
               }
               // if we haven't moved, we should move our valkyrie to something in the current generation.  It makes searching substantially easier.
+              // but we should reinclude that logic _later_.  As it's busted.
               if !v.moved {
-                if currToProc != '' {
-                  //yggLocalCopy.move(v, currToProc, path, createEdgeOnMove=false, edgeDistance);
-                  // Get rid of the priority nodes; we've moved, after all.
-                  //v.priorityNodes.clear();
-                  // We just need to make the current priorityNodes the intersection
-                  // of the current node's edges and what we're processing in the next
-                  // generation.
-                  //this.lock.rl(v.header);
-                  //v.priorityNodes.add((this.ygg.edges[currToProc] & this.nextGeneration));
-                  //this.lock.url(v.header);
-                  // We're not doing any processing; just moving.
-                }
+                // do something about it, why don't you.
               }
               if this.valkyriesDone[gen].fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
                 // Reset a lot of the variables for the Valkyrie while we're idle.
@@ -526,40 +559,15 @@ class Propagator {
 
                 // after this, we process the chromosomes and go.
                 this.readyForChromosomes[gen];
+                vLog.log('Grabbing chromosomes to process', hstring=v.header);
                 // moveOn is an array of sync variables.  We're blocked from reading
                 // until that's set to true.
-                var vheader = v.header;
-                for chrome in this.chromosomeDomain {
-                  if !this.chromes[chrome].isProcessed.testAndSet() {
-                    var nc = this.chromes[chrome];
-                    vLog.debug('Pushing forward chromosome ID', nc.id : string , vheader);
-                    for node in nc.geneIDs {
-                      this.lock.wl(vheader);
-                      this.nextGeneration.add(node);
-                      this.lock.uwl(vheader);
-                    }
-                    vLog.debug('Advancing chromosome ID', nc.id : string , vheader);
-                    for i in 1..nDuplicates {
-                      //var cc: chromosomes.Chromosome;
-                      var cc = nc.clone();
-                      vLog.debug('New chromosome ID', cc.id : string , vheader);
-                      cc.advanceNodes(nG, this.yh);
-                      for node in cc.geneIDs {
-                        this.lock.wl(vheader);
-                        this.nextGeneration.add(node);
-                        this.lock.uwl(vheader);
-                      }
-                      this.lock.wl(vheader);
-                      this.chromosomeDomain.add(cc.id);
-                      this.chromes[cc.id] = cc;
-                      this.lock.uwl(vheader);
-                    }
-                  }
-                }
+                this.advanceChromosomes(nG);
                 nG.addUnprocessed();
                 this.log.debug("Setting the current generation count", this.yh);
                 // now, make sure we know we have to process all of these.
                 this.inCurrentGeneration.add(nG.currentId.read()-1);
+                this.finishedChromoProp.add(1);
                 this.moveOn[gen];
                 this.lock.rl(v.header);
                 vLog.debug('MOVING ON in gen', gen : string, this.nodesToProcess : string, v.header);
@@ -569,6 +577,7 @@ class Propagator {
                 // do global cleanup to ensure the global arrays are ready.
                 vLog.debug('Handling cleanup on gen', gen : string, v.header);
                 v.moved = false;
+                this.nextGeneration.clear();
                 // we'll just throw this in here for now.
                 // Only do the max!
                 //var bestInGen: real = this.scoreArray[1];
@@ -576,16 +585,30 @@ class Propagator {
                 var chromosomesToAdvance: domain(string);
                 var c: [chromosomesToAdvance] chromosomes.Chromosome;
                 vLog.debug('Determining which chromosomes to advance', v.header);
-                for node in this.idArray {
-                  // these are the best nodes, so work em!
-                  if node != '' {
-                    // this is in the event that all of our genes suck.
-                    // do we really care about saving genes if the entire set sucks?
-                    for nc in network.globalNodes[node].chromosomes {
-                      if !chromosomesToAdvance.contains(nc) {
-                        chromosomesToAdvance.add(nc);
-                        //c[nc] = this.chromes[nc];
-                      }
+                for chrome in this.chromosomeDomain {
+                  var deme = this.chromes[chrome].currentDeme;
+                  //var (lowestScore, minLoc) = minloc reduce zip(this.scoreArray[deme], this.scoreArray.domain);
+                  var lowestScore : real = Math.INFINITY;
+                  var minLoc : int;
+                  vLog.debug('Determining lowest score...', v.header);
+                  for z in 1..maxPerGeneration {
+                    if this.scoreArray[deme,z] < lowestScore {
+                      lowestScore = this.scoreArray[deme,z];
+                      minLoc = z;
+                    }
+                  }
+                  vLog.debug('Finding the highest scoring node on this chromosome and seeing if it is good enough.', v.header);
+                  var (bestScore, bestNode) = this.chromes[chrome].bestGeneInDeme[this.chromes[chrome].currentDeme];
+                  if bestScore > lowestScore {
+                    this.scoreArray[deme, minLoc] = bestScore;
+                    this.idArray[deme, minLoc] = chrome;
+                  }
+                }
+                for deme in 0..4 {
+                  for z in 1..maxPerGeneration {
+                    if this.idArray[deme,z] != '' {
+                      vLog.debug('Advancing chromosome ID:', this.idArray[deme,z], v.header);
+                      chromosomesToAdvance.add(this.idArray[deme,z]);
                     }
                   }
                 }
@@ -599,48 +622,35 @@ class Propagator {
                   }
                 }
                 this.readyForChromosomes[gen] = true;
-                vLog.debug('Advancing the chromosomes.', vheader);
-                for chrome in this.chromosomeDomain {
-                  if !this.chromes[chrome].isProcessed.testAndSet() {
-                    var nc = this.chromes[chrome];
-                    vLog.debug('Pushing forward chromosome ID', nc.id : string , vheader);
-                    for node in nc.geneIDs {
-                      this.lock.wl(vheader);
-                      this.nextGeneration.add(node);
-                      this.lock.uwl(vheader);
-                    }
-                    vLog.debug('Advancing chromosome ID', nc.id : string , vheader);
-                    for i in 1..nDuplicates {
-                      //var cc: chromosomes.Chromosome;
-                      var cc = nc.clone();
-                      vLog.debug('New chromosome ID', cc.id : string , vheader);
-                      cc.advanceNodes(nG, this.yh);
-                      for node in cc.geneIDs {
-                        this.lock.wl(vheader);
-                        this.nextGeneration.add(node);
-                        this.lock.uwl(vheader);
-                      }
-                      this.lock.wl(vheader);
-                      this.chromosomeDomain.add(cc.id);
-                      this.chromes[cc.id] = cc;
-                      this.lock.uwl(vheader);
-                    }
-                  }
-                }
+                this.advanceChromosomes(nG);
                 //}
                 this.scoreArray = -1;
-
-                vLog.debug('Switching generations', v.header);
-                nG.addUnprocessed();
                 this.log.debug("Setting the current generation count", this.yh);
                 // now, make sure we know we have to process all of these.
                 this.inCurrentGeneration.add(nG.currentId.read()-1);
+                while this.finishedChromoProp.read() < ((Locales.size*maxValkyries)-1) do chpl_task_yield();
+                this.finishedChromoProp.write(0);
+                vLog.debug('Switching generations', v.header);
+                nG.addUnprocessed();
                 // Clear out the current nodesToProcess domain, and swap it for the
                 // ones we've set to process for the next generation.
                 this.nodesToProcess.clear();
                 for node in this.nextGeneration {
                   this.nodesToProcess.add(node);
                   this.processedArray[node].write(false);
+                }
+                for node in this.nextGeneration {
+                  vLog.debug("Node ID:", node : string, hstring=v.header);
+                  vLog.debug('Chromosome:', this.chromes[globalNodes[node].chromosome] : string, hstring=v.header);
+                  var isInChromosome: bool = false;
+                  for n in this.chromes[globalNodes[node].chromosome].geneIDs {
+                    if !isInChromosome {
+                      if n == node {
+                        isInChromosome = true;
+                      }
+                    }
+                  }
+                  assert(isInChromosome);
                 }
                 this.nextGeneration.clear();
                 // Set the count variable.

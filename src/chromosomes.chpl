@@ -183,8 +183,10 @@ record Chromosome {
 
   // these are just the genes
   var geneNumbers: domain(int);
+  var geneIDSet: domain(string);
   var geneIDs: [geneNumbers] string;
   var geneSeeds: [geneNumbers] int;
+  var scores: [geneNumbers] real;
 
   // shadow genes.  These are the nodes that represented the previous state;
   // this is particularly useful for merge operations, as we have _already_
@@ -226,9 +228,9 @@ record Chromosome {
   proc add(i: int, geneId: string) {
     this.l.wl();
     if !this.geneNumbers.contains(i) {
-      this.geneNumbers.add(this.currentGenes);
+      this.geneNumbers.add(i);
     }
-    this.geneNumbers[this.currentGenes] = geneId;
+    this.geneIDs[i] = geneId;
     this.l.uwl();
   }
 
@@ -264,21 +266,20 @@ record Chromosome {
       this.log.debug("Initializing nodes.", hstring=vstring);
     }
     for n in 1..totalGenes {
+      if !this.geneNumbers.contains(n) {
+        this.geneNumbers.add(n);
+      }
+      var id = nG.getNode();
+      network.globalLock.rl();
+      ref node = network.globalNodes[id];
+      network.globalLock.url();
+      network.globalNodes[id].revision = genes.SPAWNED;
       if n > 0 && n <= this.nRootGenes {
         // prep the root seeds.
         // handy function to return a node id.
         this.log.debug('Getting seeds and ID', hstring=vstring);
-        var id = nG.getNode();
         var seed = nG.newSeed();
         this.log.debug('ID: %s, SEED: %i'.format(id, seed), hstring=vstring);
-        // just nab the node pointer.
-        // oh, we need to... right.
-        network.globalLock.rl();
-        ref node = network.globalNodes[id];
-        network.globalLock.url();
-        // stupid race condition.
-        this.log.debug("Setting node revision", hstring=vstring);
-        network.globalNodes[id].revision = genes.SPAWNED;
         if initial {
           this.log.debug("INITIAL GO; adding seed to root.", hstring=vstring);
           network.globalNodes[id].addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = network.globalNodes['root']);
@@ -289,42 +290,46 @@ record Chromosome {
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
           network.globalNodes[this.geneIDs[n]].l.uwl();
         }
-        this.log.debug('Node successfully advanced', hstring=vstring);
+        //this.log.debug('Node successfully advanced', hstring=vstring);
         this.geneIDs[n] = id;
+        this.add(n, id);
         this.geneSeeds[n] = seed;
+        network.globalNodes[id].chromosomes.add(this.id);
+        network.globalNodes[id].chromosome = this.id;
+        this.geneIDSet.add(id);
       }
       if n > this.nRootGenes {
         // now we use the combo.  We should pack it into a list and send it.
         // is there a better way?  I'm sure.
-        this.log.debug('COMBINATION GENES', hstring=vstring);
+        //this.log.debug('COMBINATION GENES', hstring=vstring);
         var c = this.actualGenes[n];
         //var idList: [1..c.size] string;
         var idList: [1..c.size] string;
         var seedList: [1..c.size] int;
         var i: int = 1;
-        for id in c {
-          idList[i] = this.geneIDs[id];
-          seedList[i] = this.geneSeeds[id];
+        for oldId in c {
+          idList[i] = this.geneIDs[oldId];
+          seedList[i] = this.geneSeeds[oldId];
           i += 1;
         }
         this.log.debug('Getting node!', hstring=vstring);
-        var newId = nG.getNode();
-        ref node = network.globalNodes[newId];
-        network.globalNodes[newId].revision = genes.SPAWNED;
-        //this.geneIDs[n] = ygg.mergeNodeList(this.id, idList, this.currentDeme);
         if initial {
           this.log.debug('Calling combination node', hstring=vstring);
-          network.globalNodes[newId].newCombinationNode(idList, seedList, this.currentDeme, 'root', network.globalNodes);
+          network.globalNodes[id].newCombinationNode(idList, seedList, this.currentDeme, 'root', network.globalNodes);
         } else {
           this.log.debug('Calling combination node', hstring=vstring);
-          network.globalNodes[newId].newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes);
+          network.globalNodes[id].newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes);
           // finalize it.
           network.globalNodes[this.geneIDs[n]].l.wl();
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
           network.globalNodes[this.geneIDs[n]].l.uwl();
         }
         this.log.debug('Combination complete; setting node', hstring=vstring);
-        this.geneIDs[n] = newId;
+        this.geneIDs[n] = id;
+        this.add(n, id);
+        network.globalNodes[id].chromosomes.add(this.id);
+        network.globalNodes[id].chromosome = this.id;
+        this.geneIDSet.add(id);
       }
     }
   }
@@ -349,16 +354,21 @@ record Chromosome {
     b.lowestIsBest = this.lowestIsBest;
     b.currentDeme = this.currentDeme;
     // Unsure if this is a pointer or a copy, but.
-    for i in this.geneNumbers {
+    for i in this.combinations.geneNumbers {
       b.geneNumbers.add(i);
-      b.geneIDs[i] = this.geneIDs[i];
-      for z in this.actualGenes[i] {
+      for z in this.combinations.actualGenes[i] {
         b.actualGenes[i].add(z);
       }
     }
-    //b.id = CUUID.UUID4();
-    //b.l = new shared spinlock.SpinLock();
-    //b.l.t = ' '.join('CHROMOSOME', b.id);
+    for i in this.geneNumbers {
+      b.geneNumbers.add(i);
+      b.geneIDs[i] = this.geneIDs[i];
+      b.scores[i] = this.scores[i];
+      b.geneSeeds[i] = this.geneSeeds[i];
+      //for z in this.actualGenes[i] {
+      //  b.actualGenes[i].add(z);
+      //}
+    }
     return b;
   }
 
@@ -393,24 +403,36 @@ record Chromosome {
       for i in 1..totalGenes {
         // Actually, I should make this a function on the gene.
         // That way we can handle the locking appropriately.
-        if this.geneIDs[i].demeDomain.contains(deme) {
-          if this.geneIDs[i].scores[deme] < bestScore {
-            bestScore = this.geneIDs[i].scores[deme];
+        //if this.geneIDs[i].demeDomain.contains(deme) {
+          if this.scores[i] < bestScore {
+            bestScore = this.scores[i];
             bestNode = this.geneIDs[i];
           }
-        }
+        //}
       }
     } else {
       for i in 1..totalGenes {
-        if this.geneIDs[i].demeDomain.contains(deme) {
-          if this.geneIDs[i].scores[deme] > bestScore {
-            bestScore = this.geneIDs[i].scores[deme];
+        //if this.geneIDs[i].demeDomain.contains(deme) {
+          if this.scores[i] < bestScore {
+            bestScore = this.scores[i];
             bestNode = this.geneIDs[i];
           }
-        }
+        //}
       }
     }
+    return (bestScore, bestNode);
   }
+
+  proc returnNodeNumber(node: string) {
+    for i in this.geneNumbers {
+      //assert(this.geneIDs.contains(i));
+      if this.geneIDs[i] == node {
+        return i;
+      }
+    }
+    return -1;
+  }
+
 }
 
 proc =(ref b: Chromosome, a: Chromosome) {

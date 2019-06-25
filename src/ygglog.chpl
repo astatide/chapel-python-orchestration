@@ -161,6 +161,10 @@ class YggdrasilLogging {
   var time = Time.getCurrentTime();
   //var l: [filesOpened] spinlock.SpinLock;
 
+  proc writeThis(f) {
+    
+  }
+
   proc init() {
     this.complete();
     //this.filesOpened = new domain(string);

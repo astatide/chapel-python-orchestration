@@ -264,8 +264,10 @@ class networkGenerator {
   proc addUnprocessed() {
     globalLock.wl();
     for node in currentGeneration {
-      globalUnprocessed.add(node);
-      globalIsProcessed[node].write(false);
+      if !globalUnprocessed.contains(node) {
+        globalUnprocessed.add(node);
+        globalIsProcessed[node].write(false);  
+      }
     }
     globalLock.uwl();
   }

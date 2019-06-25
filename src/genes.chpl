@@ -355,6 +355,7 @@ class GeneNode {
   // We want to hold scores on the nodes.
   var demeDomain: domain(int);
   var chromosomes: domain(string);
+  var chromosome: string;
   var scores: [demeDomain] real;
 
   var initialized: atomic bool = false;
@@ -521,6 +522,9 @@ class GeneNode {
     on this.locale {
       // probably don't need to lock it as we're not gonna do concurrent access.
       //this.l.wl();
+      if !this.demeDomain.contains(deme) {
+        this.demeDomain.add(deme);
+      }
       this.scores[deme] = score;
       //this.l.uwl();
     }
@@ -551,6 +555,7 @@ class GeneNode {
       //node.demeDomain.add(deme);
       this.setDeme(deme);
       node.chromosomes.add(cId);
+      node.chromosome = cId;
       node.l.uwl();
       //node.join(this, delta, new ygglog.yggHeader() + 'newSeedGene');
       this.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');

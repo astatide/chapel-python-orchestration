@@ -37,6 +37,7 @@ record msg {
   var s: string;
   var i: int;
   var r: real;
+  var exists: int = 0;
   // this.complete() means we complete!
 
   proc init() {}
@@ -194,7 +195,10 @@ class msgHandlerMultiple {
   proc __RECV__(i: int) {
     // receive the message!
     //fin[i].readln(m);
-    var m = this.recvSocket[i].recv(msg);
+    var m: msg;
+    m.exists = -1;
+    m = this.recvSocket[i].recv(msg);
+    while m.exists == -1 do chpl_task_yield();
     return m;
   }
 
@@ -309,7 +313,10 @@ class msgHandler {
 
   proc __RECV__(i: int) {
     // receive the message!
-    var m = this.socket[i].recv(msg);
+    var m: msg;
+    m.exists = -1;
+    m = this.socket[i].recv(msg);
+    while m.exists == -1 do chpl_task_yield();
     return m;
   }
 
