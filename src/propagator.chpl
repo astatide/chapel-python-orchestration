@@ -329,15 +329,21 @@ class Propagator {
     }
     this.lock.url();
     this.lock.wl();
+    network.globalLock.rl();
     for chrome in newCD {
       this.chromosomeDomain.add(chrome);
       this.chromes[chrome] = newC[chrome];
       for node in newC[chrome].geneIDs {
-        this.nextGeneration.add(node);
-        writeln(globalNodes[node].chromosome, ' : ', chrome);
-        assert(globalNodes[node].chromosome == chrome);
+        if node != 'root' {
+          this.nextGeneration.add(node);
+          writeln(globalNodes[node].chromosome, ' : ', chrome);
+          writeln(node);
+          writeln(globalNodes[node]);
+          assert(globalNodes[node].chromosome == chrome);  
+        }
       }
     }
+    network.globalLock.url();
     this.lock.uwl();
   }
 

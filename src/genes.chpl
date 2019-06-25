@@ -554,8 +554,8 @@ class GeneNode {
       //node.l.wl();
       //node.demeDomain.add(deme);
       this.setDeme(deme);
-      this.chromosomes.add(cId);
-      this.chromosome = cId;
+      //this.chromosomes.add(cId);
+      //this.chromosome = cId;
       //node.l.uwl();
       //node.join(this, delta, new ygglog.yggHeader() + 'newSeedGene');
       this.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
