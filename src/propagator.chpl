@@ -334,6 +334,8 @@ class Propagator {
       this.chromes[chrome] = newC[chrome];
       for node in newC[chrome].geneIDs {
         this.nextGeneration.add(node);
+        writeln(globalNodes[node].chromosome, ' : ', chrome);
+        assert(globalNodes[node].chromosome == chrome);
       }
     }
     this.lock.uwl();
@@ -566,7 +568,7 @@ class Propagator {
                 nG.addUnprocessed();
                 this.log.debug("Setting the current generation count", this.yh);
                 // now, make sure we know we have to process all of these.
-                this.inCurrentGeneration.add(nG.currentId.read()-1);
+                //this.inCurrentGeneration.add(nG.currentId.read()-1);
                 this.finishedChromoProp.add(1);
                 this.moveOn[gen];
                 this.lock.rl(v.header);
@@ -627,7 +629,7 @@ class Propagator {
                 this.scoreArray = -1;
                 this.log.debug("Setting the current generation count", this.yh);
                 // now, make sure we know we have to process all of these.
-                this.inCurrentGeneration.add(nG.currentId.read()-1);
+                //this.inCurrentGeneration.add(nG.currentId.read()-1);
                 while this.finishedChromoProp.read() < ((Locales.size*maxValkyries)-1) do chpl_task_yield();
                 this.finishedChromoProp.write(0);
                 vLog.debug('Switching generations', v.header);
@@ -640,6 +642,7 @@ class Propagator {
                   this.processedArray[node].write(false);
                 }
                 for node in this.nextGeneration {
+                  this.inCurrentGeneration.add(1);
                   vLog.debug("Node ID:", node : string, hstring=v.header);
                   vLog.debug('Chromosome:', this.chromes[globalNodes[node].chromosome] : string, hstring=v.header);
                   var isInChromosome: bool = false;

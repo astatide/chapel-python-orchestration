@@ -551,12 +551,12 @@ class GeneNode {
       // It's reverse because we're creating the connection from the new node backwards;
       // ergo, you must _undo_ the change.
       delta += (seed, -1.0);
-      node.l.wl();
+      //node.l.wl();
       //node.demeDomain.add(deme);
       this.setDeme(deme);
-      node.chromosomes.add(cId);
-      node.chromosome = cId;
-      node.l.uwl();
+      this.chromosomes.add(cId);
+      this.chromosome = cId;
+      //node.l.uwl();
       //node.join(this, delta, new ygglog.yggHeader() + 'newSeedGene');
       this.join(node, delta, new ygglog.yggHeader() + 'newSeedGene');
     }

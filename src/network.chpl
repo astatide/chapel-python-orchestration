@@ -266,7 +266,7 @@ class networkGenerator {
     for node in currentGeneration {
       if !globalUnprocessed.contains(node) {
         globalUnprocessed.add(node);
-        globalIsProcessed[node].write(false);  
+        globalIsProcessed[node].write(false);
       }
     }
     globalLock.uwl();
@@ -459,13 +459,10 @@ class GeneNetwork {
     // catch an empty id_B!
     if id_B.isEmpty() {
       //this.log.debug('id_B is empty; is this okay?', hstring=vstring);
-
       return (id_A, paths[id_A], removeFromSet);
     }
     while !id_B.isEmpty() {
       i += 1;
-      var addToEdges: bool = false;
-      var toAdd: domain(string);
       // Seems sometimes this locks, but doesn't unlock.
       // Is this from thread switching, I wonder?
       // AH!  I think it was from thread switching at the OS level, maybe.
@@ -493,101 +490,82 @@ class GeneNetwork {
           visited[edge] = false;
           dist[edge] = Math.INFINITY;
         }
-        if false {
-          // add the edge to our network if we haven't done so.
-          addToEdges = true;
-          toAdd.add(edge);
-        } else {
-          if !visited[edge] {
-            var d = min(dist[edge], dist[currentNode]+1);
-            unvisited.add(edge);
-            unvisited_d.add(d);
-            dist[edge] = d;
+        if !visited[edge] {
+          var d = min(dist[edge], dist[currentNode]+1);
+          unvisited.add(edge);
+          unvisited_d.add(d);
+          dist[edge] = d;
 
-            if d == dist[currentNode]+1 {
-              paths[edge].n.clear();
-              var z: int;
-              for (j, e) in paths[currentNode] {
-                paths[edge].n.add(j : int);
-                paths[edge].node[j : int] = e;
-                z += 1;
-              }
-              // We're doing this as a tuple to help sorting later.
-              // That'll also help us calculate how many hops we have to make,
-              // which will be convenient when we're trying to determine who
-              // should do what.
-              paths[edge].n.add(d: int);
-              paths[edge].node[d: int] = edge;
+          if d == dist[currentNode]+1 {
+            paths[edge].n.clear();
+            var z: int;
+            for (j, e) in paths[currentNode] {
+              paths[edge].n.add(j : int);
+              paths[edge].node[j : int] = e;
+              z += 1;
             }
+            // We're doing this as a tuple to help sorting later.
+            // That'll also help us calculate how many hops we have to make,
+            // which will be convenient when we're trying to determine who
+            // should do what.
+            paths[edge].n.add(d: int);
+            paths[edge].node[d: int] = edge;
           }
         }
       }
       this.lock.url(vstring);
-      if addToEdges {
-        i -= 1;
-        //this.lock.url(vstring);
-        // add the node, and try, try again.
-        this.log.debug("ADDING N NODES:", toAdd.size : string, vstring);
-        for edge in toAdd {
-          this.add_node(edge);
-          visited[edge] = false;
-          dist[edge] = Math.INFINITY;
-        }
-        //this.lock.rl(vstring);
-        addToEdges = false;
-        toAdd.clear();
-      } else {
-        visited[currentNode] = true;
-        // Doing it like this means we never have a race condition.
-        // Should help with load balancing and efficiency.
-        // Oh man, and does it ever.  Basically, we don't leave this routine
-        // untl we have one we KNOW can process, or there's nothing left to
-        // process.
-        if id_B.contains(currentNode) {
-          if checkArray {
-            // We should actually do the testAndSet here, although I sort of
-            // dislike having the network access the array.  If false, we can use it!
-            if !processedArray[currentNode].testAndSet() {
-              //break;
-              return (currentNode, paths[currentNode], removeFromSet);
-            } else {
-              // This means we've actually already processed it, so
-              // we'll pretend it's not a part of id_B by removing it.
-              // This will help us in the event that we've been beaten to this node.
-              removeFromSet.add(currentNode);
-              id_B.remove(currentNode);
-              if id_B.isEmpty() {
-                // If we've removed everything, then we can't process anything.
-                // Returning an empty string dodges the processing logic.
-                return ('', paths[id_A], removeFromSet);
-              }
-            }
+      visited[currentNode] = true;
+      // Doing it like this means we never have a race condition.
+      // Should help with load balancing and efficiency.
+      // Oh man, and does it ever.  Basically, we don't leave this routine
+      // untl we have one we KNOW can process, or there's nothing left to
+      // process.
+      if id_B.contains(currentNode) {
+        if checkArray {
+          // We should actually do the testAndSet here, although I sort of
+          // dislike having the network access the array.  If false, we can use it!
+          if !processedArray[currentNode].testAndSet() {
+            //break;
+            return (currentNode, paths[currentNode], removeFromSet);
           } else {
-            break;
-          }
-        }
-        if id_B.isEmpty() {
-          // If we've removed everything, then we can't process anything.
-          // Returning an empty string dodges the processing logic.
-          return ('', paths[id_A], removeFromSet);
-        }
-        if unvisited.isEmpty() {
-        } else {
-          // get the current minimum from here.
-          i = 0;
-          currMinDist = Math.INFINITY;
-          for node in unvisited {
-            i += 1;
-            if currMinDist > dist[node] {
-              currMinDist = dist[node];
-              currMinNode = node;
-              currMinNodeIndex = i;
+            // This means we've actually already processed it, so
+            // we'll pretend it's not a part of id_B by removing it.
+            // This will help us in the event that we've been beaten to this node.
+            removeFromSet.add(currentNode);
+            id_B.remove(currentNode);
+            if id_B.isEmpty() {
+              // If we've removed everything, then we can't process anything.
+              // Returning an empty string dodges the processing logic.
+              return ('', paths[id_A], removeFromSet);
             }
           }
-          currentNode = currMinNode;
-          unvisited_d.remove(currMinDist);
-          unvisited.remove(currMinNode);
+        } else {
+          return (currentNode, paths[currentNode], removeFromSet);
         }
+      }
+      if id_B.isEmpty() {
+        // If we've removed everything, then we can't process anything.
+        // Returning an empty string dodges the processing logic.
+        return ('', paths[id_A], removeFromSet);
+      }
+      if unvisited.isEmpty() {
+        // no paths
+        return ('', paths[id_A], removeFromSet);
+      } else {
+        // get the current minimum from here.
+        i = 0;
+        currMinDist = Math.INFINITY;
+        for node in unvisited {
+          i += 1;
+          if currMinDist > dist[node] {
+            currMinDist = dist[node];
+            currMinNode = node;
+            currMinNodeIndex = i;
+          }
+        }
+        currentNode = currMinNode;
+        unvisited_d.remove(currMinDist);
+        unvisited.remove(currMinNode);
       }
     }
     //this.log.debug('id_B:', id_B : string, 'currentNode:', currentNode, 'id_A:', id_A, hstring=vstring);
