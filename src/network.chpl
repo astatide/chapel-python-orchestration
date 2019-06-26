@@ -110,20 +110,20 @@ class networkGenerator {
       cId = this.N;
     }
     //writeln("Taking from our currentGeneration! What's our starting point? ", this.firstUnprocessed.read() : string);
-    var addToUnprocessed: int = this.firstUnprocessed.read();
+    //var addToUnprocessed: int = this.firstUnprocessed.read();
     for i in this.firstUnprocessed.read()..cId {
       this.l.rl();
       var id = this.idSet[i];
       if !this.processed[id] {
         //this.l.url();
-        this.firstUnprocessed.write(addToUnprocessed);
+        //this.firstUnprocessed.write(addToUnprocessed);
         yield id;
       } else {
-        addToUnprocessed += 1;
+        //addToUnprocessed += 1;
       }
       this.l.url();
     }
-    this.firstUnprocessed.write(addToUnprocessed);
+    //this.firstUnprocessed.write(addToUnprocessed);
   }
 
   iter all {
@@ -269,6 +269,7 @@ class networkGenerator {
         globalIsProcessed[node].write(false);
       }
     }
+    this.setCurrentGeneration();
     globalLock.uwl();
   }
 

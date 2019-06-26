@@ -347,6 +347,24 @@ record Chromosome {
   }
 
   proc clone () {
+    /*
+    var nRootGenes: int = propagator.startingSeeds;
+    var nFunctionGenes: int = propagator.chromosomeSize - propagator.startingSeeds;
+    var totalGenes: int = propagator.chromosomeSize;
+    var currentGenes: int;
+    var l: shared spinlock.SpinLock;
+    var log: shared ygglog.YggdrasilLogging;
+    var lowestIsBest: bool=false;
+    var currentDeme: int = 0;
+    var isProcessed: atomic bool = false;
+
+    // these are just the genes
+    var geneNumbers: domain(int);
+    var geneIDSet: domain(string);
+    var geneIDs: [geneNumbers] string;
+    var geneSeeds: [geneNumbers] int;
+    var scores: [geneNumbers] real;
+    */
     // This is the copy operator, right?
     var b = new Chromosome();
     b.log = this.log;
@@ -358,20 +376,20 @@ record Chromosome {
     b.lowestIsBest = this.lowestIsBest;
     b.currentDeme = this.currentDeme;
     // Unsure if this is a pointer or a copy, but.
-    for i in this.combinations.geneNumbers {
-      b.geneNumbers.add(i);
-      for z in this.combinations.actualGenes[i] {
-        b.actualGenes[i].add(z);
-      }
-    }
+    //for i in this.combinations.geneNumbers {
+    //  b.geneNumbers.add(i);
+    //  for z in this.combinations.actualGenes[i] {
+    //    b.actualGenes[i].add(z);
+    //  }
+    //}
     for i in this.geneNumbers {
       b.geneNumbers.add(i);
       b.geneIDs[i] = this.geneIDs[i];
       b.scores[i] = this.scores[i];
       b.geneSeeds[i] = this.geneSeeds[i];
-      //for z in this.actualGenes[i] {
-      //  b.actualGenes[i].add(z);
-      //}
+      for z in this.actualGenes[i] {
+        b.actualGenes[i].add(z);
+      }
     }
     return b;
   }
@@ -437,19 +455,6 @@ record Chromosome {
     return -1;
   }
 
-}
-
-proc =(ref b: Chromosome, a: Chromosome) {
-  // This is the copy operator, right?
-  //var b = new Chromosome();
-  b.nRootGenes = a.nRootGenes;
-  b.nFunctionGenes = a.nFunctionGenes;
-  b.totalGenes = a.totalGenes;
-  b.currentGenes = a.currentGenes;
-  // Unsure if this is a pointer or a copy, but.
-  b.geneNumbers = a.geneNumbers;
-  b.geneIDs = a.geneIDs;
-  //return b;
 }
 
 proc +=(ref a: Chromosome, b: string) {
