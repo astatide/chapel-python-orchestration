@@ -338,8 +338,8 @@ class Propagator {
           this.nextGeneration.add(node);
           writeln(globalNodes[node].chromosome, ' : ', chrome);
           writeln(node);
-          writeln(globalNodes[node]);
-          assert(globalNodes[node].chromosome == chrome);
+          //writeln(globalNodes[node]);
+          //assert(globalNodes[node].chromosome == chrome);
         }
       }
     }
@@ -536,6 +536,9 @@ class Propagator {
 
                       //network.globalLock.url();
                     }
+                  } else {
+                    // actually, if that's the case, we can't do shit.  So break and yield.
+                    break;
                   }
                   // While it seems odd we might try this twice, this helps us keep
                   // track of algorithm efficiency by determining whether we're processing

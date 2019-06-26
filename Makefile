@@ -13,7 +13,7 @@ else
 	COMM:=--comm gasnet
 	#COMM:=--comm none --launcher none
 	MACLUDE:= -L ZMQHelper/ -L /usr/local/lib -I /usr/local/include
-	DEBUG:=-g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks --devel
+	DEBUG:=-g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks #--devel
 endif
 
 all:

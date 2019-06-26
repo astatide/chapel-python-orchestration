@@ -378,7 +378,9 @@ class GeneNetwork {
       this.ids.add(id);
     }
     globalLock.rl();
+    this.log.debug('Attempting to grab node ID:', id : string, 'on locale', this.locale : string, hstring=vstring);
     ref node = globalNodes[id];
+    this.log.debug('Node grabbed!  Node ID:', id : string, 'on locale', this.locale : string, hstring=vstring);
     globalLock.url();
     this.nodeVersion[id] = node.returnRevision();
     //this.nodes[node.id] = node;
@@ -496,7 +498,7 @@ class GeneNetwork {
         if !visited[edge] {
           var d = min(dist[edge], dist[currentNode]+1);
           unvisited.add(edge);
-          unvisited_d.add(d);
+          //unvisited_d.add(d);
           dist[edge] = d;
 
           if d == dist[currentNode]+1 {
@@ -570,7 +572,7 @@ class GeneNetwork {
           }
         }
         currentNode = currMinNode;
-        unvisited_d.remove(currMinDist);
+        //unvisited_d.remove(currMinDist);
         unvisited.remove(currMinNode);
       }
     }
