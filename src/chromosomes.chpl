@@ -15,8 +15,8 @@ use network;
 // from entropy at the same time (this kept happening before I locked it).
 // However, as the chromosome and gene domain are unique, we don't need uniqueness
 // between the sets, and so a gene and chromosome sharing the same UUID is fine.
-var CUUID = new owned uuid.UUID();
-CUUID.UUID4();
+//var CUUID = new owned uuid.UUID();
+//CUUID.UUID4();
 
 //var AssocDom:domain(int);
 //type AssocArrayType = [AssocDom] int;
@@ -199,9 +199,19 @@ record Chromosome {
   var actualGenes: [geneNumbers] domain(int);
 
   proc init() {
-    this.id = '%04i'.format(here.id) + "-CHRO-" + CUUID.UUID4();
+    //this.complete();
+    //var CUUID = new owned uuid.UUID();
+    //this.id = '%04i'.format(here.id) + "-CHRO-" + CUUID.UUID4();
     this.l = new shared spinlock.SpinLock();
     this.l.t = ' '.join('CHROMOSOME', this.id);
+  }
+
+  proc init(id : string) {
+    //this.complete();
+    //var CUUID = new owned uuid.UUID();
+    this.id = id;
+    this.l = new shared spinlock.SpinLock();
+    this.l.t = ' '.join('CHROMOSOME', id);
   }
 
   proc prep(nRootGenes: int, nFunctionGenes: int) {

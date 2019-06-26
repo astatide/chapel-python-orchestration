@@ -68,6 +68,8 @@ class UUID {
              '-' + r_uuid[17..20] + '-' + r_uuid[21..32];
     return r_uuid;
   }
+
+  override proc writeThis(f) {}
 }
 //var uuid = new owned UUID();
 //uuid.UUID4();

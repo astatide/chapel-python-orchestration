@@ -295,6 +295,7 @@ class Propagator {
         // No reason this can't be parallel, so let's do it.
         //this.log.debug('Spawning chromosome', this.yh);
         var nc = new chromosomes.Chromosome();
+        nc.id = nG.generateChromosomeID;
         //this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
         nc.prep(startingSeeds, chromosomeSize-startingSeeds);
         nc.currentDeme = deme;
@@ -320,6 +321,7 @@ class Propagator {
         var nc = this.chromes[chrome];
         for i in 1..nDuplicates {
           var cc = nc.clone();
+          cc.id = nG.generateChromosomeID;
           cc.log = this.log;
           cc.advanceNodes(nG, this.yh);
           newCD.add(cc.id);

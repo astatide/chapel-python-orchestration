@@ -161,8 +161,8 @@ class YggdrasilLogging {
   var time = Time.getCurrentTime();
   //var l: [filesOpened] spinlock.SpinLock;
 
-  proc writeThis(f) {
-    
+  override proc writeThis(f) {
+
   }
 
   proc init() {

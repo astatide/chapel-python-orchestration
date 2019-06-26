@@ -171,6 +171,11 @@ class networkGenerator {
     return '%04i'.format(here.id) + '-GENE-' + NUUID.UUID4();
   }
 
+  proc generateChromosomeID {
+    // returns a UUID, prepended by the locale.
+    return '%04i'.format(here.id) + '-GENE-' + NUUID.UUID4();
+  }
+
   proc generateEmptyNodes(n: int) {
     // this will pre-generate a large set of UUIDs for us.
     // this is designed for the global arrays.
