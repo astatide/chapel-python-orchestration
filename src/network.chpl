@@ -126,6 +126,19 @@ class networkGenerator {
     //this.firstUnprocessed.write(addToUnprocessed);
   }
 
+  proc randomInGen {
+    // return a random node ID in this generation.
+    var RNG = new owned Random.PCGRandom.RandomStream(eltType = int);
+    var cId: int;
+    cId = this.currentId.read();
+    if cId > this.N {
+      // do not go higher than the actual number of nodes we have.
+      cId = this.N;
+    }
+    var rint = RNG.getNext(min = this.firstUnprocessed.read(), max = cId);
+    return this.idSet[rint];
+  }
+
   iter all {
     var cId: int;
     cId = this.currentId.read();

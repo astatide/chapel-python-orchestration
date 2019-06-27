@@ -157,6 +157,15 @@ class valkyrieExecutor: msgHandler {
         writeln("what is our msg?: " + newMsg : string);
         SEND(newMsg);
       }
+      when messaging.command.MOVE do {
+        var delta: genes.deltaRecord;
+        m.open(delta);
+        this.move(delta);
+        var newMsg = new messaging.msg(status.OK);
+        newMsg.COMMAND = messaging.command.RETURN_STATUS;
+        writeln("what is our msg?: " + newMsg : string);
+        SEND(newMsg);
+      }
     }
     writeln("VALKYRIE PROCESSED MSG");
     stdout.flush();

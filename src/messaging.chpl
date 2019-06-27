@@ -25,6 +25,7 @@ record commandRecord {
   var RECEIVE_SCORE: int = 3;
   var SET_ID: int = 4;
   var SHUTDOWN: int = 5;
+  var MOVE: int = 6;
 }
 
 var status: statusRecord;

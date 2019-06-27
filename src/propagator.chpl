@@ -71,7 +71,7 @@ var chromes: [chromosomeDomain] chromosomes.Chromosome;
 // (this is a record for a worker class)
 class valkyrie : msgHandler {
   // it's okay for now.
-  var matrixValues: [0..mSize] c_double;
+  //var matrixValues: [0..mSize] c_double;
   var log: shared ygglog.YggdrasilLogging();
   var takeAnyPath: bool = false;
   var moved: bool = false;
@@ -99,8 +99,22 @@ class valkyrie : msgHandler {
 
   proc moveToRoot() {
     // Zero out the matrix, return the root id.
-    this.matrixValues = 0;
+    //this.matrixValues = 0;
     this.currentNode = 'root';
+  }
+
+  proc moveToFirst(ref nG: shared network.networkGenerator, ref ygg: shared network.GeneNetwork) {
+    // move and send the message.
+    var id = nG.randomInGen;
+
+    var path = ygg.calculatePath('root', id, this.header);
+
+    var d = ygg.deltaFromPath(path, path.key(0), hstring=this.header);
+    d.to = id;
+    this.currentNode = id;
+    var newMsg = new messaging.msg(d);
+    newMsg.COMMAND = messaging.command.MOVE;
+    return newMsg;
   }
 
   proc init() {
@@ -137,23 +151,6 @@ class valkyrie : msgHandler {
     var s = this.__score__;
     this.__score__ = 0;
     return s;
-  }
-
-  // Assume we're given a delta object so that we may express it.
-  proc move(delta: deltaRecord, id: string) {
-    delta.express(this.matrixValues);
-    this.currentNode = id;
-    if unitTestMode {
-      if this.matrixValues[0] != this.currentNode : real {
-        // in unit test mode, we set up our IDs and matrix values such that
-        // every value of the matrix should be equal to ID.
-        // in that event, return a failure code.
-        return this.moveFailed;
-      } else {
-        return this.moveSuccessful;
-      }
-    }
-    return this.moveSuccessful;
   }
 
   proc sendToFile {
@@ -280,13 +277,13 @@ class Propagator {
     // We could actually create different loggers, if we wanted; the classes
     // and infrastructure support that.  Might be faster, dunno.
     // Typically, we probably won't have that much output, though, so.
-    this.ygg = new shared network.GeneNetwork();
+    //this.ygg = new shared network.GeneNetwork();
     this.yh = new ygglog.yggHeader();
     this.yh += 'Ragnarok';
     this.log = new shared ygglog.YggdrasilLogging();
     this.log.currentDebugLevel = debug;
-    this.ygg.log = this.log;
-    this.ygg.lock.log = this.log;
+    //this.ygg.log = this.log;
+    //this.ygg.lock.log = this.log;
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'Ragnarok';
     this.lock.log = this.log;
@@ -393,7 +390,7 @@ class Propagator {
     // start up the main procedure by creating some valkyries.
     coforall L in Locales {
       on L do {
-        if (!useLocale0 ^ (L == Locales[0])) {
+        if ((!useLocale0 || !(L == Locales[0]))) {
           var yH = new ygglog.yggHeader();
           yH += 'Ragnarok';
           this.log.debug("Spawn local network and networkGenerator", yH);
@@ -411,11 +408,6 @@ class Propagator {
           // now, make sure we know we have to process all of these.
           this.inCurrentGeneration.add(nG.currentId.read()-1);
           //this.log.debug("About to add existing nodes to the processing list", yH);
-          //var ids = this.ygg.ids;
-          //ref YNC = yggNodeCopy;
-          //var yggNodeCopy: network.GeneNetwork;
-          //begin with (ref yggNodeCopy) this.ygg.clone(yggNodeCopy);
-          //this.ygg.clone(yggLocalCopy);
 
           forall i in 1..maxValkyries with (ref nG, ref yggLocalCopy) {
             // spin up the Valkyries!
@@ -433,6 +425,11 @@ class Propagator {
             vLog.log('Initiating spawning sequence', hstring=v.header);
             var vp = v.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
             var nSpawned = this.numSpawned.fetchAdd(1);
+            v.moveToRoot();
+            vLog.debug("Moving to random node in network", hstring=v.header);
+            var moveMsg = v.moveToFirst(nG, yggLocalCopy);
+            v.SEND(moveMsg);
+            var moveStatus = v.RECV();
             if nSpawned < (((Locales.size-1)*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
               vLog.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, hstring=v.header);
@@ -440,7 +437,6 @@ class Propagator {
             } else {
               this.areSpawned = true;
             }
-            v.moveToRoot();
 
             for gen in 1..generations {
 
@@ -503,6 +499,7 @@ class Propagator {
                       v.priorityNodes.remove(currToProc);
                       v.nPriorityNodesProcessed += 1;
                     }
+                    v.currentNode = currToProc;
                     v.moved = true;
                     vLog.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
                     nG.removeUnprocessed(currToProc);
@@ -729,6 +726,7 @@ class Propagator {
             }
           }
         } else {
+          // here.runningTasksCNT or something like that
           while this.generation < generations do chpl_task_yield();
           writeln("fin.");
       }
