@@ -425,9 +425,9 @@ class Propagator {
             vLog.log('Initiating spawning sequence', hstring=v.header);
             var vp = v.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
             var nSpawned = this.numSpawned.fetchAdd(1);
-            var howManyValks: int = (((Locales.size)*maxValkyries)-1);
+            var howManyValks: int = (((Locales.size-1)*maxValkyries)-1);
             if !useLocale0 {
-              howManyValks = (((Locales.size-1)*maxValkyries)-1);
+              howManyValks = (((Locales.size)*maxValkyries)-1);
             }
             if nSpawned < howManyValks {
               // we want to wait so that we spin up all processes.
