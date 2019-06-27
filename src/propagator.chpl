@@ -393,21 +393,23 @@ class Propagator {
     coforall L in Locales {
       on L do {
         if true {
-          this.log.debug("Spawn local network and networkGenerator", this.yh);
+          var yH = new ygglog.yggHeader();
+          yH += 'Ragnarok';
+          this.log.debug("Spawn local network and networkGenerator", yH);
           var yggLocalCopy = new shared network.GeneNetwork();
           // CHANGE ME
           yggLocalCopy.log = this.log;
           yggLocalCopy.lock.log = this.log;
           var nG = new shared network.networkGenerator();
           // we're gonna want a list of network IDs we can use.
-          this.log.debug("Local networks spawned; creating chromosomes", this.yh);
+          this.log.debug("Local networks spawned; creating chromosomes", yH);
           this.initChromosomes(nG);
-          this.log.debug("Adding new nodes to unprocessed list", this.yh);
+          this.log.debug("Adding new nodes to unprocessed list", yH);
           nG.addUnprocessed();
-          this.log.debug("Setting the current generation count", this.yh);
+          this.log.debug("Setting the current generation count", yH);
           // now, make sure we know we have to process all of these.
           this.inCurrentGeneration.add(nG.currentId.read()-1);
-          //this.log.debug("About to add existing nodes to the processing list", this.yh);
+          //this.log.debug("About to add existing nodes to the processing list", yH);
           //var ids = this.ygg.ids;
           //ref YNC = yggNodeCopy;
           //var yggNodeCopy: network.GeneNetwork;
@@ -600,7 +602,7 @@ class Propagator {
                 // until that's set to true.
                 this.advanceChromosomes(nG);
                 nG.addUnprocessed();
-                this.log.debug("Setting the current generation count", this.yh);
+                vLog.debug("Setting the current generation count", v.header);
                 // now, make sure we know we have to process all of these.
                 //this.inCurrentGeneration.add(nG.currentId.read()-1);
                 this.finishedChromoProp.add(1);
