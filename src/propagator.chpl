@@ -49,6 +49,7 @@ config const stdoutOnly = false;
 config var nChromosomes = 6;
 config var chromosomeSize = 36;
 config var nDuplicates = 4;
+config const useLocale0 = false;
 
 // Empty record serves as comparator
 record Comparator { }
@@ -392,7 +393,7 @@ class Propagator {
     // start up the main procedure by creating some valkyries.
     coforall L in Locales {
       on L do {
-        if true {
+        if (useLocale0 ^ (L == Locales[0])) {
           var yH = new ygglog.yggHeader();
           yH += 'Ragnarok';
           this.log.debug("Spawn local network and networkGenerator", yH);
