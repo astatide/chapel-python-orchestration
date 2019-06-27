@@ -339,7 +339,7 @@ class Propagator {
     }
     //this.lock.url();
     cLock.url();
-    this.lock.wl();
+    //this.lock.wl();
     cLock.wl();
     network.globalLock.rl();
     for chrome in newCD {
@@ -357,7 +357,7 @@ class Propagator {
     }
     network.globalLock.url();
     cLock.uwl();
-    this.lock.uwl();
+    //this.lock.uwl();
   }
 
   proc exitRoutine() throws {
@@ -429,9 +429,10 @@ class Propagator {
             }
             vLog.log('Initiating spawning sequence', hstring=v.header);
             var vp = v.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
-            vLog.log('Clone complete; awaiting arrival of other valkyries', hstring=v.header);
-            if this.numSpawned.fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
+            var nSpawned = this.numSpawned.fetchAdd(1);
+            if nSpawned < ((Locales.size*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
+              vLog.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, this.hstring=v.header);
               this.areSpawned;
             } else {
               this.areSpawned = true;
