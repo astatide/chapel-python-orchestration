@@ -14,6 +14,7 @@ use chromosomes;
 use gjallarbru;
 use Spawn;
 use messaging;
+use HashedDist;
 
 record scoreComparator {
   proc keyPart(x: (string, real), i: int) {
@@ -26,6 +27,7 @@ record scoreComparator {
 
 //var UUIDP = new owned uuid.UUID();
 //UUIDP.UUID4();
+
 
 config const mSize = 20;
 config const maxPerGeneration = 10;
@@ -57,6 +59,11 @@ proc Comparator.compare(a, b) {
 }
 
 var absComparator: Comparator;
+var cLock = new shared spinlock.SpinLock();
+cLock.t = 'Chromosomes';
+cLock.log = new shared ygglog.YggdrasilLogging();
+var chromosomeDomain: domain(string) dmapped Hashed(idxType=string, mapper = new network.mapperByLocale());
+var chromes: [chromosomeDomain] chromosomes.Chromosome;
 
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
@@ -215,8 +222,6 @@ class Propagator {
   // Because the chromosomes are an abstraction of the gene network, and are
   // in many respects related more to the movement rather than graph problems,
   // the propagator is responsible for it.
-  var chromosomeDomain: domain(string);
-  var chromes: [chromosomeDomain] chromosomes.Chromosome;
 
 
   proc logo() {
@@ -303,10 +308,12 @@ class Propagator {
         nc.log = this.log;
         var n: int = 1;
         nc.generateNodes(nG, this.yh);
-        this.lock.wl();
-        this.chromosomeDomain.add(nc.id);
-        this.chromes[nc.id] = nc;
-        this.lock.uwl();
+        //this.lock.wl();
+        cLock.wl();
+        chromosomeDomain.add(nc.id);
+        chromes[nc.id] = nc;
+        cLock.uwl();
+        //this.lock.uwl();
       }
     }
   }
@@ -315,10 +322,11 @@ class Propagator {
     //vLog.debug('Advancing the chromosomes.', vheader);
     var newCD: domain(string);
     var newC: [newCD] chromosomes.Chromosome;
-    this.lock.rl();
-    for chrome in this.chromosomeDomain {
-      if !this.chromes[chrome].isProcessed.testAndSet() {
-        var nc = this.chromes[chrome];
+    //this.lock.rl();
+    cLock.rl();
+    for chrome in chromosomeDomain {
+      if !chromes[chrome].isProcessed.testAndSet() {
+        var nc = chromes[chrome];
         for i in 1..nDuplicates {
           var cc = nc.clone();
           cc.id = nG.generateChromosomeID;
@@ -329,12 +337,14 @@ class Propagator {
         }
       }
     }
-    this.lock.url();
+    //this.lock.url();
+    cLock.url();
     this.lock.wl();
+    cLock.wl();
     network.globalLock.rl();
     for chrome in newCD {
-      this.chromosomeDomain.add(chrome);
-      this.chromes[chrome] = newC[chrome];
+      chromosomeDomain.add(chrome);
+      chromes[chrome] = newC[chrome];
       for node in newC[chrome].geneIDs {
         if node != 'root' {
           this.nextGeneration.add(node);
@@ -346,6 +356,7 @@ class Propagator {
       }
     }
     network.globalLock.url();
+    cLock.uwl();
     this.lock.uwl();
   }
 
@@ -527,14 +538,17 @@ class Propagator {
                       network.globalLock.rl();
                       var nc = network.globalNodes[currToProc].chromosome;
                       network.globalLock.url();
-                      var inChromeID = this.chromes[nc].returnNodeNumber(currToProc);
+                      cLock.rl();
+                      var inChromeID = chromes[nc].returnNodeNumber(currToProc);
+                      cLock.url();
                       //if inChromeID == -1 {
 
                       //}
                       vLog.debug('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
-                      //vLog.debug('DemeDomain in chromosome:', this.chromes[nc].geneNumbers : string, hstring=v.header);
-                      vLog.debug('DemeDomain in chromosome:', this.chromes[nc].geneIDs : string, hstring=v.header);
-                      this.chromes[nc].scores[inChromeID] = score;
+                      cLock.rl();
+                      vLog.debug('DemeDomain in chromosome:', chromes[nc].geneIDs : string, hstring=v.header);
+                      chromes[nc].scores[inChromeID] = score;
+                      cLock.url();
 
                       //network.globalLock.url();
                     }
@@ -606,8 +620,8 @@ class Propagator {
                 var chromosomesToAdvance: domain(string);
                 var c: [chromosomesToAdvance] chromosomes.Chromosome;
                 vLog.debug('Determining which chromosomes to advance', v.header);
-                for chrome in this.chromosomeDomain {
-                  var deme = this.chromes[chrome].currentDeme;
+                for chrome in chromosomeDomain {
+                  var deme = chromes[chrome].currentDeme;
                   //var (lowestScore, minLoc) = minloc reduce zip(this.scoreArray[deme], this.scoreArray.domain);
                   var lowestScore : real = Math.INFINITY;
                   var minLoc : int;
@@ -619,7 +633,7 @@ class Propagator {
                     }
                   }
                   vLog.debug('Finding the highest scoring node on this chromosome and seeing if it is good enough.', v.header);
-                  var (bestScore, bestNode) = this.chromes[chrome].bestGeneInDeme[this.chromes[chrome].currentDeme];
+                  var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
                   if bestScore > lowestScore {
                     this.scoreArray[deme, minLoc] = bestScore;
                     this.idArray[deme, minLoc] = chrome;
@@ -637,9 +651,9 @@ class Propagator {
                 vLog.debug('Clearing the domain of those who are not continuing.', v.header);
                 //if true {
                 var vheader = v.header;
-                for chrome in this.chromosomeDomain {
+                for chrome in chromosomeDomain {
                   if !chromosomesToAdvance.contains(chrome) {
-                    this.chromosomeDomain.remove(chrome);
+                    chromosomeDomain.remove(chrome);
                   }
                 }
                 this.readyForChromosomes[gen] = true;
@@ -663,9 +677,9 @@ class Propagator {
                 for node in this.nextGeneration {
                   this.inCurrentGeneration.add(1);
                   vLog.debug("Node ID:", node : string, hstring=v.header);
-                  vLog.debug('Chromosome:', this.chromes[globalNodes[node].chromosome] : string, hstring=v.header);
+                  vLog.debug('Chromosome:', chromes[globalNodes[node].chromosome] : string, hstring=v.header);
                   var isInChromosome: bool = false;
-                  for n in this.chromes[globalNodes[node].chromosome].geneIDs {
+                  for n in chromes[globalNodes[node].chromosome].geneIDs {
                     if !isInChromosome {
                       if n == node {
                         isInChromosome = true;
