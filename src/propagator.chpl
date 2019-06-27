@@ -425,11 +425,6 @@ class Propagator {
             vLog.log('Initiating spawning sequence', hstring=v.header);
             var vp = v.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
             var nSpawned = this.numSpawned.fetchAdd(1);
-            v.moveToRoot();
-            vLog.debug("Moving to random node in network", hstring=v.header);
-            var moveMsg = v.moveToFirst(nG, yggLocalCopy);
-            v.SEND(moveMsg);
-            var moveStatus = v.RECV();
             if nSpawned < (((Locales.size-1)*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
               vLog.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, hstring=v.header);
@@ -437,6 +432,11 @@ class Propagator {
             } else {
               this.areSpawned = true;
             }
+            v.moveToRoot();
+            vLog.debug("Moving to random node in network", hstring=v.header);
+            var moveMsg = v.moveToFirst(nG, yggLocalCopy);
+            v.SEND(moveMsg);
+            var moveStatus = v.RECV();
 
             for gen in 1..generations {
 
