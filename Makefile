@@ -27,10 +27,10 @@ clean:
 	rm yggdrasil
 
 valkyrie:
-	chpl -o valkyrie valkyrie.chpl $(LINCLUDE) $(MACLUDE) --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" --comm none --launcher none $(DEBUG)
+	chpl -o valkyrie valkyrie.chpl $(LINCLUDE) $(MACLUDE) --ccflags "-O2 -w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" --comm none --launcher none $(DEBUG)
 
 yggdrasil:
-	chpl -o yggdrasil main.chpl $(LINCLUDE)    $(MACLUDE) --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" $(COMM) $(DEBUG)
+	chpl -o yggdrasil main.chpl $(LINCLUDE)    $(MACLUDE) --ccflags "-O2 -w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" $(COMM) $(DEBUG)
 
 spawn:
 	env CHPL_DEVELOPER=true chpl -o spawn -L /usr/local/lib -I /usr/local/include -M src/ -M python/ sp.chpl --ccflags "-w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" -g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks
