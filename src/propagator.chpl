@@ -390,7 +390,7 @@ class Propagator {
     // start up the main procedure by creating some valkyries.
     coforall L in Locales {
       on L do {
-        if ((!useLocale0 || !(L == Locales[0]))) {
+        if ((useLocale0 || !(L == Locales[0]))) {
           var yH = new ygglog.yggHeader();
           yH += 'Ragnarok';
           this.log.debug("Spawn local network and networkGenerator", yH);
@@ -426,7 +426,7 @@ class Propagator {
             var vp = v.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
             var nSpawned = this.numSpawned.fetchAdd(1);
             var howManyValks: int = (((Locales.size-1)*maxValkyries)-1);
-            if !useLocale0 {
+            if useLocale0 {
               howManyValks = (((Locales.size)*maxValkyries)-1);
             }
             if nSpawned < howManyValks {
