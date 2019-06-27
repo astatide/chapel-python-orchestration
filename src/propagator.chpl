@@ -432,7 +432,7 @@ class Propagator {
             var nSpawned = this.numSpawned.fetchAdd(1);
             if nSpawned < ((Locales.size*maxValkyries)-1) {
               // we want to wait so that we spin up all processes.
-              vLog.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, this.hstring=v.header);
+              vLog.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, hstring=v.header);
               this.areSpawned;
             } else {
               this.areSpawned = true;
