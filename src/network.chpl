@@ -120,8 +120,8 @@ class networkGenerator {
     }
     //writeln("Taking from our currentGeneration! What's our starting point? ", this.firstUnprocessed.read() : string);
     //var addToUnprocessed: int = this.firstUnprocessed.read();
+    this.l.rl();
     for i in this.firstUnprocessed.read()..cId {
-      this.l.rl();
       var id = this.idSet[i];
       if !this.processed[id] {
         //this.l.url();
@@ -130,8 +130,8 @@ class networkGenerator {
       } else {
         //addToUnprocessed += 1;
       }
-      this.l.url();
     }
+    this.l.url();
     //this.firstUnprocessed.write(addToUnprocessed);
   }
 
@@ -156,17 +156,17 @@ class networkGenerator {
       // do not go higher than the actual number of nodes we have.
       cId = this.N;
     }
+    this.l.rl();
     for i in 1..cId {
       //writeln("Current readHandles: ", this.l.readHandles.read() : string);
-      this.l.rl();
       var id = this.idSet[i];
       //writeln(this.processed[id] : string);
       if !this.processed[id] {
         //this.l.url();
         yield id;
       }
-      this.l.url();
     }
+    this.l.url();
   }
 
   proc removeUnprocessed(id : string) {
