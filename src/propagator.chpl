@@ -114,7 +114,9 @@ class valkyrie : msgHandler {
     this.currentNode = id;
     var newMsg = new messaging.msg(d);
     newMsg.COMMAND = messaging.command.MOVE;
-    return newMsg;
+    this.SEND(moveMsg);
+    // you need to receive the status back.
+    var moveStatus = this.RECV();
   }
 
   proc init() {
@@ -438,9 +440,7 @@ class Propagator {
             }
             v.moveToRoot();
             vLog.debug("Moving to random node in network", hstring=v.header);
-            var moveMsg = v.moveToFirst(nG, yggLocalCopy);
-            v.SEND(moveMsg);
-            var moveStatus = v.RECV();
+            v.moveToFirst(nG, yggLocalCopy);
 
             for gen in 1..generations {
 

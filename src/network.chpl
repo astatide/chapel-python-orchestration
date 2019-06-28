@@ -392,14 +392,14 @@ class GeneNetwork {
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__addNode__';
     this.lock.wl(vstring);
-    this.log.debug('Adding node', id : string, 'to GeneNetwork ID:', this.id : string, hstring=vstring);
+    //this.log.debug('Adding node', id : string, 'to GeneNetwork ID:', this.id : string, hstring=vstring);
     if !this.ids.contains(id) {
       this.ids.add(id);
     }
     //globalLock.rl();
-    this.log.debug('Attempting to grab node ID:', id : string, 'on locale', this.locale : string, hstring=vstring);
+    //this.log.debug('Attempting to grab node ID:', id : string, 'on locale', this.locale : string, hstring=vstring);
     ref node = globalNodes[id];
-    this.log.debug('Node grabbed!  Node ID:', id : string, 'on locale', this.locale : string, hstring=vstring);
+    //this.log.debug('Node grabbed!  Node ID:', id : string, 'on locale', this.locale : string, hstring=vstring);
     //globalLock.url();
     this.nodeVersion[id] = node.returnRevision();
     //this.nodes[node.id] = node;
