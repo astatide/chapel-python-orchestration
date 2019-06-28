@@ -140,7 +140,7 @@ proc +=(ref a: yggHeader, b: string) {
 
 class YggdrasilLogging {
   // This is a class to let us handle all input and output.
-  var currentDebugLevel: int;
+  var currentDebugLevel: int = 0;
   var DEVEL = -1;
   var DEBUG = 0;
   var WARNING = 1;

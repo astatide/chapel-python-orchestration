@@ -106,15 +106,13 @@ class valkyrie : msgHandler {
   proc moveToFirst(ref nG: shared network.networkGenerator, ref ygg: shared network.GeneNetwork) {
     // move and send the message.
     var id = nG.randomInGen;
-
     var path = ygg.calculatePath('root', id, this.header);
-
     var d = ygg.deltaFromPath(path, path.key(0), hstring=this.header);
     d.to = id;
     this.currentNode = id;
     var newMsg = new messaging.msg(d);
     newMsg.COMMAND = messaging.command.MOVE;
-    this.SEND(moveMsg);
+    this.SEND(newMsg);
     // you need to receive the status back.
     var moveStatus = this.RECV();
   }
@@ -145,7 +143,7 @@ class valkyrie : msgHandler {
         m.open(this.__score__);
       }
     }
-    this.log.debug("SCORE IS", this.__score__ : string, hstring = this.header);
+    //this.log.debug("SCORE IS", this.__score__ : string, hstring = this.header);
     //stdout.flush();
   }
 
@@ -293,7 +291,8 @@ class Propagator {
     // basically, re-add the root node to make sure its connections are up to date
   }
 
-  proc initChromosomes(ref nG: shared network.networkGenerator) {
+  proc initChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
+
     forall deme in 0..4 with (ref nG) {
       forall i in 1..nChromosomes with (ref nG) {
         // Here, we're going to be given the instructions for generating chromosomes.
@@ -304,10 +303,10 @@ class Propagator {
         //this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
         nc.prep(startingSeeds, chromosomeSize-startingSeeds);
         nc.currentDeme = deme;
-        this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, this.yh);
-        nc.log = this.log;
+        this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, yh);
+        //nc.log = this.log;
         var n: int = 1;
-        nc.generateNodes(nG, this.yh);
+        nc.generateNodes(nG, yh);
         //this.lock.wl();
         cLock.wl();
         chromosomeDomain.add(nc.id);
@@ -318,7 +317,7 @@ class Propagator {
     }
   }
 
-  proc advanceChromosomes(ref nG: shared network.networkGenerator) {
+  proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
     //vLog.debug('Advancing the chromosomes.', vheader);
     var newCD: domain(string);
     var newC: [newCD] chromosomes.Chromosome;
@@ -330,8 +329,8 @@ class Propagator {
         for i in 1..nDuplicates {
           var cc = nc.clone();
           cc.id = nG.generateChromosomeID;
-          cc.log = this.log;
-          cc.advanceNodes(nG, this.yh);
+          //cc.log = this.log;
+          cc.advanceNodes(nG, yH);
           newCD.add(cc.id);
           newC[cc.id] = cc;
         }
@@ -398,12 +397,12 @@ class Propagator {
           this.log.debug("Spawn local network and networkGenerator", yH);
           var yggLocalCopy = new shared network.GeneNetwork();
           // CHANGE ME
-          yggLocalCopy.log = this.log;
-          yggLocalCopy.lock.log = this.log;
+          //yggLocalCopy.log = this.log;
+          //yggLocalCopy.lock.log = this.log;
           var nG = new shared network.networkGenerator();
           // we're gonna want a list of network IDs we can use.
           this.log.debug("Local networks spawned; creating chromosomes", yH);
-          this.initChromosomes(nG);
+          this.initChromosomes(nG, yH);
           this.log.debug("Adding new nodes to unprocessed list", yH);
           nG.addUnprocessed();
           this.log.debug("Setting the current generation count", yH);
@@ -439,8 +438,9 @@ class Propagator {
               this.areSpawned = true;
             }
             v.moveToRoot();
-            vLog.debug("Moving to random node in network", hstring=v.header);
-            v.moveToFirst(nG, yggLocalCopy);
+            //vLog.debug("Moving to random node in network", hstring=v.header);
+            // ?  Why does this seem to cause issues?  So odd.
+            //v.moveToFirst(nG, yggLocalCopy);
 
             for gen in 1..generations {
 
@@ -475,6 +475,9 @@ class Propagator {
                 }
                 //network.globalLock.url();
               }
+
+              //var firstTime: bool = true;
+
               while this.inCurrentGeneration.read() > 0 {
                 // We clear this out because it is faster to just re-enumerate the
                 // nodes that need processing, rather than explicitly calculating
@@ -602,7 +605,7 @@ class Propagator {
                 vLog.log('Grabbing chromosomes to process', hstring=v.header);
                 // moveOn is an array of sync variables.  We're blocked from reading
                 // until that's set to true.
-                this.advanceChromosomes(nG);
+                this.advanceChromosomes(nG, yH);
                 nG.addUnprocessed();
                 vLog.debug("Setting the current generation count", v.header);
                 // now, make sure we know we have to process all of these.
@@ -662,7 +665,7 @@ class Propagator {
                   }
                 }
                 this.readyForChromosomes[gen] = true;
-                this.advanceChromosomes(nG);
+                this.advanceChromosomes(nG, yH);
                 //}
                 this.scoreArray = -1;
                 this.log.debug("Setting the current generation count", this.yh);

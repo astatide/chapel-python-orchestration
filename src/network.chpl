@@ -421,15 +421,40 @@ class GeneNetwork {
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'GeneNetwork';
     this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
+    this.log = new shared ygglog.YggdrasilLogging();
     this.complete();
     // create a new
     this.id = this.generateID;
+    this.log.currentDebugLevel = 0;
   }
 
   proc initializeRoot() {
     this.rootNode.log = this.log;
     this.rootNode.l.log = this.log;
     //this.add_node(this.rootNode, new ygglog.yggHeader() + 'initializeNetwork');
+  }
+
+  iter returnEdgesOnLocale(node : string) {
+    var edgesToReturn: domain(string);
+    var edgesForLater: domain(string);
+    this.lock.rl();
+    for edge in this.edges[node] {
+      if edge[1..4] == '%04i'.format(here.id) {
+        edgesToReturn.add(edge);
+      } else {
+        edgesForLater.add(edge);
+      }
+    }
+    this.lock.url();
+    if !edgesToReturn.isEmpty() {
+      for edge in edgesToReturn {
+        yield edge;
+      }
+    } else {
+      for edge in edgesForLater {
+        yield edge;
+      }
+    }
   }
 
   proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray) {
@@ -479,7 +504,7 @@ class GeneNetwork {
     paths[id_A].node[0] = id_A;
     // catch an empty id_B!
     if id_B.isEmpty() {
-      //this.log.debug('id_B is empty; is this okay?', hstring=vstring);
+      this.log.debug('id_B is empty; is this okay?', hstring=vstring);
       return (id_A, paths[id_A], removeFromSet);
     }
     while !id_B.isEmpty() {
@@ -506,10 +531,12 @@ class GeneNetwork {
         }
       }
       // we now assume this is an incomplete network.
-      for edge in this.edges[currentNode] do {
+      for edge in this.returnEdgesOnLocale(currentNode) do {
+        this.log.debug('Edge ID:', edge : string, hstring=vstring);
         // why are we a big, errortastical bitch?
         //if !this.ids.contains(edge) {
         if !nodes.contains(edge) {
+          this.log.debug('Adding edge ID:', edge : string, hstring=vstring);
           nodes.add(edge);
           visited[edge] = false;
           dist[edge] = Math.INFINITY;
@@ -544,7 +571,9 @@ class GeneNetwork {
       // Oh man, and does it ever.  Basically, we don't leave this routine
       // untl we have one we KNOW can process, or there's nothing left to
       // process.
+      this.log.debug('Checking if ID in list:', currentNode : string, hstring=vstring);
       if id_B.contains(currentNode) {
+        this.log.debug("ID:", currentNode : string, "in id_B!  id_B:", id_B : string, hstring=vstring);
         if checkArray {
           // We should actually do the testAndSet here, although I sort of
           // dislike having the network access the array.  If false, we can use it!
@@ -567,6 +596,8 @@ class GeneNetwork {
             }
           }
         } else {
+          this.log.debug("Not checking array; returning path for ID:", currentNode : string, hstring=vstring);
+          this.log.debug('ID:', currentNode : string, 'Path:', paths[currentNode] : string, hstring=vstring);
           return (currentNode, paths[currentNode], removeFromSet);
         }
       }

@@ -204,6 +204,9 @@ record Chromosome {
     //this.id = '%04i'.format(here.id) + "-CHRO-" + CUUID.UUID4();
     this.l = new shared spinlock.SpinLock();
     this.l.t = ' '.join('CHROMOSOME', this.id);
+    this.log = new shared ygglog.YggdrasilLogging();
+    this.complete();
+    this.l.log = this.log;
   }
 
   proc init(id : string) {
@@ -212,6 +215,9 @@ record Chromosome {
     this.id = id;
     this.l = new shared spinlock.SpinLock();
     this.l.t = ' '.join('CHROMOSOME', id);
+    this.log = new shared ygglog.YggdrasilLogging();
+    this.complete();
+    this.l.log = this.log;
   }
 
   proc prep(nRootGenes: int, nFunctionGenes: int) {
