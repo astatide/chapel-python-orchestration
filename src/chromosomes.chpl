@@ -299,7 +299,7 @@ record Chromosome {
         if initial {
           this.log.debug("INITIAL GO; adding seed to root.", hstring=vstring);
           network.globalLock.rl();
-          ref rootNode = network.globalNodes['root'];
+          ref rootNode = network.globalNodes[nG.root];
           network.globalLock.url();
           node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = rootNode);
         } else {
@@ -335,7 +335,7 @@ record Chromosome {
         this.log.debug('Getting node!', hstring=vstring);
         if initial {
           this.log.debug('Calling combination node', hstring=vstring);
-          node.newCombinationNode(idList, seedList, this.currentDeme, 'root', network.globalNodes);
+          node.newCombinationNode(idList, seedList, this.currentDeme, nG.root, network.globalNodes);
         } else {
           this.log.debug('Calling combination node', hstring=vstring);
           node.newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes);

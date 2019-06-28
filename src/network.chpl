@@ -62,6 +62,7 @@ class networkGenerator {
   var irng = new owned rng.UDevRandomHandler();
   var N: int = 0;
   var newNodeStartingPoint: int = 1;
+  var root: string;
 
   proc init() {
     this.complete();
@@ -99,7 +100,15 @@ class networkGenerator {
       globalIDs.add('root');
       globalNodes['root'] = rootNode;
     }
+    // now, create your own root.
+    var rootLocaleNode = new shared genes.GeneNode();
+    rootLocaleNode.id = this.generateID;
+    rootLocaleNode.revision = genes.SPAWNED;
+    globalIDs.add(rootLocaleNode.id);
+    globalNodes['root'].join(rootLocaleNode, new genes.deltaRecord());
+    globalNodes[rootLocaleNode.id] = rootLocaleNode;
     globalLock.uwl();
+    this.root = rootLocaleNode.id;
   }
 
   iter currentGeneration {
@@ -531,7 +540,7 @@ class GeneNetwork {
         }
       }
       // we now assume this is an incomplete network.
-      for edge in this.returnEdgesOnLocale(currentNode) do {
+      for edge in this.edges[currentNode] do {
         this.log.debug('Edge ID:', edge : string, hstring=vstring);
         // why are we a big, errortastical bitch?
         //if !this.ids.contains(edge) {

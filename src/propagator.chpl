@@ -437,7 +437,8 @@ class Propagator {
             } else {
               this.areSpawned = true;
             }
-            v.moveToRoot();
+            //v.moveToRoot();
+            v.currentNode = nG.root;
             //vLog.debug("Moving to random node in network", hstring=v.header);
             // ?  Why does this seem to cause issues?  So odd.
             //v.moveToFirst(nG, yggLocalCopy);

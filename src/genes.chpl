@@ -441,7 +441,7 @@ class GeneNode {
 
   // Now, the functions to handle the nodes!
   proc join(ref node: shared GeneNode, delta: deltaRecord) {
-    this.__join__(node, delta, hstring='');
+    this.__join__(node, delta, hstring=new ygglog.yggHeader());
   }
   proc join(ref node: shared GeneNode, delta: deltaRecord, hstring: ygglog.yggHeader) {
     this.__join__(node, delta, hstring);
