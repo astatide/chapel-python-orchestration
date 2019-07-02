@@ -58,6 +58,7 @@ class networkGenerator {
   var currentId: atomic int = 1;
   var firstUnprocessed: atomic int = 1;
   var firstUnprocessedNonAtomic: int = 1;
+  var firstUnprocessedOld: atomic int = 1;
   var l = new shared spinlock.SpinLock();
   var isUpdating: atomic bool = false;
   var irng = new owned rng.UDevRandomHandler();
@@ -151,7 +152,8 @@ class networkGenerator {
       cId = this.N;
     }
     this.l.rl();
-    for i in 1..cId {
+    var mId: int = this.firstUnprocessedOld.read();
+    for i in mId..cId {
       var id = this.idSet[i];
       if !this.processed[id] {
         yield id;
@@ -175,6 +177,7 @@ class networkGenerator {
   }
 
   proc setCurrentGeneration() {
+    this.firstUnprocessedOld.write(this.firstUnprocessed.read());
     this.firstUnprocessed.write(this.currentId.read());
     this.firstUnprocessedNonAtomic = this.firstUnprocessed.read();
   }
