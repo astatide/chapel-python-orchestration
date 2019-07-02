@@ -11,6 +11,8 @@ extern proc chpl_nodeName(): c_string;
 config const awaitResponse = false;
 config const yieldWhileWait = false;
 config const heartBeat: int = 100;
+config const yieldOnWait: bool = false;
+config const trueSleep: bool = true;
 
 
 record statusRecord {
@@ -273,14 +275,30 @@ class msgHandler {
   }
 
   proc initSendSocket(i: int) {
-    this.socket[i] = this.context.socket(ZMQ.REQ);
+    this.socket[i] = this.context.socket(ZMQ.PAIR);
+    this.socket[i].yieldOnWait = yieldOnWait;
+    this.socket[i].trueSleep = trueSleep;
+    //this.socket[i].setsockopt(ZMQ.ZMQ_HEARTBEAT_IVL, 2000);
+    //this.socket[i].setsockopt(ZMQ.ZMQ_HEARTBEAT_TIMEOUT, 2000);
+    //this.socket[i].setsockopt(ZMQ.ZMQ_HEARTBEAT_TTL, 6000);
+    //this.socket[i].setsockopt(ZMQ.HEARTBEAT_IVL, 20);
+    //this.socket[i].setsockopt(ZMQ.HEARTBEAT_TIMEOUT, 20);
+    //this.socket[i].setsockopt(ZMQ.HEARTBEAT_TTL, 60);
     this.socket[i].bind("tcp://*:*");
     this.ports[i] = this.socket[i].getLastEndpoint().replace("0.0.0.0",chpl_nodeName():string);
   }
 
   proc initRecvSocket(i: int, port: string) {
     // so, we're going to set up and use a random port.
-    this.socket[i] = this.context.socket(ZMQ.REP);
+    this.socket[i] = this.context.socket(ZMQ.PAIR);
+    this.socket[i].yieldOnWait = yieldOnWait;
+    this.socket[i].trueSleep = trueSleep;
+    //this.socket[i].setsockopt(ZMQ.ZMQ_HEARTBEAT_IVL, 2000);
+    //this.socket[i].setsockopt(ZMQ.ZMQ_HEARTBEAT_TIMEOUT, 2000);
+    //this.socket[i].setsockopt(ZMQ.ZMQ_HEARTBEAT_TTL, 6000);
+    //this.socket[i].setsockopt(ZMQ.HEARTBEAT_IVL, 20);
+    //this.socket[i].setsockopt(ZMQ.HEARTBEAT_TIMEOUT, 20);
+    //this.socket[i].setsockopt(ZMQ.HEARTBEAT_TTL, 60);
     this.socket[i].connect(port);
     this.ports[i] = port;
   }
