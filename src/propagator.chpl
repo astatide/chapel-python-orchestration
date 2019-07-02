@@ -457,7 +457,7 @@ class Propagator {
               currToProc = '';
               //toProcess.clear();
 
-              for id in nG.all {
+              for id in nG.currentGeneration {
                 toProcess.add(id);
                 vLog.debug('Adding node ID: ', id : string, hstring=v.header);
               }
