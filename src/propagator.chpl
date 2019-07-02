@@ -15,6 +15,7 @@ use gjallarbru;
 use Spawn;
 use messaging;
 use HashedDist;
+use Time;
 
 record scoreComparator {
   proc keyPart(x: (string, real), i: int) {
@@ -65,6 +66,74 @@ cLock.t = 'Chromosomes';
 cLock.log = new shared ygglog.YggdrasilLogging();
 var chromosomeDomain: domain(string) dmapped Hashed(idxType=string, mapper = new network.mapperByLocale());
 var chromes: [chromosomeDomain] chromosomes.Chromosome;
+
+proc initChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
+
+  forall deme in 0..4 with (ref nG) {
+    forall i in 1..nChromosomes with (ref nG) {
+      // Here, we're going to be given the instructions for generating chromosomes.
+      // No reason this can't be parallel, so let's do it.
+      //this.log.debug('Spawning chromosome', this.yh);
+      var nc = new chromosomes.Chromosome();
+      nc.id = nG.generateChromosomeID;
+      //this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
+      nc.prep(startingSeeds, chromosomeSize-startingSeeds);
+      nc.currentDeme = deme;
+      //this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, yh);
+      //nc.log = this.log;
+      var n: int = 1;
+      nc.generateNodes(nG, yH);
+      //this.lock.wl();
+      cLock.wl();
+      chromosomeDomain.add(nc.id);
+      chromes[nc.id] = nc;
+      cLock.uwl();
+      //this.lock.uwl();
+    }
+  }
+}
+
+proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
+  //vLog.debug('Advancing the chromosomes.', vheader);
+  var newCD: domain(string);
+  var newC: [newCD] chromosomes.Chromosome;
+  //this.lock.rl();
+  cLock.rl();
+  for chrome in chromosomeDomain {
+    if !chromes[chrome].isProcessed.testAndSet() {
+      var nc = chromes[chrome];
+      for i in 1..nDuplicates {
+        var cc = nc.clone();
+        cc.id = nG.generateChromosomeID;
+        //cc.log = this.log;
+        cc.advanceNodes(nG, yH);
+        newCD.add(cc.id);
+        newC[cc.id] = cc;
+      }
+    }
+  }
+  //this.lock.url();
+  cLock.url();
+  //this.lock.wl();
+  cLock.wl();
+  network.globalLock.rl();
+  for chrome in newCD {
+    chromosomeDomain.add(chrome);
+    chromes[chrome] = newC[chrome];
+    for node in newC[chrome].geneIDs {
+      if node != 'root' {
+        //this.nextGeneration.add(node);
+        writeln(globalNodes[node].chromosome, ' : ', chrome);
+        writeln(node);
+        //writeln(globalNodes[node]);
+        //assert(globalNodes[node].chromosome == chrome);
+      }
+    }
+  }
+  network.globalLock.url();
+  cLock.uwl();
+  //this.lock.uwl();
+}
 
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
@@ -291,74 +360,6 @@ class Propagator {
     // basically, re-add the root node to make sure its connections are up to date
   }
 
-  proc initChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
-
-    forall deme in 0..4 with (ref nG) {
-      forall i in 1..nChromosomes with (ref nG) {
-        // Here, we're going to be given the instructions for generating chromosomes.
-        // No reason this can't be parallel, so let's do it.
-        //this.log.debug('Spawning chromosome', this.yh);
-        var nc = new chromosomes.Chromosome();
-        nc.id = nG.generateChromosomeID;
-        //this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
-        nc.prep(startingSeeds, chromosomeSize-startingSeeds);
-        nc.currentDeme = deme;
-        this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, yh);
-        //nc.log = this.log;
-        var n: int = 1;
-        nc.generateNodes(nG, yh);
-        //this.lock.wl();
-        cLock.wl();
-        chromosomeDomain.add(nc.id);
-        chromes[nc.id] = nc;
-        cLock.uwl();
-        //this.lock.uwl();
-      }
-    }
-  }
-
-  proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
-    //vLog.debug('Advancing the chromosomes.', vheader);
-    var newCD: domain(string);
-    var newC: [newCD] chromosomes.Chromosome;
-    //this.lock.rl();
-    cLock.rl();
-    for chrome in chromosomeDomain {
-      if !chromes[chrome].isProcessed.testAndSet() {
-        var nc = chromes[chrome];
-        for i in 1..nDuplicates {
-          var cc = nc.clone();
-          cc.id = nG.generateChromosomeID;
-          //cc.log = this.log;
-          cc.advanceNodes(nG, yH);
-          newCD.add(cc.id);
-          newC[cc.id] = cc;
-        }
-      }
-    }
-    //this.lock.url();
-    cLock.url();
-    //this.lock.wl();
-    cLock.wl();
-    network.globalLock.rl();
-    for chrome in newCD {
-      chromosomeDomain.add(chrome);
-      chromes[chrome] = newC[chrome];
-      for node in newC[chrome].geneIDs {
-        if node != 'root' {
-          this.nextGeneration.add(node);
-          writeln(globalNodes[node].chromosome, ' : ', chrome);
-          writeln(node);
-          //writeln(globalNodes[node]);
-          //assert(globalNodes[node].chromosome == chrome);
-        }
-      }
-    }
-    network.globalLock.url();
-    cLock.uwl();
-    //this.lock.uwl();
-  }
-
   proc exitRoutine() throws {
     // command the logger to shut down, then exit.
     this.lock.wl(this.yh);
@@ -389,20 +390,21 @@ class Propagator {
     // should probably do this for each task but hey whatever.
     // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
+    var startTime: real = this.log.time;
     coforall L in Locales {
       on L do {
         if ((useLocale0 || !(L == Locales[0]))) {
           var yH = new ygglog.yggHeader();
           yH += 'Ragnarok';
           this.log.debug("Spawn local network and networkGenerator", yH);
-          var yggLocalCopy = new shared network.GeneNetwork();
+          var ygg = new shared network.GeneNetwork();
           // CHANGE ME
-          //yggLocalCopy.log = this.log;
-          //yggLocalCopy.lock.log = this.log;
+          //ygg.log = this.log;
+          //ygg.lock.log = this.log;
           var nG = new shared network.networkGenerator();
           // we're gonna want a list of network IDs we can use.
           this.log.debug("Local networks spawned; creating chromosomes", yH);
-          this.initChromosomes(nG, yH);
+          initChromosomes(nG, yH);
           this.log.debug("Adding new nodes to unprocessed list", yH);
           nG.addUnprocessed();
           this.log.debug("Setting the current generation count", yH);
@@ -410,9 +412,9 @@ class Propagator {
           this.inCurrentGeneration.add(nG.currentId.read()-1);
           //this.log.debug("About to add existing nodes to the processing list", yH);
 
-          forall i in 1..maxValkyries with (ref nG, ref yggLocalCopy) {
+          forall i in 1..maxValkyries with (ref nG, ref ygg) {
             // spin up the Valkyries!
-            var vLog = new shared ygglog.YggdrasilLogging();
+            var vLog = new shared ygglog.YggdrasilLogging(startTime);
             vLog.currentDebugLevel = debug;
             var vLock = new shared spinlock.SpinLock();
             vLock.t = 'Valkyrie';
@@ -491,7 +493,7 @@ class Propagator {
                   var existsInDomainAndCanProcess: bool = false;
                   // This function now does the atomic test.
                   vLog.debug('Returning nearest unprocessed', hstring=v.header);
-                  (currToProc, path, removeFromSet) = yggLocalCopy.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
+                  (currToProc, path, removeFromSet) = ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
                   for i in removeFromSet {
                     if toProcess.contains(i) {
                       toProcess.remove(i);
@@ -524,7 +526,7 @@ class Propagator {
                       vLog.debug('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
                       vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
                       vLog.debug('PATH:', path : string, hstring=v.header);
-                      var d = yggLocalCopy.deltaFromPath(path, path.key(0), hstring=v.header);
+                      var d = ygg.deltaFromPath(path, path.key(0), hstring=v.header);
                       d.to = currToProc;
                       var newMsg = new messaging.msg(d);
                       newMsg.i = deme;
@@ -585,7 +587,7 @@ class Propagator {
               if !v.moved {
                 // do something about it, why don't you.
               }
-              if this.valkyriesDone[gen].fetchAdd(1) < ((Locales.size*maxValkyries)-1) {
+              if this.valkyriesDone[gen].fetchAdd(1) < howManyValks {
                 // Reset a lot of the variables for the Valkyrie while we're idle.
                 // Then wait until all the other Valkyries have finished.
                 // In addition, add to some global variables so that we can compute
@@ -604,7 +606,7 @@ class Propagator {
                 vLog.log('Grabbing chromosomes to process', hstring=v.header);
                 // moveOn is an array of sync variables.  We're blocked from reading
                 // until that's set to true.
-                this.advanceChromosomes(nG, yH);
+                advanceChromosomes(nG, yH);
                 nG.addUnprocessed();
                 vLog.debug("Setting the current generation count", v.header);
                 // now, make sure we know we have to process all of these.
@@ -664,7 +666,7 @@ class Propagator {
                   }
                 }
                 this.readyForChromosomes[gen] = true;
-                this.advanceChromosomes(nG, yH);
+                advanceChromosomes(nG, yH);
                 //}
                 this.scoreArray = -1;
                 this.log.debug("Setting the current generation count", this.yh);

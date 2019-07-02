@@ -30,6 +30,7 @@ record commandRecord {
   var SET_ID: int = 4;
   var SHUTDOWN: int = 5;
   var MOVE: int = 6;
+  var SET_TIME: int = 7;
 }
 
 var status: statusRecord;

@@ -173,6 +173,15 @@ class YggdrasilLogging {
     //this.channelsOpened['stdout'] = stdout;
   }
 
+  proc init(t: real;) {
+    this.complete();
+    this.time = t;
+    //this.filesOpened = new domain(string);
+    //this.channelsOpened = [filesOpened] channel(true,iokind.dynamic,true);
+    //this.filesOpened.add('stdout');
+    //this.channelsOpened['stdout'] = stdout;
+  }
+
   proc exitRoutine() throws {
     for id in this.filesOpened {
       //this.channelsOpened[id].commit();
