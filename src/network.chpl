@@ -120,7 +120,7 @@ class networkGenerator {
       cId = this.N;
     }
     this.l.rl();
-    for i in this.firstUnprocessedNonAtomic.cId {
+    for i in this.firstUnprocessedNonAtomic..cId {
       var id = this.idSet[i];
       if !this.processed[id] {
         yield id;
