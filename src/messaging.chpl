@@ -5,10 +5,12 @@ use genes;
 use ZMQ;
 use ygglog;
 use Spawn;
+use Time;
 
 extern proc chpl_nodeName(): c_string;
 config const awaitResponse = false;
 config const yieldWhileWait = false;
+config const heartbeat: int = 100;
 
 
 record statusRecord {
@@ -262,6 +264,9 @@ class msgHandler {
   var blocking: bool = true;
 
   var msgQueue: [1..0] msg;
+
+  var heartbeat: int = heartbeat;
+  var heart =  new Time.Timer();
 
   proc init(n: int) {
     this.size = n;

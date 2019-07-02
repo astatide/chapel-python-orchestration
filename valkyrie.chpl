@@ -93,7 +93,7 @@ class valkyrieExecutor: msgHandler {
     return this.yh;
   }
 
-  proc run() {
+  proc run() throws {
     // so, this is the function that will listen for an input and go from there.
     // basically, we want to sit at the read point... and then do something with
     // the input.
@@ -101,6 +101,7 @@ class valkyrieExecutor: msgHandler {
     // python is initialized.  Yay.
     var writeOnce: bool = true;
     var t: Timer;
+    this.heart.start();
     while true {
       t.start();
       if writeOnce {
@@ -115,6 +116,10 @@ class valkyrieExecutor: msgHandler {
       if t.elapsed(TimeUnits.milliseconds) < 100 {
         sleep((100 - t.elapsed(TimeUnits.milliseconds)), TimeUnits.milliseconds);
       }
+      if this.heart.elapsed() > this.heartbeat {
+        // exit when you're done.
+        throw new owned Error();
+      }
     }
     gj.final();
   }
@@ -125,6 +130,7 @@ class valkyrieExecutor: msgHandler {
     // overriden from the messaging class
     writeln("STARTING TO PROCESS");
     writeln(m : string);
+    this.heart.clear();
     select m.COMMAND {
       when messaging.command.SET_ID do {
         m.open(this.id);
