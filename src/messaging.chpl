@@ -10,7 +10,7 @@ use Time;
 extern proc chpl_nodeName(): c_string;
 config const awaitResponse = false;
 config const yieldWhileWait = false;
-config const heartbeat: int = 100;
+config const heartBeat: int = 100;
 
 
 record statusRecord {
@@ -265,7 +265,7 @@ class msgHandler {
 
   var msgQueue: [1..0] msg;
 
-  var heartbeat: int = heartbeat;
+  var heartbeat: int = heartBeat;
   var heart =  new Time.Timer();
 
   proc init(n: int) {
