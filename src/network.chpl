@@ -118,21 +118,15 @@ class networkGenerator {
       // do not go higher than the actual number of nodes we have.
       cId = this.N;
     }
-    //writeln("Taking from our currentGeneration! What's our starting point? ", this.firstUnprocessed.read() : string);
-    //var addToUnprocessed: int = this.firstUnprocessed.read();
     this.l.rl();
     for i in this.firstUnprocessed.read()..cId {
       var id = this.idSet[i];
       if !this.processed[id] {
-        //this.l.url();
-        //this.firstUnprocessed.write(addToUnprocessed);
         yield id;
       } else {
-        //addToUnprocessed += 1;
       }
     }
     this.l.url();
-    //this.firstUnprocessed.write(addToUnprocessed);
   }
 
   proc randomInGen {
@@ -151,18 +145,14 @@ class networkGenerator {
   iter all {
     var cId: int;
     cId = this.currentId.read();
-    //writeln("What is our current ID?: ", this.currentId.read() : string);
     if cId > this.N {
       // do not go higher than the actual number of nodes we have.
       cId = this.N;
     }
     this.l.rl();
     for i in 1..cId {
-      //writeln("Current readHandles: ", this.l.readHandles.read() : string);
       var id = this.idSet[i];
-      //writeln(this.processed[id] : string);
       if !this.processed[id] {
-        //this.l.url();
         yield id;
       }
     }
@@ -179,7 +169,6 @@ class networkGenerator {
     globalLock.wl();
     if globalIDs.contains(id) {
       globalUnprocessed.remove(id);
-      //globalIsProcessed[id].write(true);
     }
     globalLock.uwl();
   }
@@ -195,7 +184,7 @@ class networkGenerator {
 
   proc generateChromosomeID {
     // returns a UUID, prepended by the locale.
-    return '%04i'.format(here.id) + '-GENE-' + NUUID.UUID4();
+    return '%04i'.format(here.id) + '-CHRO-' + NUUID.UUID4();
   }
 
   proc generateEmptyNodes(n: int) {
@@ -214,14 +203,11 @@ class networkGenerator {
   proc getNode() : string {
     // this will return an unused node.
     // block if we're updating.
-    //while this.isUpdating.read() do chpl_task_yield();
     this.l.rl();
     var nId : int = 1;
-    //writeln(nId : string);
     while nId < this.N {
       var nId = this.currentId.fetchAdd(1);
       if nId >= this.N {
-        //this.currentId.sub(1);
         break;
       }
       var node = this.idSet[nId];
@@ -239,21 +225,11 @@ class networkGenerator {
       //}
     }
     this.currentId.sub(1);
-    //writeln("If you're seeing this, it's because we're out of nodes.  READ LOCK HANDLES: ", this.l.readHandles.read() : string);
-    //this.l.url();
     // if we're here, we need more nodes!
     // make sure the call doesn't fail by returning this function again.
     this.l.url();
     if !this.isUpdating.testAndSet() {
-      //writeln("If you're seeing this, it's because we successfully nabbed the lock.");
-      // avoid a race condition where we clear the flag after nodes have been generated,
-      // but tried to grab one before things were ready.  Not likely, but hey.
-      //writeln("What's our current count up to? ", this.currentId.read() : string);
-      //if this.currentId.read() >= this.N {
-      //writeln("Running spawn function");
-      //this.l.url();
       this.spawn();
-      //}
     }
     // hold it, you whiny assholes.
     this.isUpdating.waitFor(false);

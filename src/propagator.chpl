@@ -439,9 +439,7 @@ class Propagator {
             }
             //v.moveToRoot();
             v.currentNode = nG.root;
-            //vLog.debug("Moving to random node in network", hstring=v.header);
             // ?  Why does this seem to cause issues?  So odd.
-            //v.moveToFirst(nG, yggLocalCopy);
 
             for gen in 1..generations {
 
