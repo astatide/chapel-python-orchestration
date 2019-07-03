@@ -65,6 +65,10 @@ class networkGenerator {
   var N: int = 0;
   var newNodeStartingPoint: int = 1;
   var root: string;
+  var cId: int;
+  var mId: int;
+  var mIdcIdSet: bool = false;
+  var mIdcIdSetAtomic: atomic bool = false;
 
   proc init() {
     this.complete();
@@ -145,19 +149,35 @@ class networkGenerator {
   }
 
   iter all {
+    /*
     var cId: int;
-    cId = this.currentId.read();
-    if cId > this.N {
-      // do not go higher than the actual number of nodes we have.
-      cId = this.N;
+    var mId: int;
+    var mIdcIdSet: bool = false;
+    var mIdcIdSetAtomic: atomic bool = false;
+    */
+    //var cId, mId: int;
+    if !mIdcIdSet {
+      if !mIdcIdSetAtomic.testAndSet() {
+        this.l.wl();
+        this.cId = this.currentId.read();
+        if this.cId > this.N {
+          // do not go higher than the actual number of nodes we have.
+          this.cId = this.N;
+        }
+        this.mId = this.firstUnprocessedOld.read();
+        this.mIdcIdSet = true;
+        this.l.uwl();
+      } else {
+        // we want to freaking wait here.
+        while !this.mIdcIdSet do chpl_task_yield();
+      }
     }
     this.l.rl();
-    var mId: int = this.firstUnprocessedOld.read();
-    for i in mId..cId {
+    for i in this.mId..this.cId {
       var id = this.idSet[i];
-      if !this.processed[id] {
-        yield id;
-      }
+      //if !this.processed[id] {
+      yield id;
+      //}
     }
     this.l.url();
   }
@@ -250,10 +270,6 @@ class networkGenerator {
     for i in this.newNodeStartingPoint..this.N {
       var node = this.idSet[i];
       if !globalIDs.contains(node) {
-        // we _might_ need to recreate the log.
-        // and lock.
-        // because this is _definitely_ a copy operation, but it's possible
-        // that somehow the lock doesn't copy over properly.
         globalIDs.add(node);
       } else {
         removeSet.add(node);
