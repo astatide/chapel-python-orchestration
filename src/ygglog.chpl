@@ -30,7 +30,7 @@ record yggHeader {
     // this is function to allow this to be written directly.
     //
     var spaces: int;
-    if !printedHeader {
+    if !this.printedHeader {
       wc.writeln('');
       wc.write(' '*6);
       if this.m.size > this.levels {
@@ -82,7 +82,7 @@ record yggHeader {
   proc size {
     var tm: int;
     tm += this.time.size+1;
-    if !printedHeader {
+    if !this.printedHeader {
       if this.m.size > this.levels {
         for i in this.m.size-levels..this.m.size {
           tm += this.msg[i].size + this.sep.size;
@@ -206,7 +206,7 @@ class YggdrasilLogging {
 
   proc printToConsole(msg, debugLevel: string, hstring: yggHeader, header: bool) throws {
     // check whether we're going to stdout or not.
-    var wc = stdout;
+    var wc: channel(true,iokind.dynamic,true);
     var useStdout: bool = true;
     var vstring = hstring;
     var lf: file;
@@ -257,6 +257,7 @@ class YggdrasilLogging {
       useStdout = false;
     } else {
       id = 'stdout';
+      wc = stdout;
     }
     if this.channelDebugPath[id] == vstring.path() {
       vstring.printedHeader = true;

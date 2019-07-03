@@ -12,6 +12,7 @@ use spinlock;
 use SysError;
 use chromosomes;
 use HashedDist;
+use CommDiagnostics;
 
 class NodeNotInEdgesError : Error {
   proc init() { }
@@ -478,7 +479,9 @@ class GeneNetwork {
 
   inline proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray) {
     var vstring = hstring + 'returnNearestUnprocessed';
+    startVerboseComm();
     return this.__calculatePath__(id_A, id_B, hstring=vstring, processedArray=processedArray, checkArray=true);
+    stopVerboseComm();
   }
 
   inline proc calculatePath(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
