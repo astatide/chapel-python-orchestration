@@ -60,12 +60,32 @@ proc Comparator.compare(a, b) {
   return abs(a) - abs(b);
 }
 
+
+
 var absComparator: Comparator;
 var cLock = new shared spinlock.SpinLock();
 cLock.t = 'Chromosomes';
 cLock.log = new shared ygglog.YggdrasilLogging();
 var chromosomeDomain: domain(string) dmapped Hashed(idxType=string, mapper = new network.mapperByLocale());
 var chromes: [chromosomeDomain] chromosomes.Chromosome;
+
+var valkyriesDone: [1..generations] atomic int;
+var moveOn: [1..generations] single bool;
+var readyForChromosomes: [1..generations] single bool;
+var areSpawned: single bool;
+var numSpawned: atomic int;
+var finishedChromoProp: atomic int;
+// now a few globals.
+var nodesToProcess: domain(string);
+var processedArray: [nodesToProcess] atomic bool;
+// actually, this should probably be its own thing.
+//var scoreDomain: domain(string);
+var scoreArray: [0..4,1..maxPerGeneration] real = -1; //Math.INFINITY;
+var idArray: [0..4,1..maxPerGeneration] string;
+var inCurrentGeneration: atomic int;
+var nextGeneration: domain(string);
+var valkyriesProcessed: [1..maxValkyries*Locales.size] atomic int;
+var priorityValkyriesProcessed: [1..maxValkyries*Locales.size] atomic real;
 
 proc initChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
 
@@ -122,7 +142,7 @@ proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggH
     chromes[chrome] = newC[chrome];
     for node in newC[chrome].geneIDs {
       if node != 'root' {
-        //this.nextGeneration.add(node);
+        //nextGeneration.add(node);
         writeln(globalNodes[node].chromosome, ' : ', chrome);
         writeln(node);
         //writeln(globalNodes[node]);
@@ -258,28 +278,11 @@ class Propagator {
   // this is going to actually hold all the logic for running EvoCap.
   var generation: int;
 
-  // now a few globals.
-  var nodesToProcess: domain(string);
-  var processedArray: [nodesToProcess] atomic bool;
-  // actually, this should probably be its own thing.
-  //var scoreDomain: domain(string);
-  var scoreArray: [0..4,1..maxPerGeneration] real = -1; //Math.INFINITY;
-  var idArray: [0..4,1..maxPerGeneration] string;
-  var inCurrentGeneration: atomic int;
-  var nextGeneration: domain(string);
 
   var ygg: shared network.GeneNetwork();
   var yh = new ygglog.yggHeader();
   var log: shared ygglog.YggdrasilLogging();
   var lock: shared spinlock.SpinLock;
-  var valkyriesDone: [1..generations] atomic int;
-  var moveOn: [1..generations] single bool;
-  var readyForChromosomes: [1..generations] single bool;
-  var areSpawned: single bool;
-  var numSpawned: atomic int;
-  var valkyriesProcessed: [1..maxValkyries*Locales.size] atomic int;
-  var priorityValkyriesProcessed: [1..maxValkyries*Locales.size] atomic real;
-  var finishedChromoProp: atomic int;
   var generationTime: real;
   var authors: domain(string) = ['Audrey Pratt', 'Benjamin Robbins'];
   var version: real = 0.1;
@@ -380,7 +383,7 @@ class Propagator {
     this.shutdown = true;
   }
 
-  proc run() {
+  proc run(L : locale) {
     // Print out the header, yo.
     this.header();
     this.yh.header = 'NormalRuntime';
@@ -391,356 +394,352 @@ class Propagator {
     // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
     var startTime: real = this.log.time;
-    coforall L in Locales {
-      on L do {
-        if ((useLocale0 || !(L == Locales[0]))) {
-          var yH = new ygglog.yggHeader();
-          yH += 'Ragnarok';
-          this.log.debug("Spawn local network and networkGenerator", yH);
-          var ygg = new shared network.GeneNetwork();
-          // CHANGE ME
-          //ygg.log = this.log;
-          //ygg.lock.log = this.log;
-          var nG = new shared network.networkGenerator();
-          // we're gonna want a list of network IDs we can use.
-          this.log.debug("Local networks spawned; creating chromosomes", yH);
-          initChromosomes(nG, yH);
-          this.log.debug("Adding new nodes to unprocessed list", yH);
-          nG.addUnprocessed();
-          this.log.debug("Setting the current generation count", yH);
-          // now, make sure we know we have to process all of these.
-          this.inCurrentGeneration.add(nG.currentId.read()-1);
-          //this.log.debug("About to add existing nodes to the processing list", yH);
+    if true {
+      var yH = new ygglog.yggHeader();
+      yH += 'Ragnarok';
+      this.log.debug("Spawn local network and networkGenerator", yH);
+      var ygg = new shared network.GeneNetwork();
+      // CHANGE ME
+      //ygg.log = this.log;
+      //ygg.lock.log = this.log;
+      var nG = new shared network.networkGenerator();
+      // we're gonna want a list of network IDs we can use.
+      this.log.debug("Local networks spawned; creating chromosomes", yH);
+      initChromosomes(nG, yH);
+      this.log.debug("Adding new nodes to unprocessed list", yH);
+      nG.addUnprocessed();
+      this.log.debug("Setting the current generation count", yH);
+      // now, make sure we know we have to process all of these.
+      inCurrentGeneration.add(nG.currentId.read()-1);
+      //this.log.debug("About to add existing nodes to the processing list", yH);
 
-          forall i in 1..maxValkyries with (ref nG, ref ygg) {
-            // spin up the Valkyries!
-            var vLog = new shared ygglog.YggdrasilLogging(startTime);
-            vLog.currentDebugLevel = debug;
-            var vLock = new shared spinlock.SpinLock();
-            vLock.t = 'Valkyrie';
-            var v = new shared valkyrie(1);
-            v.currentTask = i;
-            v.currentLocale = L : string;
-            v.yh += 'run';
-            for iL in v.logo {
-              vLog.header(iL, hstring=v.header);
-            }
-            vLog.log('Initiating spawning sequence', hstring=v.header);
-            var vp = v.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
-            var nSpawned = this.numSpawned.fetchAdd(1);
-            var howManyValks: int = (((Locales.size-1)*maxValkyries)-1);
-            if useLocale0 {
-              howManyValks = (((Locales.size)*maxValkyries)-1);
-            }
-            if nSpawned < howManyValks {
-              // we want to wait so that we spin up all processes.
-              vLog.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, hstring=v.header);
-              this.areSpawned;
-            } else {
-              this.areSpawned = true;
-            }
-            //v.moveToRoot();
-            v.currentNode = nG.root;
-            // ?  Why does this seem to cause issues?  So odd.
+      forall i in 1..maxValkyries with (ref nG, ref ygg) {
+        // spin up the Valkyries!
+        var vLog = new shared ygglog.YggdrasilLogging(startTime);
+        vLog.currentDebugLevel = debug;
+        var vLock = new shared spinlock.SpinLock();
+        vLock.t = 'Valkyrie';
+        var v = new shared valkyrie(1);
+        v.currentTask = i;
+        v.currentLocale = L : string;
+        v.yh += 'run';
+        for iL in v.logo {
+          vLog.header(iL, hstring=v.header);
+        }
+        vLog.log('Initiating spawning sequence', hstring=v.header);
+        var vp = v.valhalla(1, v.id, mSize : string, vLog, vstring=v.header);
+        var nSpawned = numSpawned.fetchAdd(1);
+        var howManyValks: int = (((Locales.size-1)*maxValkyries)-1);
+        if useLocale0 {
+          howManyValks = (((Locales.size)*maxValkyries)-1);
+        }
+        if nSpawned < howManyValks {
+          // we want to wait so that we spin up all processes.
+          vLog.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, hstring=v.header);
+          areSpawned;
+        } else {
+          areSpawned = true;
+        }
+        //v.moveToRoot();
+        v.currentNode = nG.root;
+        // ?  Why does this seem to cause issues?  So odd.
 
-            for gen in 1..generations {
+        for gen in 1..generations {
 
-              v.gen = gen;
-              vLog.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
-              var currToProc: string;
-              var toProcess: domain(string);
-              var path: network.pathHistory;
-              var removeFromSet: domain(string);
-              toProcess.clear();
-              vLog.debug('Beginning processing', hstring=v.header);
-              //vLog.debug(this.nodesToProcess : string, hstring=v.header);
-              var prioritySize = v.priorityNodes.size;
-              vLog.debug('Assessing nodes that must be handled', hstring=v.header);
-              currToProc = '';
-              //toProcess.clear();
+          v.gen = gen;
+          vLog.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
+          var currToProc: string;
+          var toProcess: domain(string);
+          var path: network.pathHistory;
+          var removeFromSet: domain(string);
+          toProcess.clear();
+          vLog.debug('Beginning processing', hstring=v.header);
+          //vLog.debug(nodesToProcess : string, hstring=v.header);
+          var prioritySize = v.priorityNodes.size;
+          vLog.debug('Assessing nodes that must be handled', hstring=v.header);
+          currToProc = '';
+          //toProcess.clear();
 
-              for id in nG.all {
+          for id in nG.all {
+            toProcess.add(id);
+            vLog.debug('Adding node ID: ', id : string, hstring=v.header);
+          }
+          //vLog.debug('What is up, fellow nodes? NODES: ', toProcess : string, hstring=v.header);
+
+          if toProcess.isEmpty() {
+            // This checks atomics, so it's gonna be slow.
+            // In an ideal world, we rarely call it.
+            //network.globalLock.rl();
+            for id in network.globalUnprocessed {
+              if !network.globalIsProcessed[id].read() {
                 toProcess.add(id);
-                vLog.debug('Adding node ID: ', id : string, hstring=v.header);
               }
-              //vLog.debug('What is up, fellow nodes? NODES: ', toProcess : string, hstring=v.header);
+            }
+            //network.globalLock.url();
+          }
 
-              if toProcess.isEmpty() {
-                // This checks atomics, so it's gonna be slow.
-                // In an ideal world, we rarely call it.
+          //var firstTime: bool = true;
+
+          while inCurrentGeneration.read() > 0 {
+            // We clear this out because it is faster to just re-enumerate the
+            // nodes that need processing, rather than explicitly calculating
+            // the path towards every node.  Particularly as that results in tasks
+            // performing a lot of unnecessary computations once a lot of nodes
+            // have been processed.
+            // Assuming we have some things to process, do it!
+            currToProc = '';
+            vLog.debug('toProcess created', hstring=v.header);
+            if !toProcess.isEmpty() {
+              // We can remove nodes from the domain processedArray is built on, which means we need to catch and process.
+              var existsInDomainAndCanProcess: bool = false;
+              // This function now does the atomic test.
+              vLog.debug('Returning nearest unprocessed', hstring=v.header);
+              (currToProc, path, removeFromSet) = ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
+              for i in removeFromSet {
+                if toProcess.contains(i) {
+                  toProcess.remove(i);
+                }
+              }
+              vLog.debug('Unprocessed found.  ID:', currToProc : string, hstring=v.header);
+              if currToProc != '' {
+                // If this node is one of the ones in our priority queue, remove it
+                // as we clearly processing it now.
+                if v.priorityNodes.contains(currToProc) {
+                  v.priorityNodes.remove(currToProc);
+                  v.nPriorityNodesProcessed += 1;
+                }
+                v.currentNode = currToProc;
+                v.moved = true;
+                vLog.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
+                nG.removeUnprocessed(currToProc);
+                toProcess.remove(currToProc);
+                // Actually, reduce the count BEFORE we do this.
+                // Otherwise we could have threads stealing focus that should
+                // actually be idle.
+                vLog.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
+                inCurrentGeneration.sub(1);
+                vLog.debug('inCurrentGeneration successfully reduced', hstring=v.header);
+                //writeln('What are our demes? ', network.globalNodes[currToProc].demeDomain : string);
                 //network.globalLock.rl();
-                for id in network.globalUnprocessed {
-                  if !network.globalIsProcessed[id].read() {
-                    toProcess.add(id);
-                  }
-                }
+                ref actualNode = network.globalNodes[currToProc];
                 //network.globalLock.url();
-              }
+                for deme in actualNode.returnDemes() {
+                  vLog.debug('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
+                  vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
+                  vLog.debug('PATH:', path : string, hstring=v.header);
+                  var d = ygg.deltaFromPath(path, path.key(0), hstring=v.header);
+                  d.to = currToProc;
+                  var newMsg = new messaging.msg(d);
+                  newMsg.i = deme;
+                  newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
+                  vLog.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
+                  vLog.debug("Sending the following msg:", newMsg : string, hstring=v.header);
+                  v.SEND(newMsg);
+                  vLog.debug("Message & delta sent; awaiting instructions", hstring=v.header);
+                  var m = v.RECV();
+                  var score = m.r;
+                  vLog.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
+                  // we should _not_ need to readlock these domains, as the global domains cannot be and ARE not resized during this loop.
+                  //network.globalLock.rl();
+                  network.globalNodes[currToProc].setDemeScore(deme, score);
+                  //network.globalLock.url();
+                  // add to the chromosome.
+                  vLog.debug('Adding to chromosome score.', hstring=v.header);
+                  //network.globalLock.rl();
+                  var nc = network.globalNodes[currToProc].chromosome;
+                  //network.globalLock.url();
+                  cLock.rl();
+                  var inChromeID = chromes[nc].returnNodeNumber(currToProc);
+                  cLock.url();
+                  //if inChromeID == -1 {
 
-              //var firstTime: bool = true;
-
-              while this.inCurrentGeneration.read() > 0 {
-                // We clear this out because it is faster to just re-enumerate the
-                // nodes that need processing, rather than explicitly calculating
-                // the path towards every node.  Particularly as that results in tasks
-                // performing a lot of unnecessary computations once a lot of nodes
-                // have been processed.
-                // Assuming we have some things to process, do it!
-                currToProc = '';
-                vLog.debug('toProcess created', hstring=v.header);
-                if !toProcess.isEmpty() {
-                  // We can remove nodes from the domain processedArray is built on, which means we need to catch and process.
-                  var existsInDomainAndCanProcess: bool = false;
-                  // This function now does the atomic test.
-                  vLog.debug('Returning nearest unprocessed', hstring=v.header);
-                  (currToProc, path, removeFromSet) = ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
-                  for i in removeFromSet {
-                    if toProcess.contains(i) {
-                      toProcess.remove(i);
-                    }
-                  }
-                  vLog.debug('Unprocessed found.  ID:', currToProc : string, hstring=v.header);
-                  if currToProc != '' {
-                    // If this node is one of the ones in our priority queue, remove it
-                    // as we clearly processing it now.
-                    if v.priorityNodes.contains(currToProc) {
-                      v.priorityNodes.remove(currToProc);
-                      v.nPriorityNodesProcessed += 1;
-                    }
-                    v.currentNode = currToProc;
-                    v.moved = true;
-                    vLog.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
-                    nG.removeUnprocessed(currToProc);
-                    toProcess.remove(currToProc);
-                    // Actually, reduce the count BEFORE we do this.
-                    // Otherwise we could have threads stealing focus that should
-                    // actually be idle.
-                    vLog.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
-                    this.inCurrentGeneration.sub(1);
-                    vLog.debug('inCurrentGeneration successfully reduced', hstring=v.header);
-                    //writeln('What are our demes? ', network.globalNodes[currToProc].demeDomain : string);
-                    //network.globalLock.rl();
-                    ref actualNode = network.globalNodes[currToProc];
-                    //network.globalLock.url();
-                    for deme in actualNode.returnDemes() {
-                      vLog.debug('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
-                      vLog.debug('Processing seed ID', currToProc : string, hstring=v.header);
-                      vLog.debug('PATH:', path : string, hstring=v.header);
-                      var d = ygg.deltaFromPath(path, path.key(0), hstring=v.header);
-                      d.to = currToProc;
-                      var newMsg = new messaging.msg(d);
-                      newMsg.i = deme;
-                      newMsg.COMMAND = messaging.command.RECEIVE_AND_PROCESS_DELTA;
-                      vLog.debug("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
-                      vLog.debug("Sending the following msg:", newMsg : string, hstring=v.header);
-                      v.SEND(newMsg);
-                      vLog.debug("Message & delta sent; awaiting instructions", hstring=v.header);
-                      var m = v.RECV();
-                      var score = m.r;
-                      vLog.debug('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
-                      // we should _not_ need to readlock these domains, as the global domains cannot be and ARE not resized during this loop.
-                      //network.globalLock.rl();
-                      network.globalNodes[currToProc].setDemeScore(deme, score);
-                      //network.globalLock.url();
-                      // add to the chromosome.
-                      vLog.debug('Adding to chromosome score.', hstring=v.header);
-                      //network.globalLock.rl();
-                      var nc = network.globalNodes[currToProc].chromosome;
-                      //network.globalLock.url();
-                      cLock.rl();
-                      var inChromeID = chromes[nc].returnNodeNumber(currToProc);
-                      cLock.url();
-                      //if inChromeID == -1 {
-
-                      //}
-                      vLog.debug('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
-                      cLock.rl();
-                      vLog.debug('DemeDomain in chromosome:', chromes[nc].geneIDs : string, hstring=v.header);
-                      chromes[nc].scores[inChromeID] = score;
-                      cLock.url();
-
-                      //network.globalLock.url();
-                    }
-                  } else {
-                    // actually, if that's the case, we can't do shit.  So break and yield.
-                    break;
-                  }
-                  // While it seems odd we might try this twice, this helps us keep
-                  // track of algorithm efficiency by determining whether we're processing
-                  // the nodes in our priority queue or not.
-                  //if v.priorityNodes.contains(currToProc) {
-                  //  v.priorityNodes.remove(currToProc);
                   //}
-                } else {
-                  // Rest now, my child. Rest, and know your work is done.
-                  vLog.debug('And now, I rest.  Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
-                  while this.inCurrentGeneration.read() != 0 do chpl_task_yield();
-                  vLog.debug('Waking up!', hstring=v.header);
-                }
-                vLog.debug('Remaining in generation:', this.inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
-                if this.shutdown {
-                  this.exitRoutine();
-                }
-              }
-              // if we haven't moved, we should move our valkyrie to something in the current generation.  It makes searching substantially easier.
-              // but we should reinclude that logic _later_.  As it's busted.
-              if !v.moved {
-                // do something about it, why don't you.
-              }
-              if this.valkyriesDone[gen].fetchAdd(1) < howManyValks {
-                // Reset a lot of the variables for the Valkyrie while we're idle.
-                // Then wait until all the other Valkyries have finished.
-                // In addition, add to some global variables so that we can compute
-                // some statistics of how well we're running.
-                // Then wait on the sync variable.
-                v.moved = false;
-                vLog.debug('Waiting in gen', gen : string, v.header);
-                this.valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
-                this.priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
-                vLog.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
-                v.nProcessed = 0;
-                v.nPriorityNodesProcessed = 0;
+                  vLog.debug('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
+                  cLock.rl();
+                  vLog.debug('DemeDomain in chromosome:', chromes[nc].geneIDs : string, hstring=v.header);
+                  chromes[nc].scores[inChromeID] = score;
+                  cLock.url();
 
-                // after this, we process the chromosomes and go.
-                this.readyForChromosomes[gen];
-                vLog.log('Grabbing chromosomes to process', hstring=v.header);
-                // moveOn is an array of sync variables.  We're blocked from reading
-                // until that's set to true.
-                advanceChromosomes(nG, yH);
-                nG.addUnprocessed();
-                vLog.debug("Setting the current generation count", v.header);
-                // now, make sure we know we have to process all of these.
-                //this.inCurrentGeneration.add(nG.currentId.read()-1);
-                this.finishedChromoProp.add(1);
-                this.moveOn[gen];
-                this.lock.rl(v.header);
-                vLog.debug('MOVING ON in gen', gen : string, this.nodesToProcess : string, v.header);
-                this.lock.url(v.header);
+                  //network.globalLock.url();
+                }
               } else {
-                // Same stuff here, but as this is the last Valkyrie, we also
-                // do global cleanup to ensure the global arrays are ready.
-                vLog.debug('Handling cleanup on gen', gen : string, v.header);
-                v.moved = false;
-                this.nextGeneration.clear();
-                // we'll just throw this in here for now.
-                // Only do the max!
-                //var bestInGen: real = this.scoreArray[1];
-                var (bestInGen, minLoc) = maxloc reduce zip(this.scoreArray, this.scoreArray.domain);
-                var chromosomesToAdvance: domain(string);
-                var c: [chromosomesToAdvance] chromosomes.Chromosome;
-                vLog.debug('Determining which chromosomes to advance', v.header);
-                for chrome in chromosomeDomain {
-                  var deme = chromes[chrome].currentDeme;
-                  //var (lowestScore, minLoc) = minloc reduce zip(this.scoreArray[deme], this.scoreArray.domain);
-                  var lowestScore : real = Math.INFINITY;
-                  var minLoc : int;
-                  vLog.debug('Determining lowest score...', v.header);
-                  for z in 1..maxPerGeneration {
-                    if this.scoreArray[deme,z] < lowestScore {
-                      lowestScore = this.scoreArray[deme,z];
-                      minLoc = z;
-                    }
-                  }
-                  vLog.debug('Finding the highest scoring node on this chromosome and seeing if it is good enough.', v.header);
-                  var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
-                  if bestScore > lowestScore {
-                    this.scoreArray[deme, minLoc] = bestScore;
-                    this.idArray[deme, minLoc] = chrome;
-                  }
-                }
-                for deme in 0..4 {
-                  for z in 1..maxPerGeneration {
-                    if this.idArray[deme,z] != '' {
-                      vLog.debug('Advancing chromosome ID:', this.idArray[deme,z], v.header);
-                      chromosomesToAdvance.add(this.idArray[deme,z]);
-                    }
-                  }
-                }
-                // clear the domain of our losers.
-                vLog.debug('Clearing the domain of those who are not continuing.', v.header);
-                //if true {
-                var vheader = v.header;
-                for chrome in chromosomeDomain {
-                  if !chromosomesToAdvance.contains(chrome) {
-                    chromosomeDomain.remove(chrome);
-                  }
-                }
-                this.readyForChromosomes[gen] = true;
-                advanceChromosomes(nG, yH);
-                //}
-                this.scoreArray = -1;
-                this.log.debug("Setting the current generation count", this.yh);
-                // now, make sure we know we have to process all of these.
-                //this.inCurrentGeneration.add(nG.currentId.read()-1);
-                while this.finishedChromoProp.read() < ((Locales.size*maxValkyries)-1) do chpl_task_yield();
-                this.finishedChromoProp.write(0);
-                vLog.debug('Switching generations', v.header);
-                nG.addUnprocessed();
-                // Clear out the current nodesToProcess domain, and swap it for the
-                // ones we've set to process for the next generation.
-                this.nodesToProcess.clear();
-                for node in this.nextGeneration {
-                  this.nodesToProcess.add(node);
-                  this.processedArray[node].write(false);
-                }
-                for node in this.nextGeneration {
-                  this.inCurrentGeneration.add(1);
-                  vLog.debug("Node ID:", node : string, hstring=v.header);
-                  vLog.debug('Chromosome:', chromes[globalNodes[node].chromosome] : string, hstring=v.header);
-                  var isInChromosome: bool = false;
-                  for n in chromes[globalNodes[node].chromosome].geneIDs {
-                    if !isInChromosome {
-                      if n == node {
-                        isInChromosome = true;
-                      }
-                    }
-                  }
-                  assert(isInChromosome);
-                }
-                this.nextGeneration.clear();
-                // Set the count variable.
-                //this.inCurrentGeneration.write(this.nodesToProcess.size);
-                this.valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
-                // Compute some rough stats.  Buggy.
-                this.priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
-                vLog.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
-                var processedString: string;
-                // this is really an IDEAL average.
-                var avg = startingSeeds : real / maxValkyries : real ;
-                var std: real;
-                var eff: real;
-                for y in 1..maxValkyries*Locales.size {
-                  var diff = this.valkyriesProcessed[y].read() - avg;
-                  std += diff**2;
-                  if this.valkyriesProcessed[y].read() != 0 {
-                    eff += this.priorityValkyriesProcessed[y].read() : real;
-                  }
-                }
-                std = abs(avg - sqrt(std/maxValkyries))/avg;
-                eff /= maxValkyries;
-                processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
-                this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
-                this.yh.printedHeader = true;
-                this.generationTime = Time.getCurrentTime() : real;
-                //this.lock.uwl(v.header);
-                this.valkyriesProcessed.write(0);
-                this.priorityValkyriesProcessed.write(0);
-                v.nPriorityNodesProcessed = 0;
-                v.nProcessed = 0;
-                // time to move the fuck on.
-                this.generation = gen + 1;
-                this.moveOn[gen] = true;
+                // actually, if that's the case, we can't do shit.  So break and yield.
+                break;
               }
+              // While it seems odd we might try this twice, this helps us keep
+              // track of algorithm efficiency by determining whether we're processing
+              // the nodes in our priority queue or not.
+              //if v.priorityNodes.contains(currToProc) {
+              //  v.priorityNodes.remove(currToProc);
+              //}
+            } else {
+              // Rest now, my child. Rest, and know your work is done.
+              vLog.debug('And now, I rest.  Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+              while inCurrentGeneration.read() != 0 do chpl_task_yield();
+              vLog.debug('Waking up!', hstring=v.header);
+            }
+            vLog.debug('Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+            if this.shutdown {
+              this.exitRoutine();
             }
           }
-        } else {
-          // here.runningTasksCNT or something like that
-          while this.generation < generations do chpl_task_yield();
-          writeln("fin.");
+          // if we haven't moved, we should move our valkyrie to something in the current generation.  It makes searching substantially easier.
+          // but we should reinclude that logic _later_.  As it's busted.
+          if !v.moved {
+            // do something about it, why don't you.
+          }
+          if valkyriesDone[gen].fetchAdd(1) < howManyValks {
+            // Reset a lot of the variables for the Valkyrie while we're idle.
+            // Then wait until all the other Valkyries have finished.
+            // In addition, add to some global variables so that we can compute
+            // some statistics of how well we're running.
+            // Then wait on the sync variable.
+            v.moved = false;
+            vLog.debug('Waiting in gen', gen : string, v.header);
+            valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
+            priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
+            vLog.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
+            v.nProcessed = 0;
+            v.nPriorityNodesProcessed = 0;
+
+            // after this, we process the chromosomes and go.
+            readyForChromosomes[gen];
+            vLog.log('Grabbing chromosomes to process', hstring=v.header);
+            // moveOn is an array of sync variables.  We're blocked from reading
+            // until that's set to true.
+            advanceChromosomes(nG, yH);
+            nG.addUnprocessed();
+            vLog.debug("Setting the current generation count", v.header);
+            // now, make sure we know we have to process all of these.
+            //inCurrentGeneration.add(nG.currentId.read()-1);
+            finishedChromoProp.add(1);
+            moveOn[gen];
+            this.lock.rl(v.header);
+            vLog.debug('MOVING ON in gen', gen : string, nodesToProcess : string, v.header);
+            this.lock.url(v.header);
+          } else {
+            // Same stuff here, but as this is the last Valkyrie, we also
+            // do global cleanup to ensure the global arrays are ready.
+            vLog.debug('Handling cleanup on gen', gen : string, v.header);
+            v.moved = false;
+            nextGeneration.clear();
+            // we'll just throw this in here for now.
+            // Only do the max!
+            //var bestInGen: real = scoreArray[1];
+            var (bestInGen, minLoc) = maxloc reduce zip(scoreArray, scoreArray.domain);
+            var chromosomesToAdvance: domain(string);
+            var c: [chromosomesToAdvance] chromosomes.Chromosome;
+            vLog.debug('Determining which chromosomes to advance', v.header);
+            for chrome in chromosomeDomain {
+              var deme = chromes[chrome].currentDeme;
+              //var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme], scoreArray.domain);
+              var lowestScore : real = Math.INFINITY;
+              var minLoc : int;
+              vLog.debug('Determining lowest score...', v.header);
+              for z in 1..maxPerGeneration {
+                if scoreArray[deme,z] < lowestScore {
+                  lowestScore = scoreArray[deme,z];
+                  minLoc = z;
+                }
+              }
+              vLog.debug('Finding the highest scoring node on this chromosome and seeing if it is good enough.', v.header);
+              var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
+              if bestScore > lowestScore {
+                scoreArray[deme, minLoc] = bestScore;
+                idArray[deme, minLoc] = chrome;
+              }
+            }
+            for deme in 0..4 {
+              for z in 1..maxPerGeneration {
+                if idArray[deme,z] != '' {
+                  vLog.debug('Advancing chromosome ID:', idArray[deme,z], v.header);
+                  chromosomesToAdvance.add(idArray[deme,z]);
+                }
+              }
+            }
+            // clear the domain of our losers.
+            vLog.debug('Clearing the domain of those who are not continuing.', v.header);
+            //if true {
+            var vheader = v.header;
+            for chrome in chromosomeDomain {
+              if !chromosomesToAdvance.contains(chrome) {
+                chromosomeDomain.remove(chrome);
+              }
+            }
+            readyForChromosomes[gen] = true;
+            advanceChromosomes(nG, yH);
+            //}
+            scoreArray = -1;
+            this.log.debug("Setting the current generation count", this.yh);
+            // now, make sure we know we have to process all of these.
+            //inCurrentGeneration.add(nG.currentId.read()-1);
+            while finishedChromoProp.read() < ((Locales.size*maxValkyries)-1) do chpl_task_yield();
+            finishedChromoProp.write(0);
+            vLog.debug('Switching generations', v.header);
+            nG.addUnprocessed();
+            // Clear out the current nodesToProcess domain, and swap it for the
+            // ones we've set to process for the next generation.
+            nodesToProcess.clear();
+            for node in nextGeneration {
+              nodesToProcess.add(node);
+              processedArray[node].write(false);
+            }
+            for node in nextGeneration {
+              inCurrentGeneration.add(1);
+              vLog.debug("Node ID:", node : string, hstring=v.header);
+              vLog.debug('Chromosome:', chromes[globalNodes[node].chromosome] : string, hstring=v.header);
+              var isInChromosome: bool = false;
+              for n in chromes[globalNodes[node].chromosome].geneIDs {
+                if !isInChromosome {
+                  if n == node {
+                    isInChromosome = true;
+                  }
+                }
+              }
+              assert(isInChromosome);
+            }
+            nextGeneration.clear();
+            // Set the count variable.
+            //inCurrentGeneration.write(nodesToProcess.size);
+            valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
+            // Compute some rough stats.  Buggy.
+            priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
+            vLog.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
+            var processedString: string;
+            // this is really an IDEAL average.
+            var avg = startingSeeds : real / maxValkyries : real ;
+            var std: real;
+            var eff: real;
+            for y in 1..maxValkyries*Locales.size {
+              var diff = valkyriesProcessed[y].read() - avg;
+              std += diff**2;
+              if valkyriesProcessed[y].read() != 0 {
+                eff += priorityValkyriesProcessed[y].read() : real;
+              }
+            }
+            std = abs(avg - sqrt(std/maxValkyries))/avg;
+            eff /= maxValkyries;
+            processedString = ''.join(' // BALANCE:  ', std : string, ' // ', ' EFFICIENCY:  ', eff : string, ' // ');
+            this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
+            this.yh.printedHeader = true;
+            this.generationTime = Time.getCurrentTime() : real;
+            //this.lock.uwl(v.header);
+            valkyriesProcessed.write(0);
+            priorityValkyriesProcessed.write(0);
+            v.nPriorityNodesProcessed = 0;
+            v.nProcessed = 0;
+            // time to move the fuck on.
+            this.generation = gen + 1;
+            moveOn[gen] = true;
+          }
+        }
       }
-        // wait, you damn fool.
-        //  var moveOn: [1..generations] single bool;
-      }
-    }
+    } else {
+      // here.runningTasksCNT or something like that
+      while this.generation < generations do chpl_task_yield();
+      writeln("fin.");
+  }
+    // wait, you damn fool.
+    //  var moveOn: [1..generations] single bool;
   }
 }

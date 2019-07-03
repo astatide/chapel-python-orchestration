@@ -173,7 +173,7 @@ class YggdrasilLogging {
     //this.channelsOpened['stdout'] = stdout;
   }
 
-  proc init(t: real;) {
+  proc init(t: real) {
     this.complete();
     this.time = t;
     //this.filesOpened = new domain(string);
