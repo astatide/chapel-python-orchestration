@@ -141,8 +141,8 @@ class valkyrieExecutor: msgHandler {
       when messaging.command.SET_TIME do {
         //m.open(this.id);
         //var newMsg = new messaging.msg(0);
-        newMsg.STATUS = messaging.status.OK;
-        SEND(newMsg);
+        //newMsg.STATUS = messaging.status.OK;
+        //SEND(newMsg);
       }
       when messaging.command.SHUTDOWN do {
         exit(0);
