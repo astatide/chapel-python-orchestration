@@ -400,8 +400,8 @@ class Propagator {
       this.log.debug("Spawn local network and networkGenerator", yH);
       var ygg = new shared network.GeneNetwork();
       // CHANGE ME
-      //ygg.log = this.log;
-      //ygg.lock.log = this.log;
+      ygg.log = this.log;
+      ygg.lock.log = this.log;
       var nG = new shared network.networkGenerator();
       // we're gonna want a list of network IDs we can use.
       this.log.debug("Local networks spawned; creating chromosomes", yH);
@@ -495,12 +495,13 @@ class Propagator {
               // This function now does the atomic test.
               vLog.debug('Returning nearest unprocessed', hstring=v.header);
               (currToProc, path, removeFromSet) = ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
+              vLog.debug('Unprocessed found.  ID:', currToProc : string, hstring=v.header);
               for i in removeFromSet {
                 if toProcess.contains(i) {
+                  vLog.debug('Removing ID:', i : string, hstring=v.header);
                   toProcess.remove(i);
                 }
               }
-              vLog.debug('Unprocessed found.  ID:', currToProc : string, hstring=v.header);
               if currToProc != '' {
                 // If this node is one of the ones in our priority queue, remove it
                 // as we clearly processing it now.

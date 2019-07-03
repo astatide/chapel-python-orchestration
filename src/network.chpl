@@ -551,6 +551,7 @@ class GeneNetwork {
       }
       // we now assume this is an incomplete network.
       for edge in this.edges[currentNode] do {
+        //this.log.debug("Reading EDGE ID:", edge : string, hstring=vstring);
         if edge != 'root' {
           this.log.debug('Edge ID:', edge : string, hstring=vstring);
           // why are we a big, errortastical bitch?
@@ -583,7 +584,7 @@ class GeneNetwork {
               paths[edge].node[d: int] = edge;
             }
           }
-        }  
+        }
         }
       this.lock.url(vstring);
       visited[currentNode] = true;
