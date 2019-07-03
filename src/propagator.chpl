@@ -16,6 +16,7 @@ use Spawn;
 use messaging;
 use HashedDist;
 use Time;
+use CommDiagnostics;
 
 record scoreComparator {
   proc keyPart(x: (string, real), i: int) {
@@ -460,11 +461,12 @@ class Propagator {
           this.log.debug('Assessing nodes that must be handled', hstring=v.header);
           currToProc = '';
           //toProcess.clear();
-
+          startVerboseComm();
           for id in nG.all {
             toProcess.add(id);
             this.log.debug('Adding node ID: ', id : string, hstring=v.header);
           }
+          stopVerboseComm();
           //this.log.debug('What is up, fellow nodes? NODES: ', toProcess : string, hstring=v.header);
 
           if toProcess.isEmpty() {
