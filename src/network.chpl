@@ -70,7 +70,7 @@ class networkGenerator {
   var mIdcIdSet: bool = false;
   var mIdcIdSetAtomic: atomic bool = false;
 
-  proc init() {
+  inline proc init() {
     this.complete();
     this.l.wl();
     this.initializeRoot();
@@ -81,7 +81,7 @@ class networkGenerator {
     this.l.uwl();
   }
 
-  proc spawn() {
+  inline proc spawn() {
     this.l.wl();
     //writeln("Spawn begin. READ LOCK HANDLES: ", this.l.readHandles.read() : string);
     this.generateEmptyNodes(nodeBlockSize);
@@ -94,7 +94,7 @@ class networkGenerator {
     this.l.uwl();
   }
 
-  proc initializeRoot() {
+  inline proc initializeRoot() {
     // this is to init root.
     // We'll call this numerous times, but only one will win.
     // Not that it matters.
@@ -117,7 +117,7 @@ class networkGenerator {
     this.root = rootLocaleNode.id;
   }
 
-  iter currentGeneration {
+  inline iter currentGeneration {
     var cId: int;
     cId = this.currentId.read();
     if cId > this.N {
@@ -135,7 +135,7 @@ class networkGenerator {
     this.l.url();
   }
 
-  proc randomInGen {
+  inline proc randomInGen {
     // return a random node ID in this generation.
     var RNG = new owned Random.PCGRandom.RandomStream(eltType = int);
     var cId: int;
@@ -148,7 +148,7 @@ class networkGenerator {
     return this.idSet[rint];
   }
 
-  iter all {
+  inline iter all {
     /*
     var cId: int;
     var mId: int;
@@ -182,7 +182,7 @@ class networkGenerator {
     this.l.url();
   }
 
-  proc removeUnprocessed(id : string) {
+  inline proc removeUnprocessed(id : string) {
     //writeln("readHandles on nG: ", this.l.readHandles.read() : string);
     this.l.wl();
     if this.IDs.contains(id) {
@@ -196,23 +196,25 @@ class networkGenerator {
     globalLock.uwl();
   }
 
-  proc setCurrentGeneration() {
+  inline proc setCurrentGeneration() {
     this.firstUnprocessedOld.write(this.firstUnprocessed.read());
     this.firstUnprocessed.write(this.currentId.read());
     this.firstUnprocessedNonAtomic = this.firstUnprocessed.read();
+    this.mIdcIdSet = false;
+    this.mIdcIdSetAtomic.write(false);
   }
 
-  proc generateID {
+  inline proc generateID {
     // returns a UUID, prepended by the locale.
     return '%04i'.format(here.id) + '-GENE-' + NUUID.UUID4();
   }
 
-  proc generateChromosomeID {
+  inline proc generateChromosomeID {
     // returns a UUID, prepended by the locale.
     return '%04i'.format(here.id) + '-CHRO-' + NUUID.UUID4();
   }
 
-  proc generateEmptyNodes(n: int) {
+  inline proc generateEmptyNodes(n: int) {
     // this will pre-generate a large set of UUIDs for us.
     // this is designed for the global arrays.
     for i in 1..n {
@@ -262,7 +264,7 @@ class networkGenerator {
     return returnString;
   }
 
-  proc addToGlobal() {
+  inline proc addToGlobal() {
     // Why do it in two steps?  Minimize the time spent keeping it locked
     // globally; writes of new objects are fine, resizes are not!
     var removeSet: domain(string);
@@ -296,7 +298,7 @@ class networkGenerator {
     this.newNodeStartingPoint = this.N+1;
   }
 
-  proc addUnprocessed() {
+  inline proc addUnprocessed() {
     globalLock.wl();
     for node in currentGeneration {
       if !globalUnprocessed.contains(node) {
@@ -308,7 +310,7 @@ class networkGenerator {
     globalLock.uwl();
   }
 
-  proc newSeed() {
+  inline proc newSeed() {
     // Generates a new seed for use with deltas, etc.
     // we're returning a long.
     return this.irng.getrandbits(64);
@@ -393,15 +395,15 @@ class GeneNetwork {
 
   var isCopyComplete: bool = false;
 
-  proc add_node(id: string) {
+  inline proc add_node(id: string) {
     this.__addNode__(id, hstring=new ygglog.yggHeader());
   }
 
-  proc add_node(id: string, hstring: ygglog.yggHeader) {
+  inline proc add_node(id: string, hstring: ygglog.yggHeader) {
     this.__addNode__(id, hstring);
   }
 
-  proc __addNode__(id: string, hstring: ygglog.yggHeader) : void {
+  inline proc __addNode__(id: string, hstring: ygglog.yggHeader) : void {
     //writeln(nodes);
     // We are working with the actual node objects, here.
     // Add to our domain!
@@ -429,12 +431,12 @@ class GeneNetwork {
     this.lock.uwl(vstring);
   }
 
-  proc generateID {
+  inline proc generateID {
     // returns a UUID, prepended by the locale.
     return '%04i'.format(here.id) + '-NETM-' + this.NUUID.UUID4();
   }
 
-  proc init() {
+  inline proc init() {
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'GeneNetwork';
     this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
@@ -445,13 +447,13 @@ class GeneNetwork {
     this.log.currentDebugLevel = 0;
   }
 
-  proc initializeRoot() {
+  inline proc initializeRoot() {
     this.rootNode.log = this.log;
     this.rootNode.l.log = this.log;
     //this.add_node(this.rootNode, new ygglog.yggHeader() + 'initializeNetwork');
   }
 
-  iter returnEdgesOnLocale(node : string) {
+  inline iter returnEdgesOnLocale(node : string) {
     var edgesToReturn: domain(string);
     var edgesForLater: domain(string);
     this.lock.rl();
@@ -474,12 +476,12 @@ class GeneNetwork {
     }
   }
 
-  proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray) {
+  inline proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray) {
     var vstring = hstring + 'returnNearestUnprocessed';
     return this.__calculatePath__(id_A, id_B, hstring=vstring, processedArray=processedArray, checkArray=true);
   }
 
-  proc calculatePath(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
+  inline proc calculatePath(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
     // This allows us to search for a specific one with the same logic.
     var vstring = hstring + 'calculatePath';
     var b_dom: domain(string);
@@ -493,7 +495,7 @@ class GeneNetwork {
     return path;
   }
 
-  proc __calculatePath__(id_A: string, in id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray, checkArray: bool) throws {
+  inline proc __calculatePath__(id_A: string, in id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray, checkArray: bool) throws {
     // This is an implementation of djikstra's algorithm.
     var nodes: domain(string);
     var visited: [nodes] bool = false;
@@ -718,7 +720,7 @@ class GeneNetwork {
     return delta;
   }
 
-  proc clone(ref networkCopy: shared GeneNetwork) {
+  inline proc clone(ref networkCopy: shared GeneNetwork) {
     //var networkCopy = new shared GeneNetwork();
     networkCopy.log = this.log;
     //networkCopy.initializeRoot();
