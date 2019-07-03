@@ -243,6 +243,8 @@ class networkGenerator {
   }
 
   proc addToGlobal() {
+    // Why do it in two steps?  Minimize the time spent keeping it locked
+    // globally; writes of new objects are fine, resizes are not!
     var removeSet: domain(string);
     globalLock.wl();
     for i in this.newNodeStartingPoint..this.N {
@@ -253,16 +255,25 @@ class networkGenerator {
         // because this is _definitely_ a copy operation, but it's possible
         // that somehow the lock doesn't copy over properly.
         globalIDs.add(node);
-        globalNodes[node] = new shared genes.GeneNode();
-        globalNodes[node].id = node;
-        globalNodes[node].l = new shared spinlock.SpinLock();
-        globalNodes[node].l.t = ' '.join('GENE', node);
-        globalNodes[node].l.log = globalNodes[node].log;
       } else {
         removeSet.add(node);
       }
     }
     globalLock.uwl();
+    globalLock.rl();
+    for i in this.newNodeStartingPoint..this.N {
+      var node = this.idSet[i];
+      // we _might_ need to recreate the log.
+      // and lock.
+      // because this is _definitely_ a copy operation, but it's possible
+      // that somehow the lock doesn't copy over properly.
+      globalNodes[node] = new shared genes.GeneNode();
+      globalNodes[node].id = node;
+      globalNodes[node].l = new shared spinlock.SpinLock();
+      globalNodes[node].l.t = ' '.join('GENE', node);
+      globalNodes[node].l.log = globalNodes[node].log;
+    }
+    globalLock.url();
     for node in removeSet {
       this.IDs.remove();
     }
