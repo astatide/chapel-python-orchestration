@@ -11,15 +11,17 @@ use spinlock;
 extern proc signal(sigNum : c_int, handler : c_fn_ptr) : c_fn_ptr;
 
 coforall L in Locales {
-  on L do {
-    var ragnarok = new shared propagator.Propagator(propagator.maxValkyries);
-    ragnarok.initRun();
-    //proc handler(x : int) : void {
-    //    ragnarok.setShutdown();
-    //}
-    // Capturing sigint.
-    //signal(2, c_ptrTo(handler));
-    ragnarok.run(L);  
+  if (propagator.useLocale0 || !(L == Locales[0])) {
+    on L do {
+      var ragnarok = new shared propagator.Propagator(propagator.maxValkyries);
+      ragnarok.initRun();
+      //proc handler(x : int) : void {
+      //    ragnarok.setShutdown();
+      //}
+      // Capturing sigint.
+      //signal(2, c_ptrTo(handler));
+      ragnarok.run(L);
+    }
   }
 }
 
