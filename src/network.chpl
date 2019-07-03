@@ -551,38 +551,40 @@ class GeneNetwork {
       }
       // we now assume this is an incomplete network.
       for edge in this.edges[currentNode] do {
-        this.log.debug('Edge ID:', edge : string, hstring=vstring);
-        // why are we a big, errortastical bitch?
-        //if !this.ids.contains(edge) {
-        if !nodes.contains(edge) {
-          this.log.debug('Adding edge ID:', edge : string, hstring=vstring);
-          nodes.add(edge);
-          visited[edge] = false;
-          dist[edge] = Math.INFINITY;
-        }
-        if !visited[edge] {
-          var d = min(dist[edge], dist[currentNode]+1);
-          unvisited.add(edge);
-          //unvisited_d.add(d);
-          dist[edge] = d;
-
-          if d == dist[currentNode]+1 {
-            paths[edge].n.clear();
-            var z: int;
-            for (j, e) in paths[currentNode] {
-              paths[edge].n.add(j : int);
-              paths[edge].node[j : int] = e;
-              z += 1;
-            }
-            // We're doing this as a tuple to help sorting later.
-            // That'll also help us calculate how many hops we have to make,
-            // which will be convenient when we're trying to determine who
-            // should do what.
-            paths[edge].n.add(d: int);
-            paths[edge].node[d: int] = edge;
+        if edge != 'root' {
+          this.log.debug('Edge ID:', edge : string, hstring=vstring);
+          // why are we a big, errortastical bitch?
+          //if !this.ids.contains(edge) {
+          if !nodes.contains(edge) {
+            this.log.debug('Adding edge ID:', edge : string, hstring=vstring);
+            nodes.add(edge);
+            visited[edge] = false;
+            dist[edge] = Math.INFINITY;
           }
+          if !visited[edge] {
+            var d = min(dist[edge], dist[currentNode]+1);
+            unvisited.add(edge);
+            //unvisited_d.add(d);
+            dist[edge] = d;
+
+            if d == dist[currentNode]+1 {
+              paths[edge].n.clear();
+              var z: int;
+              for (j, e) in paths[currentNode] {
+                paths[edge].n.add(j : int);
+                paths[edge].node[j : int] = e;
+                z += 1;
+              }
+              // We're doing this as a tuple to help sorting later.
+              // That'll also help us calculate how many hops we have to make,
+              // which will be convenient when we're trying to determine who
+              // should do what.
+              paths[edge].n.add(d: int);
+              paths[edge].node[d: int] = edge;
+            }
+          }
+        }  
         }
-      }
       this.lock.url(vstring);
       visited[currentNode] = true;
       // Doing it like this means we never have a race condition.
