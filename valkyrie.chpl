@@ -118,7 +118,7 @@ class valkyrieExecutor: msgHandler {
       }
       if this.heart.elapsed() > this.heartbeat {
         // exit when you're done.
-        throw new owned Error();
+        //throw new owned Error();
       }
     }
     gj.final();
