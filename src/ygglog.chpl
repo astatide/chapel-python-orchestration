@@ -5,6 +5,7 @@ use Time;
 
 config const flushToLog: bool = false;
 config const stdoutOnly = false;
+config const flushPrecision = 50;
 
 
 record yggHeader {
@@ -157,6 +158,7 @@ class YggdrasilLogging {
   var channelDebugHeader: [filesOpened] string;
   var channelDebugPath: [filesOpened] string;
   var fileHandles: [filesOpened] file;
+  var lastFlushTime: [filesOpened] int;
   var lastDebugHeader = '';
   var time = Time.getCurrentTime();
   //var l: [filesOpened] spinlock.SpinLock;
@@ -227,7 +229,7 @@ class YggdrasilLogging {
       id = hstring.id;
       // First, check to see whether we've created the file.
       if this.filesOpened.contains(id) {
-        if (flushToLog) {
+        if (flushToLog && this.lastFlushTime[id] == 0) {
           // if we're in debug mode, we close the channels.
           // Otherwise, we leave them open.  It's for exception handling.
           try {
@@ -322,7 +324,7 @@ class YggdrasilLogging {
     }
     if id != 'stdout' {
       //writeln(wc.type : string);
-      if (flushToLog) {
+      if (flushToLog && this.lastFlushTime[id] >= flushPrecision) {
         // If we're in debug mode, sync the file every time.
         // This ensures that if/when we fail out, our logs are complete.
         //if !propagator.stdoutOnly {
@@ -330,6 +332,9 @@ class YggdrasilLogging {
         wc.close();
         //}
         this.fileHandles[id].fsync();
+        this.lastFlushTime = 0;
+      } else {
+        this.lastFlushTime[id] += 1;
       }
         //wc.commit();
         //wc.close();
