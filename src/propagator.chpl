@@ -475,12 +475,12 @@ class Propagator {
           this.log.log('Assessing nodes that must be handled', hstring=v.header);
           currToProc = '';
           //toProcess.clear();
-          startVerboseComm();
+          //startVerboseComm();
           for id in nG.all {
             toProcess.add(id);
             this.log.log('Adding node ID: ', id : string, hstring=v.header);
           }
-          stopVerboseComm();
+          //stopVerboseComm();
           //this.log.debug('What is up, fellow nodes? NODES: ', toProcess : string, hstring=v.header);
 
           if toProcess.isEmpty() {

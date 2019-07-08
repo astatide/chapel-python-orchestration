@@ -326,7 +326,7 @@ class YggdrasilLogging {
     }
     if id != 'stdout' {
       //writeln(wc.type : string);
-      if (flushToLog && this.lastFlushTime[id] >= flushPrecision) {
+      if (flushToLog && this.lastFlushTime[id] >= flushPrecision-1) {
         // If we're in debug mode, sync the file every time.
         // This ensures that if/when we fail out, our logs are complete.
         //if !propagator.stdoutOnly {

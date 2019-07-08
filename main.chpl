@@ -10,6 +10,8 @@ use spinlock;
 // We want to capture kill signals.  @LouisJenkinsCS helped me with this.
 extern proc signal(sigNum : c_int, handler : c_fn_ptr) : c_fn_ptr;
 
+
+writeln("STARTING YGGDRASIL");
 coforall L in Locales {
   if (propagator.useLocale0 || !(L == Locales[0])) {
     on L do {
