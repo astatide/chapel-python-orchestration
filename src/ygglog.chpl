@@ -26,6 +26,7 @@ record yggHeader {
   var time: string;
   var printedHeader: bool = false;
   var useTime: bool = true;
+  var useFile: bool = true;
 
   proc writeThis(wc) {
     // this is function to allow this to be written directly.
@@ -225,7 +226,7 @@ class YggdrasilLogging {
       }
     }
 
-    if hstring.header == 'VALKYRIE' {
+    if hstring.useFile {
       id = hstring.id;
       // First, check to see whether we've created the file.
       if this.filesOpened.contains(id) {
@@ -244,7 +245,8 @@ class YggdrasilLogging {
           wc = stdout;
         }
       } else {
-        lf = open('logs/' + hstring.currentLocale + '-V' + hstring.currentTask + '.log' : string, iomode.cw);
+        //lf = open('logs/' + hstring.currentLocale + '-V' + hstring.currentTask + '.log' : string, iomode.cw);
+        lf = open('logs/' + hstring.sendTo + '.vlog' : string, iomode.cw);
         this.filesOpened.add(id);
         this.channelsOpened[id] = lf.writer();
         this.fileHandles[id] = lf;

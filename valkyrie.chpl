@@ -132,31 +132,31 @@ class valkyrieExecutor: msgHandler {
     writeln(m : string);
     this.heart.clear();
     select m.COMMAND {
-      when messaging.command.SET_ID do {
+      when this.command.SET_ID do {
         m.open(this.id);
         var newMsg = new messaging.msg(0);
-        newMsg.STATUS = messaging.status.OK;
+        newMsg.STATUS = this.status.OK;
         SEND(newMsg);
       }
-      when messaging.command.SET_TIME do {
+      when this.command.SET_TIME do {
         //m.open(this.id);
         //var newMsg = new messaging.msg(0);
-        //newMsg.STATUS = messaging.status.OK;
+        //newMsg.STATUS = this.status.OK;
         //SEND(newMsg);
       }
-      when messaging.command.SHUTDOWN do {
+      when this.command.SHUTDOWN do {
         exit(0);
         var newMsg = new messaging.msg(0);
-        newMsg.STATUS = messaging.status.OK;
+        newMsg.STATUS = this.status.OK;
         SEND(newMsg);
       }
-      when messaging.command.SET_TASK do {
+      when this.command.SET_TASK do {
         m.open(this.currentTask);
         var newMsg = new messaging.msg(0);
-        newMsg.STATUS = messaging.status.OK;
+        newMsg.STATUS = this.status.OK;
         SEND(newMsg);
       }
-      when messaging.command.RECEIVE_AND_PROCESS_DELTA do {
+      when this.command.RECEIVE_AND_PROCESS_DELTA do {
         var delta: genes.deltaRecord;
         m.open(delta);
         this.move(delta);
@@ -165,16 +165,16 @@ class valkyrieExecutor: msgHandler {
         var newMsg = new messaging.msg(score);
         //newMsg.s = "";
         newMsg.r = score;
-        newMsg.COMMAND = messaging.command.RECEIVE_SCORE;
+        newMsg.COMMAND = this.command.RECEIVE_SCORE;
         writeln("what is our msg?: " + newMsg : string);
         SEND(newMsg);
       }
-      when messaging.command.MOVE do {
+      when this.command.MOVE do {
         var delta: genes.deltaRecord;
         m.open(delta);
         this.move(delta);
         var newMsg = new messaging.msg(status.OK);
-        newMsg.COMMAND = messaging.command.RETURN_STATUS;
+        newMsg.COMMAND = this.command.RETURN_STATUS;
         writeln("what is our msg?: " + newMsg : string);
         SEND(newMsg);
       }

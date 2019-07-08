@@ -33,9 +33,6 @@ record commandRecord {
   var SET_TIME: int = 7;
 }
 
-var status: statusRecord;
-var command: commandRecord;
-
 record msg {
   // there are two types of records; commands and results.
   var STATUS: int;
@@ -45,6 +42,8 @@ record msg {
   var r: real;
   var exists: int = 0;
   // this.complete() means we complete!
+  var status: statusRecord;
+  var command: commandRecord;
 
   proc init() {}
 
@@ -120,6 +119,9 @@ class msgHandlerMultiple {
   var blocking: bool = true;
 
   var msgQueue: [1..0] msg;
+
+  var status: statusRecord;
+  var command: commandRecord;
 
   proc init(n: int) {
     this.size = n;
@@ -227,13 +229,13 @@ class msgHandlerMultiple {
     vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[iM], "--sendPort", this.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
 
     var newMsg = new messaging.msg(i);
-    newMsg.COMMAND = messaging.command.SET_TASK;
+    newMsg.COMMAND = command.SET_TASK;
     vLog.log("Setting task to", i : string, hstring=vstring);
     this.SEND(newMsg, iM);
 
     vLog.log("Setting ID to", vId : string, hstring=vstring);
     newMsg = new messaging.msg(vId);
-    newMsg.COMMAND = messaging.command.SET_ID;
+    newMsg.COMMAND = command.SET_ID;
     this.SEND(newMsg, iM);
     return vp;
   }
@@ -270,6 +272,9 @@ class msgHandler {
 
   var heartbeat: int = heartBeat;
   var heart =  new Time.Timer();
+
+  var status: statusRecord;
+  var command: commandRecord;
 
   proc init(n: int) {
     this.size = n;
@@ -364,14 +369,14 @@ class msgHandler {
     vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.ports[iM], "--sendPort", this.ports[iM], "--vSize", mSize : string, hstring=vstring);
 
     var newMsg = new messaging.msg(i);
-    newMsg.COMMAND = messaging.command.SET_TASK;
+    newMsg.COMMAND = command.SET_TASK;
     vLog.log("Setting task to", i : string, hstring=vstring);
     this.SEND(newMsg, iM);
     this.receiveMessage();
 
     vLog.log("Setting ID to", vId : string, hstring=vstring);
     newMsg = new messaging.msg(vId);
-    newMsg.COMMAND = messaging.command.SET_ID;
+    newMsg.COMMAND = command.SET_ID;
     this.SEND(newMsg, iM);
     this.receiveMessage();
     return vp;

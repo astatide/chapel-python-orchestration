@@ -23,6 +23,7 @@ globalLock.t = 'Ragnarok';
 globalLock.log = new shared ygglog.YggdrasilLogging();
 
 config const nodeBlockSize = 10000;
+config const ignoreRoot = false;
 
 // here's some stuff to spread out the array.
 
@@ -479,9 +480,9 @@ class GeneNetwork {
 
   inline proc returnNearestUnprocessed(id_A: string, id_B: domain(string), hstring: ygglog.yggHeader, ref processedArray) {
     var vstring = hstring + 'returnNearestUnprocessed';
-    startVerboseComm();
+    //startVerboseComm();
     return this.__calculatePath__(id_A, id_B, hstring=vstring, processedArray=processedArray, checkArray=true);
-    stopVerboseComm();
+    //stopVerboseComm();
   }
 
   inline proc calculatePath(id_A: string, id_B: string, hstring: ygglog.yggHeader) {
@@ -555,7 +556,7 @@ class GeneNetwork {
       // we now assume this is an incomplete network.
       for edge in this.edges[currentNode] do {
         //this.log.debug("Reading EDGE ID:", edge : string, hstring=vstring);
-        if edge != 'root' {
+        if (!ignoreRoot || !(edge == 'root')) {
           this.log.debug('Edge ID:', edge : string, hstring=vstring);
           // why are we a big, errortastical bitch?
           //if !this.ids.contains(edge) {
