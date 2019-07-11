@@ -279,7 +279,7 @@ record Chromosome {
     // first, prep all the initial nodes.
     var vstring = hstring + '__generateNodes__';
     if initial {
-      this.log.debug("Initializing nodes.", hstring=vstring);
+      //this.log.debug("Initializing nodes.", hstring=vstring);
     }
     for n in 1..totalGenes {
       if !this.geneNumbers.contains(n) {
@@ -293,17 +293,17 @@ record Chromosome {
       if n > 0 && n <= this.nRootGenes {
         // prep the root seeds.
         // handy function to return a node id.
-        this.log.debug('Getting seeds and ID', hstring=vstring);
+        //this.log.debug('Getting seeds and ID', hstring=vstring);
         var seed = nG.newSeed();
-        this.log.debug('ID: %s, SEED: %i'.format(id, seed), hstring=vstring);
+        //this.log.debug('ID: %s, SEED: %i'.format(id, seed), hstring=vstring);
         if initial {
-          this.log.debug("INITIAL GO; adding seed to root.", hstring=vstring);
+          //this.log.debug("INITIAL GO; adding seed to root.", hstring=vstring);
           network.globalLock.rl();
           ref rootNode = network.globalNodes[nG.root];
           network.globalLock.url();
           node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = rootNode);
         } else {
-          this.log.debug("NOT INITIAL; advancing old node.", hstring=vstring);
+          //this.log.debug("NOT INITIAL; advancing old node.", hstring=vstring);
           network.globalLock.rl();
           ref oldNode = network.globalNodes[this.geneIDs[n]];
           network.globalLock.url();
@@ -332,19 +332,19 @@ record Chromosome {
           seedList[i] = this.geneSeeds[oldId];
           i += 1;
         }
-        this.log.debug('Getting node!', hstring=vstring);
+        //this.log.debug('Getting node!', hstring=vstring);
         if initial {
-          this.log.debug('Calling combination node', hstring=vstring);
+          //this.log.debug('Calling combination node', hstring=vstring);
           node.newCombinationNode(idList, seedList, this.currentDeme, nG.root, network.globalNodes);
         } else {
-          this.log.debug('Calling combination node', hstring=vstring);
+          //this.log.debug('Calling combination node', hstring=vstring);
           node.newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes);
           // finalize it.
           network.globalNodes[this.geneIDs[n]].l.wl();
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
           network.globalNodes[this.geneIDs[n]].l.uwl();
         }
-        this.log.debug('Combination complete; setting node', hstring=vstring);
+        //this.log.debug('Combination complete; setting node', hstring=vstring);
         this.geneIDs[n] = id;
         this.add(n, id);
         node.chromosomes.add(this.id);

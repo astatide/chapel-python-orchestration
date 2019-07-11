@@ -238,6 +238,8 @@ class YggdrasilLogging {
             lf = this.fileHandles[id];
             var fileSize = lf.length();
             this.channelsOpened[id] = this.fileHandles[id].writer(start=fileSize);
+          } catch {
+            // eh, who cares.
           }
         }
         wc = this.channelsOpened[id];

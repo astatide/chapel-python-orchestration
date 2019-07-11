@@ -71,6 +71,7 @@ class networkGenerator {
   var mId: int;
   var mIdcIdSet: bool = false;
   var mIdcIdSetAtomic: atomic bool = false;
+  var generation: atomic int = 1;
 
   inline proc init() {
     this.complete();
@@ -175,6 +176,7 @@ class networkGenerator {
       }
     }
     this.l.rl();
+    writeln("NG: ", this.mId : string, this.cId : string);
     for i in this.mId..this.cId {
       var id = this.idSet[i];
       //if !this.processed[id] {
@@ -308,7 +310,7 @@ class networkGenerator {
         globalIsProcessed[node].write(false);
       }
     }
-    this.setCurrentGeneration();
+    //this.setCurrentGeneration();
     globalLock.uwl();
   }
 
@@ -556,7 +558,8 @@ class GeneNetwork {
       // we now assume this is an incomplete network.
       for edge in this.edges[currentNode] do {
         //this.log.debug("Reading EDGE ID:", edge : string, hstring=vstring);
-        if (!ignoreRoot || !(edge == 'root')) {
+        //if (!ignoreRoot || !(edge == 'root')) {
+        if edge != 'root' {
           this.log.debug('Edge ID:', edge : string, hstring=vstring);
           // why are we a big, errortastical bitch?
           //if !this.ids.contains(edge) {
@@ -589,7 +592,7 @@ class GeneNetwork {
             }
           }
         }
-        }
+      }
       this.lock.url(vstring);
       visited[currentNode] = true;
       // Doing it like this means we never have a race condition.
