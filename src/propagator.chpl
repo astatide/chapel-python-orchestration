@@ -400,6 +400,7 @@ class Propagator {
       this.yh += 'run';
       this.yh.sendTo = "RAGNAROK-" + here.id : string;
       this.yh.header = 'ragnarok';
+      this.yh.id = this.yh.sendTo;
       this.yh.useFile = true;
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
