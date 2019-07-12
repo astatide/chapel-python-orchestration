@@ -15,9 +15,6 @@ writeln("STARTING YGGDRASIL");
 coforall L in Locales {
   if (propagator.useLocale0 || !(L == Locales[0])) {
     on L do {
-      if !propagator.useLocale0 && L == Locales[1] {
-        L = Locales[0];
-      }
       var ragnarok = new shared propagator.Propagator(propagator.maxValkyries);
       ragnarok.initRun();
       //proc handler(x : int) : void {

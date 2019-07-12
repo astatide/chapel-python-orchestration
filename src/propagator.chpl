@@ -390,7 +390,7 @@ class Propagator {
 
   proc run(L : locale) {
     // Print out the header, yo.
-    if L == Locales[0] {
+    if (L == Locales[0] || (useLocale0 && L == Locales[1])) {
       this.yh.header = 'ragnarok';
       this.yh.useFile = false;
       this.yh += 'run';
