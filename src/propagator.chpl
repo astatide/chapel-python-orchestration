@@ -390,16 +390,17 @@ class Propagator {
 
   proc run(L : locale) {
     // Print out the header, yo.
-    if (L == Locales[0] || (useLocale0 && L == Locales[1])) {
+    if ((L == Locales[0] && useLocale0) ^ (!useLocale0 && L == Locales[1])) {
+      this.yh += 'run';
       this.yh.header = 'ragnarok';
       this.yh.useFile = false;
-      this.yh += 'run';
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
     } else {
+      this.yh += 'run';
       this.yh.sendTo = "RAGNAROK-" + here.id : string;
       this.yh.header = 'ragnarok';
-      this.yh += 'run';
+      this.yh.useFile = true;
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
     }
