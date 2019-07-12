@@ -704,7 +704,7 @@ class Propagator {
             this.log.debug("Setting the current generation count", v.header);
             // now, make sure we know we have to process all of these.
             //inCurrentGeneration.add(nG.currentId.read()-1);
-            while finishedChromoProp.read() < ((Locales.size*maxValkyries)-1) do chpl_task_yield();
+            while finishedChromoProp.read() < (howManyValks) do chpl_task_yield();
             finishedChromoProp.write(0);
             this.log.log('Switching generations', v.header);
             nG.addUnprocessed();
