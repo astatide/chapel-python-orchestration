@@ -591,6 +591,29 @@ class GeneNetwork {
               paths[edge].node[d: int] = edge;
             }
           }
+          if true {
+            this.log.debug('Checking if ID in list:', edge: string, hstring=vstring);
+            if id_B.contains(edge) {
+              this.log.debug("ID:", edge : string, "in id_B!  id_B:", id_B : string, hstring=vstring);
+              if checkArray {
+                if !processedArray[edge].testAndSet() {
+                  this.lock.url(vstring);
+                  return (edge, paths[edge], removeFromSet);
+                } else {
+                  // This means we've actually already processed it, so
+                  // we'll pretend it's not a part of id_B by removing it.
+                  // This will help us in the event that we've been beaten to this node.
+                  removeFromSet.add(edge);
+                  id_B.remove(edge);
+                }
+              } else {
+                this.log.debug("Not checking array; returning path for ID:", edge : string, hstring=vstring);
+                this.log.debug('ID:', edge : string, 'Path:', paths[edge] : string, hstring=vstring);
+                this.lock.url(vstring);
+                return (edge, paths[edge], removeFromSet);
+              }
+            }
+          }
         }
       }
       this.lock.url(vstring);
@@ -600,36 +623,6 @@ class GeneNetwork {
       // Oh man, and does it ever.  Basically, we don't leave this routine
       // untl we have one we KNOW can process, or there's nothing left to
       // process.
-      this.log.debug('Checking if ID in list:', currentNode : string, hstring=vstring);
-      if id_B.contains(currentNode) {
-        this.log.debug("ID:", currentNode : string, "in id_B!  id_B:", id_B : string, hstring=vstring);
-        if checkArray {
-          // We should actually do the testAndSet here, although I sort of
-          // dislike having the network access the array.  If false, we can use it!
-          //globalLock.rl();
-          if !processedArray[currentNode].testAndSet() {
-            //break;
-            //globalLock.url();
-            return (currentNode, paths[currentNode], removeFromSet);
-          } else {
-            // This means we've actually already processed it, so
-            // we'll pretend it's not a part of id_B by removing it.
-            // This will help us in the event that we've been beaten to this node.
-            //globalLock.url();
-            removeFromSet.add(currentNode);
-            id_B.remove(currentNode);
-            if id_B.isEmpty() {
-              // If we've removed everything, then we can't process anything.
-              // Returning an empty string dodges the processing logic.
-              return ('', paths[id_A], removeFromSet);
-            }
-          }
-        } else {
-          this.log.debug("Not checking array; returning path for ID:", currentNode : string, hstring=vstring);
-          this.log.debug('ID:', currentNode : string, 'Path:', paths[currentNode] : string, hstring=vstring);
-          return (currentNode, paths[currentNode], removeFromSet);
-        }
-      }
       if id_B.isEmpty() {
         // If we've removed everything, then we can't process anything.
         // Returning an empty string dodges the processing logic.
