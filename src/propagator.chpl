@@ -390,22 +390,25 @@ class Propagator {
 
   proc run(L : locale) {
     // Print out the header, yo.
+    var valkyrieUseStdout: bool;
     if ((L == Locales[0] && useLocale0) ^ (!useLocale0 && L == Locales[1])) {
       this.yh += 'run';
       this.yh.header = 'ragnarok';
       this.yh.useFile = false;
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
+      valkyrieUseStdout = true;
       begin {
         while true {
           var T: Time.Timer;
           T.start();
           this.log.log('CURRENT GENERATION COUNT:', inCurrentGeneration.read() : string, this.yh);
           T.stop();
-          sleep(30 - T.elapsed(TimeUnits.seconds));  
+          sleep(30 - T.elapsed(TimeUnits.seconds));
         }
       }
     } else {
+      valkyrieUseStdout = true;
       this.yh += 'run';
       this.yh.sendTo = "RAGNAROK-" + here.id : string;
       this.yh.header = 'ragnarok';
@@ -450,11 +453,17 @@ class Propagator {
         v.currentLocale = L : string;
         v.setSendTo();
         v.yh += 'run';
-        for iL in v.logo {
-          this.log.header(iL, hstring=v.header);
+        var currentYggHeader: ygglog.yggHeader;
+        if valkyrieUseStdout && i == 1 {
+          currentYggHeader = this.yh;
+        } else {
+          currentYggHeader = v.header;
         }
-        this.log.log('Initiating spawning sequence', hstring=v.header);
-        var vp = v.valhalla(1, v.id, mSize : string, this.log, vstring=v.header);
+        for iL in v.logo {
+          this.log.header(iL, hstring=currentYggHeader);
+        }
+        this.log.log('Initiating spawning sequence', hstring=currentYggHeader);
+        var vp = v.valhalla(1, v.id, mSize : string, this.log, vstring=currentYggHeader);
         var nSpawned = numSpawned.fetchAdd(1);
         var howManyValks: int = (((Locales.size-1)*maxValkyries)-1);
         if useLocale0 {
@@ -462,7 +471,7 @@ class Propagator {
         }
         if nSpawned < howManyValks {
           // we want to wait so that we spin up all processes.
-          this.log.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, hstring=v.header);
+          this.log.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, hstring=currentYggHeader);
           areSpawned;
         } else {
           areSpawned = true;
@@ -472,16 +481,15 @@ class Propagator {
         // ?  Why does this seem to cause issues?  So odd.
 
         for gen in 1..generations {
-
           v.gen = gen;
-          this.log.log('Starting GEN', '%{######}'.format(gen), hstring=v.header);
+          this.log.log('Starting GEN', '%{######}'.format(gen), hstring=currentYggHeader);
           var currToProc: string;
           var toProcess: domain(string);
           var path: network.pathHistory;
           var removeFromSet: domain(string);
           toProcess.clear();
-          this.log.log('Beginning processing', hstring=v.header);
-          //this.log.debug(nodesToProcess : string, hstring=v.header);
+          this.log.log('Beginning processing', hstring=currentYggHeader);
+          //this.log.debug(nodesToProcess : string, hstring=currentYggHeader);
           var prioritySize = v.priorityNodes.size;
           this.log.log('Assessing nodes that must be handled', hstring=v.header);
           currToProc = '';
@@ -539,6 +547,7 @@ class Propagator {
                   v.priorityNodes.remove(currToProc);
                   v.nPriorityNodesProcessed += 1;
                 }
+                var oldNode = v.currentNode;
                 v.currentNode = currToProc;
                 v.moved = true;
                 this.log.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
@@ -558,7 +567,7 @@ class Propagator {
                   this.log.log('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
                   this.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
                   this.log.debug('PATH:', path : string, hstring=v.header);
-                  var d = ygg.deltaFromPath(path, path.key(0), hstring=v.header);
+                  var d = ygg.deltaFromPath(path, oldNode, hstring=v.header);
                   d.to = currToProc;
                   var newMsg = new messaging.msg(d);
                   newMsg.i = deme;
@@ -605,9 +614,9 @@ class Propagator {
               //}
             } else {
               // Rest now, my child. Rest, and know your work is done.
-              this.log.log('And now, I rest.  Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+              this.log.log('And now, I rest.  Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=currentYggHeader);
               while inCurrentGeneration.read() != 0 do chpl_task_yield();
-              this.log.debug('Waking up!', hstring=v.header);
+              this.log.debug('Waking up!', hstring=currentYggHeader);
             }
             this.log.log('Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
             if this.shutdown {
@@ -619,6 +628,11 @@ class Propagator {
           if !v.moved {
             // do something about it, why don't you.
           }
+
+          if valkyrieUseStdout && i == 1 {
+            // force our stdout friend to handle it.
+            while valkyriesDone[gen].read() < howManyValks-2 do chpl_task_yield();
+          }
           if valkyriesDone[gen].fetchAdd(1) < howManyValks {
             // Reset a lot of the variables for the Valkyrie while we're idle.
             // Then wait until all the other Valkyries have finished.
@@ -626,10 +640,10 @@ class Propagator {
             // some statistics of how well we're running.
             // Then wait on the sync variable.
             v.moved = false;
-            this.log.log('Waiting in gen', gen : string, v.header);
+            this.log.log('Waiting in gen', gen : string, currentYggHeader);
             valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
             priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
-            this.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
+            this.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=currentYggHeader);
             v.nProcessed = 0;
             v.nPriorityNodesProcessed = 0;
 
@@ -640,23 +654,23 @@ class Propagator {
               nG.generation.sub(1);
             }
             readyForChromosomes[gen];
-            this.log.log('Grabbing chromosomes to process', hstring=v.header);
+            this.log.log('Grabbing chromosomes to process', hstring=currentYggHeader);
             // moveOn is an array of sync variables.  We're blocked from reading
             // until that's set to true.
-            advanceChromosomes(nG, v.header);
+            advanceChromosomes(nG, currentYggHeader);
             nG.addUnprocessed();
-            this.log.debug("Setting the current generation count", v.header);
+            this.log.debug("Setting the current generation count", currentYggHeader);
             // now, make sure we know we have to process all of these.
             //inCurrentGeneration.add(nG.currentId.read()-1);
             finishedChromoProp.add(1);
             moveOn[gen];
-            this.lock.rl(v.header);
-            this.log.log('MOVING ON in gen', gen : string, nodesToProcess : string, v.header);
-            this.lock.url(v.header);
+            this.lock.rl(currentYggHeader);
+            this.log.log('MOVING ON in gen', gen : string, nodesToProcess : string, currentYggHeader);
+            this.lock.url(currentYggHeader);
           } else {
             // Same stuff here, but as this is the last Valkyrie, we also
             // do global cleanup to ensure the global arrays are ready.
-            this.log.log('Handling cleanup on gen', gen : string, v.header);
+            this.log.log('Handling cleanup on gen', gen : string, currentYggHeader);
             v.moved = false;
             nextGeneration.clear();
             // we'll just throw this in here for now.
@@ -665,21 +679,21 @@ class Propagator {
             var (bestInGen, minLoc) = maxloc reduce zip(scoreArray, scoreArray.domain);
             var chromosomesToAdvance: domain(string);
             var c: [chromosomesToAdvance] chromosomes.Chromosome;
-            this.log.log('Determining which chromosomes to advance', v.header);
+            this.log.log('Determining which chromosomes to advance', currentYggHeader);
             for chrome in chromosomeDomain {
               var deme = chromes[chrome].currentDeme;
               //var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme], scoreArray.domain);
               var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme,..], scoreArray.domain.dim(2));
               //var lowestScore : real = Math.INFINITY;
               //var minLoc : int;
-              //this.log.log('Determining lowest score...', v.header);
+              //this.log.log('Determining lowest score...', currentYggHeader);
               //for z in 1..maxPerGeneration {
               //  if scoreArray[deme,z] < lowestScore {
               //    lowestScore = scoreArray[deme,z];
               //    minLoc = z;
               //  }
               //}
-              this.log.log('Finding the highest scoring node on this chromosome and seeing if it is good enough.', v.header);
+              this.log.log('Finding the highest scoring node on this chromosome and seeing if it is good enough.', currentYggHeader);
               var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
               if bestScore > lowestScore {
                 scoreArray[deme, minLoc] = bestScore;
@@ -689,15 +703,15 @@ class Propagator {
             for deme in 0..4 {
               for z in 1..maxPerGeneration {
                 if idArray[deme,z] != '' {
-                  this.log.log('Adding the following chromosome ID to be advanced:', idArray[deme,z], v.header);
+                  this.log.log('Adding the following chromosome ID to be advanced:', idArray[deme,z], currentYggHeader);
                   chromosomesToAdvance.add(idArray[deme,z]);
                 }
               }
             }
             // clear the domain of our losers.
-            this.log.log('Clearing the domain of those who are not continuing.', v.header);
+            this.log.log('Clearing the domain of those who are not continuing.', currentYggHeader);
             //if true {
-            var vheader = v.header;
+            var vheader = currentYggHeader;
             var delChrome: domain(string);
             for chrome in chromosomeDomain {
               if !chromosomesToAdvance.contains(chrome) {
@@ -708,15 +722,15 @@ class Propagator {
               chromosomeDomain.remove(chrome);
             }
             readyForChromosomes[gen] = true;
-            advanceChromosomes(nG, v.header);
+            advanceChromosomes(nG, currentYggHeader);
             //}
             scoreArray = -1;
-            this.log.debug("Setting the current generation count", v.header);
+            this.log.debug("Setting the current generation count", currentYggHeader);
             // now, make sure we know we have to process all of these.
             //inCurrentGeneration.add(nG.currentId.read()-1);
             while finishedChromoProp.read() < (howManyValks) do chpl_task_yield();
             finishedChromoProp.write(0);
-            this.log.log('Switching generations', v.header);
+            this.log.log('Switching generations', currentYggHeader);
             nG.addUnprocessed();
             // Clear out the current nodesToProcess domain, and swap it for the
             // ones we've set to process for the next generation.
@@ -727,8 +741,8 @@ class Propagator {
             }
             for node in network.globalUnprocessed {
               inCurrentGeneration.add(1);
-              //this.log.debug("Node ID:", node : string, hstring=v.header);
-              //this.log.debug('Chromosome:', chromes[globalNodes[node].chromosome] : string, hstring=v.header);
+              //this.log.debug("Node ID:", node : string, hstring=currentYggHeader);
+              //this.log.debug('Chromosome:', chromes[globalNodes[node].chromosome] : string, hstring=currentYggHeader);
               //var isInChromosome: bool = false;
               //for n in chromes[globalNodes[node].chromosome].geneIDs {
               //  if !isInChromosome {
@@ -745,7 +759,7 @@ class Propagator {
             valkyriesProcessed[i+(here.id*maxValkyries)].write(v.nProcessed);
             // Compute some rough stats.  Buggy.
             priorityValkyriesProcessed[i+(here.id*maxValkyries)].write(v.nPriorityNodesProcessed : real / prioritySize : real);
-            this.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=v.header);
+            this.log.log('GEN:', gen : string, 'TOTAL MOVES:', v.nMoves : string, 'PROCESSED:', v.nProcessed : string, 'PRIORITY PROCESSED', v.nPriorityNodesProcessed : string, hstring=currentYggHeader);
             var processedString: string;
             // this is really an IDEAL average.
             var avg = startingSeeds : real / maxValkyries : real ;
@@ -764,7 +778,7 @@ class Propagator {
             this.log.log('GEN', '%05i'.format(gen), 'processed in', '%05.2dr'.format(Time.getCurrentTime() - this.generationTime) : string, 'BEST: %05.2dr'.format(bestInGen), processedString : string, hstring=this.yh);
             this.yh.printedHeader = true;
             this.generationTime = Time.getCurrentTime() : real;
-            //this.lock.uwl(v.header);
+            //this.lock.uwl(currentYggHeader);
             valkyriesProcessed.write(0);
             priorityValkyriesProcessed.write(0);
             v.nPriorityNodesProcessed = 0;
