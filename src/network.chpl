@@ -176,7 +176,7 @@ class networkGenerator {
       }
     }
     this.l.rl();
-    writeln("NG: ", this.mId : string, this.cId : string);
+    //writeln("NG: ", this.mId : string, this.cId : string);
     for i in this.mId..this.cId {
       var id = this.idSet[i];
       //if !this.processed[id] {

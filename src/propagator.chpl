@@ -121,20 +121,20 @@ proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggH
   cLock.rl();
   // how many should this task get?  Only get about that many.
   var maxProcessed: int = ceil((nDuplicates * maxPerGeneration / Locales.size) / maxValkyries-1): int;
-  writeln("HOW MANY ARE WE PROCESSING? ", maxProcessed : string);
+  //writeln("HOW MANY ARE WE PROCESSING? ", maxProcessed : string);
   var processed: int = 0;
   for chrome in chromosomeDomain {
     if processed < maxProcessed {
       if !chromes[chrome].isProcessed.testAndSet() {
-        writeln("GRABBED CHROMOSOME ", chrome : string);
+        //writeln("GRABBED CHROMOSOME ", chrome : string);
         var nc = chromes[chrome];
         for i in 1..nDuplicates {
           var cc = nc.clone();
           cc.id = nG.generateChromosomeID;
-          writeln(cc.id, cc : string);
+          //writeln(cc.id, cc : string);
           //cc.log = this.log;
           cc.advanceNodes(nG, yH);
-          writeln(cc.id, cc : string);
+          //writeln(cc.id, cc : string);
           newCD.add(cc.id);
           newC[cc.id] = cc;
         }
@@ -396,6 +396,15 @@ class Propagator {
       this.yh.useFile = false;
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
+      begin {
+        while true {
+          var T: Time.Timer;
+          T.start();
+          this.log.log('CURRENT GENERATION COUNT:', inCurrentGeneration.read() : string, this.yh);
+          T.stop();
+          sleep(30 - T.elapsed(TimeUnits.seconds));  
+        }
+      }
     } else {
       this.yh += 'run';
       this.yh.sendTo = "RAGNAROK-" + here.id : string;
@@ -660,15 +669,16 @@ class Propagator {
             for chrome in chromosomeDomain {
               var deme = chromes[chrome].currentDeme;
               //var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme], scoreArray.domain);
-              var lowestScore : real = Math.INFINITY;
-              var minLoc : int;
-              this.log.log('Determining lowest score...', v.header);
-              for z in 1..maxPerGeneration {
-                if scoreArray[deme,z] < lowestScore {
-                  lowestScore = scoreArray[deme,z];
-                  minLoc = z;
-                }
-              }
+              var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme,..], scoreArray.domain.dim(2));
+              //var lowestScore : real = Math.INFINITY;
+              //var minLoc : int;
+              //this.log.log('Determining lowest score...', v.header);
+              //for z in 1..maxPerGeneration {
+              //  if scoreArray[deme,z] < lowestScore {
+              //    lowestScore = scoreArray[deme,z];
+              //    minLoc = z;
+              //  }
+              //}
               this.log.log('Finding the highest scoring node on this chromosome and seeing if it is good enough.', v.header);
               var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
               if bestScore > lowestScore {
