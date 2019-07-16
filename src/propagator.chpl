@@ -456,14 +456,10 @@ class Propagator {
         v.setSendTo();
         v.yh += 'run';
         var currentYggHeader: ygglog.yggHeader;
-        var valkyrieUseStdout: bool;
-        if L == Locales[0] {
-          valkyrieUseStdout = true;
-        }
-        if valkyrieUseStdout && i == 1 {
+        //var valkyrieUseStdout: bool;
+        if L == Locales[0] && i == 1 {
           currentYggHeader = this.yh;
         } else {
-          valkyrieUseStdout = false;
           currentYggHeader = v.header;
         }
         for iL in v.logo {
@@ -486,7 +482,7 @@ class Propagator {
         //v.moveToRoot();
         v.currentNode = nG.root;
         // ?  Why does this seem to cause issues?  So odd.
-        if valkyrieUseStdout && i == 1 {
+        if L == Locales[0] && i == 1 {
           this.log.log('Exporting network', hstring=currentYggHeader);
           network.globalLock.rl();
           network.exportGlobalNetwork(0);
@@ -646,7 +642,7 @@ class Propagator {
             // do something about it, why don't you.
           }
 
-          if valkyrieUseStdout && i == 1 {
+          if L == Locales[0] && i == 1 {
             // force our stdout friend to handle it.
             while valkyriesDone[gen].read() < howManyValks-2 do chpl_task_yield();
           }
