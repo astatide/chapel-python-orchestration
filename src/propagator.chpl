@@ -393,7 +393,7 @@ class Propagator {
   proc run(L : locale) {
     // Print out the header, yo.
     //if ((L == Locales[0] && useLocale0) ^ (!useLocale0 && L == Locales[1])) {
-    if L == Locales[0] {
+    if false {
       this.yh += 'run';
       this.yh.header = 'ragnarok';
       this.yh.useFile = false;
@@ -457,7 +457,8 @@ class Propagator {
         v.yh += 'run';
         var currentYggHeader: ygglog.yggHeader;
         //var valkyrieUseStdout: bool;
-        if L == Locales[0] && i == 1 {
+        //if L == Locales[0] && i == 1 {
+        if false {
           currentYggHeader = this.yh;
         } else {
           currentYggHeader = v.header;
@@ -642,10 +643,10 @@ class Propagator {
             // do something about it, why don't you.
           }
 
-          if L == Locales[0] && i == 1 {
+          //if L == Locales[0] && i == 1 {
             // force our stdout friend to handle it.
-            while valkyriesDone[gen].read() < howManyValks-2 do chpl_task_yield();
-          }
+          //  while valkyriesDone[gen].read() < howManyValks-2 do chpl_task_yield();
+          //}
           if valkyriesDone[gen].fetchAdd(1) < howManyValks {
             // Reset a lot of the variables for the Valkyrie while we're idle.
             // Then wait until all the other Valkyries have finished.
