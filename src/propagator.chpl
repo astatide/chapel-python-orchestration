@@ -82,7 +82,7 @@ var processedArray: [nodesToProcess] atomic bool;
 //var scoreDomain: domain(string);
 var scoreArray: [0..4,1..maxPerGeneration] real = -1; //Math.INFINITY;
 var idArray: [0..4,1..maxPerGeneration] string;
-var novelArray: [0..4,1..maxPerGeneration] real = -1; //Math.INFINITY;
+//var novelArray: [0..4,1..maxPerGeneration] real = -1; //Math.INFINITY;
 var novelIDArray: [0..4,1..maxPerGeneration] string;
 var inCurrentGeneration: atomic int;
 var nextGeneration: domain(string);
@@ -115,7 +115,7 @@ proc initChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHead
   }
 }
 
-proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
+proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader, gen: int) {
   //this.log.debug('Advancing the chromosomes.', vheader);
   var newCD: domain(string);
   var newC: [newCD] chromosomes.Chromosome;
@@ -135,7 +135,7 @@ proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggH
           cc.id = nG.generateChromosomeID;
           //writeln(cc.id, cc : string);
           //cc.log = this.log;
-          cc.advanceNodes(nG, yH);
+          cc.advanceNodes(nG, yH, gen);
           //writeln(cc.id, cc : string);
           newCD.add(cc.id);
           newC[cc.id] = cc;
@@ -399,7 +399,9 @@ class Propagator {
       this.yh.useFile = false;
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
-      valkyrieUseStdout = true;
+      if i == 1 {
+        valkyrieUseStdout = true;  
+      }
       begin {
         while true {
           var T: Time.Timer;
@@ -484,7 +486,7 @@ class Propagator {
         if valkyrieUseStdout && i == 1 {
           this.log.log('Exporting network', hstring=currentYggHeader);
           network.globalLock.rl();
-          network.exportGlobalNetwork();
+          network.exportGlobalNetwork(0);
           network.globalLock.url();
           this.log.log('Export complete!', hstring=currentYggHeader);
         }
@@ -559,6 +561,7 @@ class Propagator {
                 var oldNode = v.currentNode;
                 v.currentNode = currToProc;
                 v.moved = true;
+                v.nProcessed += 1;
                 this.log.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
                 nG.removeUnprocessed(currToProc);
                 toProcess.remove(currToProc);
@@ -612,6 +615,7 @@ class Propagator {
 
                   //network.globalLock.url();
                 }
+                network.globalNodes[currToProc].setValkyrie(v.id, v.nProcessed);
               } else {
                 // actually, if that's the case, we can't do shit.  So break and yield.
                 break;
@@ -667,7 +671,7 @@ class Propagator {
             this.log.log('Grabbing chromosomes to process', hstring=currentYggHeader);
             // moveOn is an array of sync variables.  We're blocked from reading
             // until that's set to true.
-            advanceChromosomes(nG, currentYggHeader);
+            advanceChromosomes(nG, currentYggHeader, gen+1);
             nG.addUnprocessed(ygg);
             this.log.debug("Setting the current generation count", currentYggHeader);
             // now, make sure we know we have to process all of these.
@@ -731,8 +735,13 @@ class Propagator {
             for chrome in delChrome {
               chromosomeDomain.remove(chrome);
             }
+            this.log.log('Exporting network', hstring=currentYggHeader);
+            network.globalLock.rl();
+            network.exportGlobalNetwork(gen);
+            network.globalLock.url();
+            this.log.log('Export complete!', hstring=currentYggHeader);
             readyForChromosomes[gen] = true;
-            advanceChromosomes(nG, currentYggHeader);
+            advanceChromosomes(nG, currentYggHeader, gen+1);
             //}
             scoreArray = -1;
             this.log.debug("Setting the current generation count", currentYggHeader);
@@ -795,11 +804,6 @@ class Propagator {
             v.nProcessed = 0;
             // time to move the fuck on.
             this.generation = gen + 1;
-            this.log.log('Exporting network', hstring=currentYggHeader);
-            network.globalLock.rl();
-            network.exportGlobalNetwork();
-            network.globalLock.url();
-            this.log.log('Export complete!', hstring=currentYggHeader);
             moveOn[gen] = true;
           }
         }

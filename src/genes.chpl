@@ -359,6 +359,9 @@ class GeneNode {
   var combinationID: string;
   var scores: [demeDomain] real;
 
+  var processedBy: string;
+  var processedOrder: int;
+
   var initialized: atomic bool = false;
 
   var revision: int = NEW;
@@ -516,6 +519,23 @@ class GeneNode {
       this.l.wl();
       this.demeDomain.add(deme);
       this.l.uwl();
+    }
+  }
+
+  proc setValkyrie(id: string, n: int) {
+    on this.locale {
+      //this.l.wl();
+      this.processedBy = id;
+      this.processedOrder = n;
+      //this.l.uwl();
+    }
+  }
+
+  proc setGeneration(gen: int) {
+    on this.locale {
+      //this.l.wl();
+      this.generation = gen;
+      //this.l.uwl();
     }
   }
 

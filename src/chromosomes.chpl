@@ -274,7 +274,7 @@ record Chromosome {
     }
   }
 
-  proc __generateNodes__(ref nG: shared network.networkGenerator, initial=false, hstring: ygglog.yggHeader) {
+  proc __generateNodes__(ref nG: shared network.networkGenerator, initial=false, gen: int, hstring: ygglog.yggHeader) {
     // chromosomes should build nodes according to their desires.
     // first, prep all the initial nodes.
     var vstring = hstring + '__generateNodes__';
@@ -288,6 +288,7 @@ record Chromosome {
       var id = nG.getNode();
       network.globalLock.rl();
       ref node = network.globalNodes[id];
+      node.setGeneration(gen);
       network.globalLock.url();
       node.revision = genes.SPAWNED;
       if n > 0 && n <= this.nRootGenes {
@@ -360,11 +361,11 @@ record Chromosome {
   }
 
   proc generateNodes(ref nG: shared network.networkGenerator, hstring: ygglog.yggHeader) {
-    this.__generateNodes__(nG, initial=true, hstring=hstring);
+    this.__generateNodes__(nG, initial=true, gen=1, hstring=hstring);
   }
 
-  proc advanceNodes(ref nG: shared network.networkGenerator, hstring: ygglog.yggHeader) {
-    this.__generateNodes__(nG, initial=false, hstring=hstring);
+  proc advanceNodes(ref nG: shared network.networkGenerator, hstring: ygglog.yggHeader, gen: int) {
+    this.__generateNodes__(nG, initial=false, gen=gen, hstring=hstring);
   }
 
   proc clone () {

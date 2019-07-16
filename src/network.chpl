@@ -50,8 +50,8 @@ var globalNodes: [globalIDs] shared genes.GeneNode;
 var globalUnprocessed: domain(string) dmapped Hashed(idxType=string, mapper = new mapperByLocale());
 var globalIsProcessed: [globalIDs] atomic bool;
 
-proc exportGlobalNetwork() {
-  var myFile = open("network.gml", iomode.cw);
+proc exportGlobalNetwork(gen: int) {
+  var myFile = open("network-" + gen : string + ".gml", iomode.cw);
   var f = myFile.writer();
   var g = new shared gml.gmlExporter();
   g.writeHeader(f);
@@ -138,6 +138,10 @@ class networkGenerator {
       var rootNode = new shared genes.GeneNode();
       rootNode.id = 'root';
       rootNode.revision = genes.SPAWNED;
+      rootNode.demeDomain.add(-1);
+      rootNode.generation = 1;
+      rootNode.combinationID = "-1";
+      rootNode.processedOrder = -1;
       globalIDs.add('root');
       globalNodes['root'] = rootNode;
     }

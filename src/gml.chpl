@@ -23,6 +23,11 @@ class gmlExporter {
     f.writeln('    combination ', node.combinationID : string);
     f.writeln('    chromosome "', node.chromosome : string, '"');
     f.writeln('    deme ', node.demeDomain : string);
+    f.writeln('    generation ', node.generation : string);
+    f.writeln('    valkyrie "', node.processedBy : string, '"');
+    f.writeln('    processedOrder ', node.processedOrder : string);
+    f.writeln('    start ', node.generation : string);
+    f.writeln('    end ', node.generation+2 : string);
     f.writeln('  ]');
   }
 
