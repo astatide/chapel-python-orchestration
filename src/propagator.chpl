@@ -419,6 +419,20 @@ class Propagator {
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
     }
+    begin {
+      while true {
+        var T: Time.Timer;
+        T.start();
+        //this.log.log('CURRENT GENERATION COUNT:', inCurrentGeneration.read() : string, this.yh);
+        this.log.log('runningTasks: ', L.runningTasks() : string, this.yh);
+        this.log.log('queuedTasks: ', L.queuedTasks() : string, this.yh);
+        this.log.log('blockedTasks: ', L.blockedTasks() : string, this.yh);
+        this.log.log('totalThreads: ', L.totalThreads() : string, this.yh);
+        this.log.log('idleThreads: ', L.idleThreads() : string, this.yh);
+        T.stop();
+        sleep(10 - T.elapsed(TimeUnits.seconds));
+      }
+    }
     // I think the other valkyries should be able to do their thing.
     // should probably do this for each task but hey whatever.
     // We're catching a signal interrupt, which is slightly mangled for some reason.
