@@ -470,7 +470,7 @@ class Propagator {
         var nSpawned = numSpawned.fetchAdd(1);
         //var howManyValks: int = (((Locales.size-1)*maxValkyries)-1);
         //if useLocale0 {
-        howManyValks = (((Locales.size)*maxValkyries)-1);
+        var howManyValks = (((Locales.size)*maxValkyries)-1);
         //}
         if nSpawned < howManyValks {
           // we want to wait so that we spin up all processes.
