@@ -316,6 +316,7 @@ record Chromosome {
         this.geneSeeds[n] = seed;
         node.chromosomes.add(this.id);
         node.chromosome = this.id;
+        node.combinationID = n : string;
         this.geneIDSet.add(id);
       }
       if n > this.nRootGenes {
@@ -327,11 +328,14 @@ record Chromosome {
         var idList: [1..c.size] string;
         var seedList: [1..c.size] int;
         var i: int = 1;
+        var combLabel: string = '(';
         for oldId in c {
           idList[i] = this.geneIDs[oldId];
           seedList[i] = this.geneSeeds[oldId];
           i += 1;
+          combLabel += oldId : string + ',';
         }
+        combLabel += ')';
         //this.log.debug('Getting node!', hstring=vstring);
         if initial {
           //this.log.debug('Calling combination node', hstring=vstring);
@@ -349,6 +353,7 @@ record Chromosome {
         this.add(n, id);
         node.chromosomes.add(this.id);
         node.chromosome = this.id;
+        node.combinationID = n : string;
         this.geneIDSet.add(id);
       }
     }

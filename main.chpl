@@ -4,6 +4,7 @@ use genes;
 use network;
 use propagator;
 use spinlock;
+use Spawn;
 
 //use VisualDebug;
 
@@ -12,6 +13,12 @@ use spinlock;
 
 
 writeln("STARTING YGGDRASIL");
+coforall L in Locales {
+  on L do {
+    // kill all valkyries
+    var vp = spawn(["pkill", "-9", "valkyrie"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=true);  
+  }
+}
 coforall L in Locales {
   if (propagator.useLocale0 || !(L == Locales[0])) {
     on L do {

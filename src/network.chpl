@@ -13,6 +13,7 @@ use SysError;
 use chromosomes;
 use HashedDist;
 use CommDiagnostics;
+use gml;
 
 class NodeNotInEdgesError : Error {
   proc init() { }
@@ -48,6 +49,37 @@ var globalIDs: domain(string) dmapped Hashed(idxType=string, mapper = new mapper
 var globalNodes: [globalIDs] shared genes.GeneNode;
 var globalUnprocessed: domain(string) dmapped Hashed(idxType=string, mapper = new mapperByLocale());
 var globalIsProcessed: [globalIDs] atomic bool;
+
+proc exportGlobalNetwork() {
+  var myFile = open("network.gml", iomode.cw);
+  var f = myFile.writer();
+  var g = new shared gml.gmlExporter();
+  g.writeHeader(f);
+  for id in globalIDs {
+    // wait until it's actually finished.
+    //while globalNodes[id].chromosome == '' do chpl_task_yield();
+    if globalNodes[id].chromosome != '' {
+      globalNodes[id].l.rl();
+      g.writeNode(f, globalNodes[id]);
+      globalNodes[id].l.url();
+    }
+  }
+  g.writeNode(f, globalNodes['root']);
+  for id in globalIDs {
+    // wait until it's actually finished.
+    //while globalNodes[id].chromosome == '' do chpl_task_yield();
+    if globalNodes[id].chromosome != '' {
+      globalNodes[id].l.rl();
+      g.writeEdge(f, globalNodes[id]);
+      globalNodes[id].l.url();
+    }
+  }
+  g.writeEdge(f, globalNodes['root']);
+  g.writeFooter(f);
+  f.close();
+  myFile.fsync();
+  myFile.close();
+}
 
 class networkGenerator {
 
@@ -186,6 +218,12 @@ class networkGenerator {
     this.l.url();
   }
 
+  inline proc addToMap(ygg: shared GeneNetwork) {
+    for id in this.all {
+      ygg.add_node(id);
+    }
+  }
+
   inline proc removeUnprocessed(id : string) {
     //writeln("readHandles on nG: ", this.l.readHandles.read() : string);
     this.l.wl();
@@ -302,15 +340,17 @@ class networkGenerator {
     this.newNodeStartingPoint = this.N+1;
   }
 
-  inline proc addUnprocessed() {
+  inline proc addUnprocessed(ref ygg: shared GeneNetwork) {
     globalLock.wl();
     for node in currentGeneration {
       if !globalUnprocessed.contains(node) {
         globalUnprocessed.add(node);
         globalIsProcessed[node].write(false);
+        ygg.add_node(node);
       }
     }
     //this.setCurrentGeneration();
+    //this.addToMap(ygg);
     globalLock.uwl();
   }
 

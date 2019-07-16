@@ -438,7 +438,7 @@ class Propagator {
       this.log.log("Local networks spawned; creating chromosomes", this.yh);
       initChromosomes(nG, this.yh);
       this.log.log("Adding new nodes to unprocessed list", this.yh);
-      nG.addUnprocessed();
+      nG.addUnprocessed(ygg);
       this.log.log("Setting the current generation count", this.yh);
       // now, make sure we know we have to process all of these.
       inCurrentGeneration.add(nG.currentId.read()-1);
@@ -481,6 +481,13 @@ class Propagator {
         //v.moveToRoot();
         v.currentNode = nG.root;
         // ?  Why does this seem to cause issues?  So odd.
+        if valkyrieUseStdout && i == 1 {
+          this.log.log('Exporting network', hstring=currentYggHeader);
+          network.globalLock.rl();
+          network.exportGlobalNetwork();
+          network.globalLock.url();
+          this.log.log('Export complete!', hstring=currentYggHeader);
+        }
 
         for gen in 1..generations {
           v.gen = gen;
@@ -570,6 +577,7 @@ class Propagator {
                   this.log.debug('Processing seed ID', currToProc : string, hstring=v.header);
                   this.log.debug('PATH:', path : string, hstring=v.header);
                   var d = ygg.deltaFromPath(path, oldNode, hstring=v.header);
+                  d.from = oldNode;
                   d.to = currToProc;
                   var newMsg = new messaging.msg(d);
                   newMsg.i = deme;
@@ -660,7 +668,7 @@ class Propagator {
             // moveOn is an array of sync variables.  We're blocked from reading
             // until that's set to true.
             advanceChromosomes(nG, currentYggHeader);
-            nG.addUnprocessed();
+            nG.addUnprocessed(ygg);
             this.log.debug("Setting the current generation count", currentYggHeader);
             // now, make sure we know we have to process all of these.
             //inCurrentGeneration.add(nG.currentId.read()-1);
@@ -733,7 +741,7 @@ class Propagator {
             while finishedChromoProp.read() < (howManyValks) do chpl_task_yield();
             finishedChromoProp.write(0);
             this.log.log('Switching generations', currentYggHeader);
-            nG.addUnprocessed();
+            nG.addUnprocessed(ygg);
             // Clear out the current nodesToProcess domain, and swap it for the
             // ones we've set to process for the next generation.
             nodesToProcess.clear();
@@ -787,6 +795,11 @@ class Propagator {
             v.nProcessed = 0;
             // time to move the fuck on.
             this.generation = gen + 1;
+            this.log.log('Exporting network', hstring=currentYggHeader);
+            network.globalLock.rl();
+            network.exportGlobalNetwork();
+            network.globalLock.url();
+            this.log.log('Export complete!', hstring=currentYggHeader);
             moveOn[gen] = true;
           }
         }

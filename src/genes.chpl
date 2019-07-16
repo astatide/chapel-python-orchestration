@@ -356,6 +356,7 @@ class GeneNode {
   var demeDomain: domain(int);
   var chromosomes: domain(string);
   var chromosome: string;
+  var combinationID: string;
   var scores: [demeDomain] real;
 
   var initialized: atomic bool = false;
