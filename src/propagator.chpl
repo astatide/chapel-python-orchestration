@@ -392,14 +392,14 @@ class Propagator {
 
   proc run(L : locale) {
     // Print out the header, yo.
-    var valkyrieUseStdout: bool;
-    if ((L == Locales[0] && useLocale0) ^ (!useLocale0 && L == Locales[1])) {
+    //if ((L == Locales[0] && useLocale0) ^ (!useLocale0 && L == Locales[1])) {
+    if L == Locales[0] {
       this.yh += 'run';
       this.yh.header = 'ragnarok';
       this.yh.useFile = false;
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
-      valkyrieUseStdout = true;
+      //valkyrieUseStdout = true;
       begin {
         while true {
           var T: Time.Timer;
@@ -456,10 +456,14 @@ class Propagator {
         v.setSendTo();
         v.yh += 'run';
         var currentYggHeader: ygglog.yggHeader;
+        var valkyrieUseStdout: bool;
+        if L == Locales[0] {
+          valkyrieUseStdout = true;
+        }
         if valkyrieUseStdout && i == 1 {
           currentYggHeader = this.yh;
         } else {
-          //valkyrieUseStdout = false;
+          valkyrieUseStdout = false;
           currentYggHeader = v.header;
         }
         for iL in v.logo {
