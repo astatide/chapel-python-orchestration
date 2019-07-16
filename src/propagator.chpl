@@ -82,6 +82,8 @@ var processedArray: [nodesToProcess] atomic bool;
 //var scoreDomain: domain(string);
 var scoreArray: [0..4,1..maxPerGeneration] real = -1; //Math.INFINITY;
 var idArray: [0..4,1..maxPerGeneration] string;
+var novelArray: [0..4,1..maxPerGeneration] real = -1; //Math.INFINITY;
+var novelIDArray: [0..4,1..maxPerGeneration] string;
 var inCurrentGeneration: atomic int;
 var nextGeneration: domain(string);
 var valkyriesProcessed: [1..maxValkyries*Locales.size] atomic int;
