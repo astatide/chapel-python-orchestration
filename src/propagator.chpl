@@ -468,10 +468,10 @@ class Propagator {
         this.log.log('Initiating spawning sequence', hstring=currentYggHeader);
         var vp = v.valhalla(1, v.id, mSize : string, this.log, vstring=currentYggHeader);
         var nSpawned = numSpawned.fetchAdd(1);
-        var howManyValks: int = (((Locales.size-1)*maxValkyries)-1);
-        if useLocale0 {
-          howManyValks = (((Locales.size)*maxValkyries)-1);
-        }
+        //var howManyValks: int = (((Locales.size-1)*maxValkyries)-1);
+        //if useLocale0 {
+        howManyValks = (((Locales.size)*maxValkyries)-1);
+        //}
         if nSpawned < howManyValks {
           // we want to wait so that we spin up all processes.
           this.log.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, hstring=currentYggHeader);
