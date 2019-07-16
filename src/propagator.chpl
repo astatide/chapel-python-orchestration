@@ -410,7 +410,7 @@ class Propagator {
         }
       }
     } else {
-      valkyrieUseStdout = true;
+      //valkyrieUseStdout = true;
       this.yh += 'run';
       this.yh.sendTo = "RAGNAROK-" + here.id : string;
       this.yh.header = 'ragnarok';
@@ -459,7 +459,7 @@ class Propagator {
         if valkyrieUseStdout && i == 1 {
           currentYggHeader = this.yh;
         } else {
-          valkyrieUseStdout = false;
+          //valkyrieUseStdout = false;
           currentYggHeader = v.header;
         }
         for iL in v.logo {
