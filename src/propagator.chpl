@@ -399,9 +399,7 @@ class Propagator {
       this.yh.useFile = false;
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
-      if i == 1 {
-        valkyrieUseStdout = true;  
-      }
+      valkyrieUseStdout = true;
       begin {
         while true {
           var T: Time.Timer;
@@ -461,6 +459,7 @@ class Propagator {
         if valkyrieUseStdout && i == 1 {
           currentYggHeader = this.yh;
         } else {
+          valkyrieUseStdout = false;
           currentYggHeader = v.header;
         }
         for iL in v.logo {
