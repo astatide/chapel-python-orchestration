@@ -89,75 +89,6 @@ var nextGeneration: domain(string);
 var valkyriesProcessed: [1..maxValkyries*Locales.size] atomic int;
 var priorityValkyriesProcessed: [1..maxValkyries*Locales.size] atomic real;
 
-proc initChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
-
-  forall deme in 0..4 with (ref nG) {
-    forall i in 1..nChromosomes with (ref nG) {
-      // Here, we're going to be given the instructions for generating chromosomes.
-      // No reason this can't be parallel, so let's do it.
-      //this.log.debug('Spawning chromosome', this.yh);
-      var nc = new chromosomes.Chromosome();
-      nc.id = nG.generateChromosomeID;
-      //this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
-      nc.prep(startingSeeds, chromosomeSize-startingSeeds);
-      nc.currentDeme = deme;
-      //this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, yh);
-      //nc.log = this.log;
-      var n: int = 1;
-      nc.generateNodes(nG, yH);
-      //this.lock.wl();
-      cLock.wl();
-      chromosomeDomain.add(nc.id);
-      chromes[nc.id] = nc;
-      cLock.uwl();
-      //this.lock.uwl();
-    }
-  }
-}
-
-proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader, gen: int) {
-  //this.log.debug('Advancing the chromosomes.', vheader);
-  var newCD: domain(string);
-  var newC: [newCD] chromosomes.Chromosome;
-  //this.lock.rl();
-  cLock.rl();
-  // how many should this task get?  Only get about that many.
-  var maxProcessed: int = ceil((nDuplicates * maxPerGeneration / Locales.size) / maxValkyries-1): int;
-  //writeln("HOW MANY ARE WE PROCESSING? ", maxProcessed : string);
-  var processed: int = 0;
-  for chrome in chromosomeDomain {
-    if processed < maxProcessed {
-      if !chromes[chrome].isProcessed.testAndSet() {
-        //writeln("GRABBED CHROMOSOME ", chrome : string);
-        var nc = chromes[chrome];
-        for i in 1..nDuplicates {
-          var cc = nc.clone();
-          cc.id = nG.generateChromosomeID;
-          //writeln(cc.id, cc : string);
-          //cc.log = this.log;
-          cc.advanceNodes(nG, yH, gen);
-          //writeln(cc.id, cc : string);
-          newCD.add(cc.id);
-          newC[cc.id] = cc;
-        }
-        processed += 1;
-      }
-    }
-  }
-  //this.lock.url();
-  cLock.url();
-  //this.lock.wl();
-  cLock.wl();
-  network.globalLock.rl();
-  for chrome in newCD {
-    chromosomeDomain.add(chrome);
-    chromes[chrome] = newC[chrome];
-  }
-  network.globalLock.url();
-  cLock.uwl();
-  //this.lock.uwl();
-}
-
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
 // (this is a record for a worker class)
@@ -388,6 +319,75 @@ class Propagator {
 
   proc setShutdown() {
     this.shutdown = true;
+  }
+
+  proc initChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
+
+    forall deme in 0..4 with (ref nG) {
+      forall i in 1..nChromosomes with (ref nG) {
+        // Here, we're going to be given the instructions for generating chromosomes.
+        // No reason this can't be parallel, so let's do it.
+        //this.log.debug('Spawning chromosome', this.yh);
+        var nc = new chromosomes.Chromosome();
+        nc.id = nG.generateChromosomeID;
+        //this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
+        nc.prep(startingSeeds, chromosomeSize-startingSeeds);
+        nc.currentDeme = deme;
+        //this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, yh);
+        //nc.log = this.log;
+        var n: int = 1;
+        nc.generateNodes(nG, yH);
+        //this.lock.wl();
+        cLock.wl();
+        chromosomeDomain.add(nc.id);
+        chromes[nc.id] = nc;
+        cLock.uwl();
+        //this.lock.uwl();
+      }
+    }
+  }
+
+  proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader, gen: int) {
+    //this.log.debug('Advancing the chromosomes.', vheader);
+    var newCD: domain(string);
+    var newC: [newCD] chromosomes.Chromosome;
+    //this.lock.rl();
+    cLock.rl();
+    // how many should this task get?  Only get about that many.
+    var maxProcessed: int = ceil((nDuplicates * maxPerGeneration / Locales.size) / maxValkyries-1): int;
+    //writeln("HOW MANY ARE WE PROCESSING? ", maxProcessed : string);
+    var processed: int = 0;
+    for chrome in chromosomeDomain {
+      if processed < maxProcessed {
+        if !chromes[chrome].isProcessed.testAndSet() {
+          //writeln("GRABBED CHROMOSOME ", chrome : string);
+          var nc = chromes[chrome];
+          for i in 1..nDuplicates {
+            var cc = nc.clone();
+            cc.id = nG.generateChromosomeID;
+            //writeln(cc.id, cc : string);
+            //cc.log = this.log;
+            cc.advanceNodes(nG, yH, gen);
+            //writeln(cc.id, cc : string);
+            newCD.add(cc.id);
+            newC[cc.id] = cc;
+          }
+          processed += 1;
+        }
+      }
+    }
+    //this.lock.url();
+    cLock.url();
+    //this.lock.wl();
+    cLock.wl();
+    network.globalLock.rl();
+    for chrome in newCD {
+      chromosomeDomain.add(chrome);
+      chromes[chrome] = newC[chrome];
+    }
+    network.globalLock.url();
+    cLock.uwl();
+    //this.lock.uwl();
   }
 
   proc run(L : locale) {
