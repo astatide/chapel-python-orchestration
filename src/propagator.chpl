@@ -493,6 +493,9 @@ class Propagator {
           } else {
             currentYggHeader = v.header;
           }
+          if i == 2 {
+            writeln("VALK 2 CHECKING IN DO I HAVE A LOG");
+          }
           for iL in v.logo {
             this.log.header(iL, hstring=currentYggHeader);
           }
