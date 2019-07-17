@@ -470,7 +470,7 @@ class Propagator {
       nG.addUnprocessed(ygg);
       this.log.log("Setting the current generation count", this.yh);
       // now, make sure we know we have to process all of these.
-      inCurrentGeneration.add(nG.currentId.read()-1);
+      begin inCurrentGeneration.add(nG.currentId.read()-1);
       //this.log.debug("About to add existing nodes to the processing list", yH);
 
       coforall i in 1..maxValkyries with (ref nG, ref ygg) {
@@ -662,11 +662,11 @@ class Propagator {
                 //}
               } else {
                 // Rest now, my child. Rest, and know your work is done.
-                this.log.log('And now, I rest.  Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=currentYggHeader);
+                begin this.log.log('And now, I rest.  Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=currentYggHeader);
                 while inCurrentGeneration.read() != 0 do chpl_task_yield();
                 this.log.debug('Waking up!', hstring=currentYggHeader);
               }
-              this.log.log('Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+              begin this.log.log('Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
               if this.shutdown {
                 this.exitRoutine();
               }
@@ -787,24 +787,26 @@ class Propagator {
               nG.addUnprocessed(ygg);
               // Clear out the current nodesToProcess domain, and swap it for the
               // ones we've set to process for the next generation.
-              nodesToProcess.clear();
-              for node in network.globalUnprocessed {
-                nodesToProcess.add(node);
-                processedArray[node].write(false);
-              }
-              for node in network.globalUnprocessed {
-                inCurrentGeneration.add(1);
-                //this.log.debug("Node ID:", node : string, hstring=currentYggHeader);
-                //this.log.debug('Chromosome:', chromes[globalNodes[node].chromosome] : string, hstring=currentYggHeader);
-                //var isInChromosome: bool = false;
-                //for n in chromes[globalNodes[node].chromosome].geneIDs {
-                //  if !isInChromosome {
-                //    if n == node {
-                //      isInChromosome = true;
-                //    }
-                //  }
-                //}
-                //assert(isInChromosome);
+              on Locales[0] {
+                nodesToProcess.clear();
+                for node in network.globalUnprocessed {
+                  nodesToProcess.add(node);
+                  processedArray[node].write(false);
+                }
+                forall node in network.globalUnprocessed {
+                  inCurrentGeneration.add(1);
+                  //this.log.debug("Node ID:", node : string, hstring=currentYggHeader);
+                  //this.log.debug('Chromosome:', chromes[globalNodes[node].chromosome] : string, hstring=currentYggHeader);
+                  //var isInChromosome: bool = false;
+                  //for n in chromes[globalNodes[node].chromosome].geneIDs {
+                  //  if !isInChromosome {
+                  //    if n == node {
+                  //      isInChromosome = true;
+                  //    }
+                  //  }
+                  //}
+                  //assert(isInChromosome);
+                }
               }
               nextGeneration.clear();
               // Set the count variable.
