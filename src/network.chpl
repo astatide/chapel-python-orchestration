@@ -350,14 +350,18 @@ class networkGenerator {
       for node in currentGeneration {
         if !globalUnprocessed.contains(node) {
           globalUnprocessed.add(node);
-          globalIsProcessed[node].write(false);
-          ygg.add_node(node);
         }
-      }  
+      }
+      globalLock.uwl();
+      globalLock.rl();
+      for node in currentGeneration {
+        globalIsProcessed[node].write(false);
+        ygg.add_node(node);
+      }
+      globalLock.url();
     }
     //this.setCurrentGeneration();
     //this.addToMap(ygg);
-    globalLock.uwl();
   }
 
   inline proc newSeed() {
