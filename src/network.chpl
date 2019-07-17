@@ -346,12 +346,14 @@ class networkGenerator {
 
   inline proc addUnprocessed(ref ygg: shared GeneNetwork) {
     globalLock.wl();
-    for node in currentGeneration {
-      if !globalUnprocessed.contains(node) {
-        globalUnprocessed.add(node);
-        globalIsProcessed[node].write(false);
-        ygg.add_node(node);
-      }
+    on this.locale {
+      for node in currentGeneration {
+        if !globalUnprocessed.contains(node) {
+          globalUnprocessed.add(node);
+          globalIsProcessed[node].write(false);
+          ygg.add_node(node);
+        }
+      }  
     }
     //this.setCurrentGeneration();
     //this.addToMap(ygg);

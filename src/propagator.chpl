@@ -323,26 +323,28 @@ class Propagator {
 
   proc initChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
 
-    forall deme in 0..4 with (ref nG) {
-      forall i in 1..nChromosomes with (ref nG) {
-        // Here, we're going to be given the instructions for generating chromosomes.
-        // No reason this can't be parallel, so let's do it.
-        //this.log.debug('Spawning chromosome', this.yh);
-        var nc = new chromosomes.Chromosome();
-        nc.id = nG.generateChromosomeID;
-        //this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
-        nc.prep(startingSeeds, chromosomeSize-startingSeeds);
-        nc.currentDeme = deme;
-        //this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, yh);
-        //nc.log = this.log;
-        var n: int = 1;
-        nc.generateNodes(nG, yH);
-        //this.lock.wl();
-        cLock.wl();
-        chromosomeDomain.add(nc.id);
-        chromes[nc.id] = nc;
-        cLock.uwl();
-        //this.lock.uwl();
+    on this.locale {
+      forall deme in 0..4 with (ref nG) {
+        forall i in 1..nChromosomes with (ref nG) {
+          // Here, we're going to be given the instructions for generating chromosomes.
+          // No reason this can't be parallel, so let's do it.
+          //this.log.debug('Spawning chromosome', this.yh);
+          var nc = new chromosomes.Chromosome();
+          nc.id = nG.generateChromosomeID;
+          //this.log.debug('Chromosome ID', nc.id, 'spawned.  Preparing genes.', this.yh);
+          nc.prep(startingSeeds, chromosomeSize-startingSeeds);
+          nc.currentDeme = deme;
+          //this.log.debug('Genes prepped in Chromosome ID; converting into nodes', nc.id, yh);
+          //nc.log = this.log;
+          var n: int = 1;
+          nc.generateNodes(nG, yH);
+          //this.lock.wl();
+          cLock.wl();
+          chromosomeDomain.add(nc.id);
+          chromes[nc.id] = nc;
+          cLock.uwl();
+          //this.lock.uwl();
+        }
       }
     }
   }
@@ -438,7 +440,7 @@ class Propagator {
     // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
     var startTime: real = this.log.time;
-    if true {
+    on this.locale {
       //var yH = new ygglog.yggHeader();
       //yH += 'Ragnarok';
       this.log.log("Spawn local network and networkGenerator", this.yh);
@@ -822,11 +824,11 @@ class Propagator {
           }
         }
       }
-    } else {
+    } //else {
       // here.runningTasksCNT or something like that
-      while this.generation < generations do chpl_task_yield();
-      writeln("fin.");
-  }
+      //while this.generation < generations do chpl_task_yield();
+      //writeln("fin.");
+  //}
     // wait, you damn fool.
     //  var moveOn: [1..generations] single bool;
   }
