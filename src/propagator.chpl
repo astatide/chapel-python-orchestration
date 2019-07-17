@@ -17,6 +17,7 @@ use messaging;
 use HashedDist;
 use Time;
 use CommDiagnostics;
+use AllLocalesBarriers;
 
 record scoreComparator {
   proc keyPart(x: (string, real), i: int) {
@@ -72,8 +73,9 @@ var chromes: [chromosomeDomain] chromosomes.Chromosome;
 var valkyriesDone: [1..generations] atomic int;
 var moveOn: [1..generations] single bool;
 var readyForChromosomes: [1..generations] single bool;
-var areSpawned: single bool;
-var numSpawned: atomic int;
+//var areSpawned: single bool;
+//var numSpawned: atomic int;
+allLocalesBarrier.reset(maxValkyries*Locales.size);
 var finishedChromoProp: atomic int;
 // now a few globals.
 var nodesToProcess: domain(string);
@@ -449,7 +451,7 @@ class Propagator {
     // We're catching a signal interrupt, which is slightly mangled for some reason.
     // start up the main procedure by creating some valkyries.
     var startTime: real = this.log.time;
-    on this.locale {
+    {
       //var yH = new ygglog.yggHeader();
       //yH += 'Ragnarok';
       this.log.log("Spawn local network and networkGenerator", this.yh);
@@ -470,7 +472,7 @@ class Propagator {
       //this.log.debug("About to add existing nodes to the processing list", yH);
 
       forall i in 1..maxValkyries with (ref nG, ref ygg) {
-        on this.locale {
+        {
           // spin up the Valkyries!
           //var this.log = new shared ygglog.YggdrasilLogging(startTime);
           this.log.currentDebugLevel = debug;
@@ -494,18 +496,19 @@ class Propagator {
           }
           this.log.log('Initiating spawning sequence', hstring=currentYggHeader);
           var vp = v.valhalla(1, v.id, mSize : string, this.log, vstring=currentYggHeader);
-          var nSpawned = numSpawned.fetchAdd(1);
+          //var nSpawned = numSpawned.fetchAdd(1);
           //var howManyValks: int = (((Locales.size-1)*maxValkyries)-1);
           //if useLocale0 {
           var howManyValks = (((Locales.size)*maxValkyries)-1);
           //}
-          if nSpawned < howManyValks {
+          //if nSpawned < howManyValks {
             // we want to wait so that we spin up all processes.
-            this.log.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, hstring=currentYggHeader);
-            areSpawned;
-          } else {
-            areSpawned = true;
-          }
+          //  this.log.log('Clone complete; awaiting arrival of other valkyries.  Ready:', nSpawned : string, hstring=currentYggHeader);
+          //  areSpawned;
+          //} else {
+          //  areSpawned = true;
+          //}
+          allLocalesBarrier.barrier();
           //v.moveToRoot();
           v.currentNode = nG.root;
           // ?  Why does this seem to cause issues?  So odd.

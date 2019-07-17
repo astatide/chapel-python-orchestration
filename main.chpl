@@ -21,7 +21,7 @@ coforall L in Locales {
 }
 coforall L in Locales {
   //if (propagator.useLocale0 || !(L == Locales[0])) {
-  if true {
+  {
     on L do {
       var ragnarok = new shared propagator.Propagator(propagator.maxValkyries);
       ragnarok.initRun();
