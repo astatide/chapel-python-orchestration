@@ -29,7 +29,7 @@ class SpinLock {
     if this.lockLog {
       this.log.debug('locking', this.t, hstring);
     }
-    while l.testAndSet(memory_order_acquire) do chpl_task_yield();
+    while l.read() || l.testAndSet(memory_order_acquire) do chpl_task_yield();
     this.n.add(1);
     if this.n.read() != 1 {
       this.log.critical('CRITICAL FAILURE: During lock, spinlock has been acquired multiple times on', this.t, hstring);
@@ -55,7 +55,7 @@ class SpinLock {
 
   // Ha, we're still using this for the logs.
   proc lock() {
-    while l.testAndSet(memory_order_acquire) do chpl_task_yield();
+    while l.read() || l.testAndSet(memory_order_acquire) do chpl_task_yield();
   }
 
   proc unlock() {

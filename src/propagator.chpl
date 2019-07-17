@@ -563,7 +563,7 @@ class Propagator {
 
             //var firstTime: bool = true;
 
-            while inCurrentGeneration.read() > 0 {
+            while !toProcess.isEmpty() {
               // We clear this out because it is faster to just re-enumerate the
               // nodes that need processing, rather than explicitly calculating
               // the path towards every node.  Particularly as that results in tasks
@@ -588,10 +588,10 @@ class Propagator {
                 if currToProc != '' {
                   // If this node is one of the ones in our priority queue, remove it
                   // as we clearly processing it now.
-                  if v.priorityNodes.contains(currToProc) {
-                    v.priorityNodes.remove(currToProc);
-                    v.nPriorityNodesProcessed += 1;
-                  }
+                  //if v.priorityNodes.contains(currToProc) {
+                  //  v.priorityNodes.remove(currToProc);
+                  //  v.nPriorityNodesProcessed += 1;
+                  //}
                   var oldNode = v.currentNode;
                   v.currentNode = currToProc;
                   v.moved = true;
@@ -603,7 +603,7 @@ class Propagator {
                   // Otherwise we could have threads stealing focus that should
                   // actually be idle.
                   this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
-                  inCurrentGeneration.sub(1);
+                  begin inCurrentGeneration.sub(1);
                   this.log.log('inCurrentGeneration successfully reduced', hstring=v.header);
                   //writeln('What are our demes? ', network.globalNodes[currToProc].demeDomain : string);
                   //network.globalLock.rl();
