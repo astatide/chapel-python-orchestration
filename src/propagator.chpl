@@ -420,9 +420,18 @@ class Propagator {
       this.yh.useFile = true;
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
+      begin {
+        while true {
+          var T: Time.Timer;
+          T.start();
+          this.log.log('CURRENT GENERATION COUNT:', inCurrentGeneration.read() : string, this.yh);
+          T.stop();
+          sleep(30 - T.elapsed(TimeUnits.seconds));
+        }
+      }
     }
     begin {
-      while true {
+      while false {
         var T: Time.Timer;
         T.start();
         //this.log.log('CURRENT GENERATION COUNT:', inCurrentGeneration.read() : string, this.yh);
