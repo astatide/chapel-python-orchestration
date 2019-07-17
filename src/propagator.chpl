@@ -54,6 +54,8 @@ config var chromosomeSize = 36;
 config var nDuplicates = 4;
 config const useLocale0 = false;
 
+config const reportTasks: bool = false;
+
 // Empty record serves as comparator
 record Comparator { }
 
@@ -423,7 +425,7 @@ class Propagator {
       this.header();
       this.log.log("Setting up locales and valkyries", this.yh);
       begin {
-        while true {
+        while reportTasks {
           var T: Time.Timer;
           T.start();
           this.log.log('CURRENT GENERATION COUNT:', inCurrentGeneration.read() : string, this.yh);
@@ -433,7 +435,7 @@ class Propagator {
       }
     }
     begin {
-      while false {
+      while true {
         var T: Time.Timer;
         T.start();
         //this.log.log('CURRENT GENERATION COUNT:', inCurrentGeneration.read() : string, this.yh);
