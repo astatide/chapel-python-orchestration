@@ -75,7 +75,7 @@ var moveOn: [1..generations] single bool;
 var readyForChromosomes: [1..generations] single bool;
 //var areSpawned: single bool;
 //var numSpawned: atomic int;
-allLocalesBarrier.reset(maxValkyries*Locales.size);
+allLocalesBarrier.reset(maxValkyries);
 var finishedChromoProp: atomic int;
 // now a few globals.
 var nodesToProcess: domain(string);
