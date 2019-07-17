@@ -473,7 +473,7 @@ class Propagator {
       inCurrentGeneration.add(nG.currentId.read()-1);
       //this.log.debug("About to add existing nodes to the processing list", yH);
 
-      forall i in 1..maxValkyries with (ref nG, ref ygg) {
+      coforall i in 1..maxValkyries with (ref nG, ref ygg) {
         {
           // spin up the Valkyries!
           //var this.log = new shared ygglog.YggdrasilLogging(startTime);
@@ -493,9 +493,9 @@ class Propagator {
           } else {
             currentYggHeader = v.header;
           }
-          if i == 2 {
-            writeln("VALK 2 CHECKING IN DO I HAVE A LOG");
-          }
+          //if i == 2 {
+          //  writeln("VALK 2 CHECKING IN DO I HAVE A LOG");
+          //}
           for iL in v.logo {
             this.log.header(iL, hstring=currentYggHeader);
           }
