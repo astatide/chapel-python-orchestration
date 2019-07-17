@@ -28,6 +28,7 @@ class gmlExporter {
     f.writeln('    processedOrder ', node.processedOrder : string);
     f.writeln('    start ', node.generation : string);
     f.writeln('    end ', node.generation+2 : string);
+    f.writeln('    locale ', node.locale.id : string);
     f.writeln('  ]');
   }
 

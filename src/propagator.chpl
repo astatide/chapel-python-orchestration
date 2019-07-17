@@ -597,7 +597,7 @@ class Propagator {
                   v.moved = true;
                   v.nProcessed += 1;
                   this.log.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
-                  nG.removeUnprocessed(currToProc);
+                  begin nG.removeUnprocessed(currToProc);
                   toProcess.remove(currToProc);
                   // Actually, reduce the count BEFORE we do this.
                   // Otherwise we could have threads stealing focus that should
