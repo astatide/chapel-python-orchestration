@@ -8,13 +8,16 @@ class TooManyLocksError : Error {
 }
 
 class SpinLock {
-  var l: atomic bool;
+  //var l: atomic bool;
+  var l: chpl__processorAtomicType(bool);
+  //var l: chpl__processorAtomicType(bool);
   //var log = new shared ygglog.YggdrasilLogging();
   var log: shared ygglog.YggdrasilLogging;
-  var n: atomic int;
+  //var n: atomic int;
+  var n: chpl__processorAtomicType(int);
   var t: string;
-  var writeLock: atomic int;
-  var readHandles: atomic int;
+  var writeLock: chpl__processorAtomicType(int);
+  var readHandles: chpl__processorAtomicType(int);
   var lockLog: bool;
 
   //proc init() {
@@ -118,4 +121,16 @@ class SpinLock {
   proc url() {
     this.url(new ygglog.yggHeader());
   }
+}
+
+class NetworkSpinLock : SpinLock {
+      var l: atomic bool;
+      //var l: chpl__processorAtomicType(bool);
+      //var log = new shared ygglog.YggdrasilLogging();
+      var log: shared ygglog.YggdrasilLogging;
+      var n: atomic int;
+      var t: string;
+      var writeLock: atomic int;
+      var readHandles: atomic int;
+      var lockLog: bool;
 }

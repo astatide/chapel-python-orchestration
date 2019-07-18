@@ -14,12 +14,13 @@ use chromosomes;
 use HashedDist;
 use CommDiagnostics;
 use gml;
+use AllLocalesBarriers;
 
 class NodeNotInEdgesError : Error {
   proc init() { }
 }
 
-var globalLock = new shared spinlock.SpinLock();
+var globalLock = new shared spinlock.NetworkSpinLock();
 globalLock.t = 'Ragnarok';
 globalLock.log = new shared ygglog.YggdrasilLogging();
 

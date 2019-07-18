@@ -66,7 +66,7 @@ proc Comparator.compare(a, b) {
 
 
 var absComparator: Comparator;
-var cLock = new shared spinlock.SpinLock();
+var cLock = new shared spinlock.NetworkSpinLock();
 cLock.t = 'Chromosomes';
 cLock.log = new shared ygglog.YggdrasilLogging();
 var chromosomeDomain: domain(string) dmapped Hashed(idxType=string, mapper = new network.mapperByLocale());
