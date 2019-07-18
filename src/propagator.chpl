@@ -457,17 +457,17 @@ class Propagator {
       //var yH = new ygglog.yggHeader();
       //yH += 'Ragnarok';
       this.log.log("Spawn local network and networkGenerator", this.yh);
-      var ygg = new shared network.GeneNetwork();
+      var yggLocale = new shared network.GeneNetwork();
       // CHANGE ME
-      ygg.log = this.log;
-      ygg.log.currentDebugLevel = debug;
-      ygg.lock.log = this.log;
+      yggLocale.log = this.log;
+      yggLocale.log.currentDebugLevel = debug;
+      yggLocale.lock.log = this.log;
       var nG = new shared network.networkGenerator();
       // we're gonna want a list of network IDs we can use.
       this.log.log("Local networks spawned; creating chromosomes", this.yh);
       initChromosomes(nG, this.yh);
       this.log.log("Adding new nodes to unprocessed list", this.yh);
-      nG.addUnprocessed(ygg);
+      nG.addUnprocessed(yggLocale);
       this.log.log("Setting the current generation count", this.yh);
       // now, make sure we know we have to process all of these.
       begin inCurrentGeneration.add(nG.currentId.read()-1);
@@ -477,6 +477,12 @@ class Propagator {
         {
           // spin up the Valkyries!
           //var this.log = new shared ygglog.YggdrasilLogging(startTime);
+          var ygg = new shared network.GeneNetwork();
+          // CHANGE ME
+          ygg.log = this.log;
+          ygg.log.currentDebugLevel = debug;
+          ygg.lock.log = this.log;
+
           this.log.currentDebugLevel = debug;
           var vLock = new shared spinlock.SpinLock();
           vLock.t = 'Valkyrie';
