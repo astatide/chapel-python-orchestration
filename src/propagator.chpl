@@ -473,7 +473,7 @@ class Propagator {
       begin inCurrentGeneration.add(nG.currentId.read()-1);
       //this.log.debug("About to add existing nodes to the processing list", yH);
 
-      coforall i in 1..maxValkyries with (ref nG) {
+      coforall i in 1..maxValkyries with (ref nG, ref ygg) {
         {
           // spin up the Valkyries!
           //var this.log = new shared ygglog.YggdrasilLogging(startTime);
