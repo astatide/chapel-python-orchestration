@@ -80,7 +80,7 @@ class Propagator {
   // this is going to actually hold all the logic for running EvoCap.
   var generation: int;
 
-  var ygg: shared network.GeneNetwork();
+  var ygg: shared network.networkMapper();
   var yh = new ygglog.yggHeader();
   var log: shared ygglog.YggdrasilLogging();
   var lock: shared spinlock.SpinLock;
@@ -91,7 +91,7 @@ class Propagator {
 
   proc init() {
     this.complete();
-    // We initialize the network, creating the GeneNetwork object, logging
+    // We initialize the network, creating the networkMapper object, logging
     // infrastructure
     this.yh = new ygglog.yggHeader();
     this.yh += 'Ragnarok';
@@ -311,7 +311,7 @@ class Propagator {
     this.startLoggingTasks();
 
     this.log.log("Spawn local network and networkGenerator", this.yh);
-    var ygg = new shared network.GeneNetwork();
+    var ygg = new shared network.networkMapper();
     var nG = new shared network.networkGenerator();      // we're gonna want a list of network IDs we can use.
     ygg.log = this.log;
     ygg.log.currentDebugLevel = debug;
@@ -360,6 +360,9 @@ class Propagator {
           this.exportCurrentNetworkState(currentYggHeader);
         }
 
+        // timer stuff.
+        var T: Time.Timer;
+
         for gen in 1..generations {
           v.gen = gen;
           this.log.log('Starting GEN', '%{######}'.format(gen), hstring=currentYggHeader);
@@ -397,8 +400,11 @@ class Propagator {
             var existsInDomainAndCanProcess: bool = false;
             // This function now does the atomic test.
             this.log.log('Returning nearest unprocessed', hstring=v.header);
+            T.start();
             (currToProc, path, removeFromSet) = ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
-            this.log.log('Unprocessed found.  ID:', currToProc : string, hstring=v.header);
+            T.stop();
+            this.log.log('Unprocessed found in:', T.elapsed() : string, 'ID:', currToProc : string, hstring=v.header);
+            T.clear();
             for i in removeFromSet {
               if toProcess.contains(i) {
                 this.log.debug('Removing ID:', i : string, hstring=v.header);
@@ -410,19 +416,23 @@ class Propagator {
               this.log.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
               begin nG.removeUnprocessed(currToProc);
               toProcess.remove(currToProc);
-              this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
+              //this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
               begin inCurrentGeneration.sub(1);
 
               // this handles all the ZMQ and TF bits.
               var delta = ygg.deltaFromPath(path, v.currentNode, hstring=v.header);
               delta.from = v.currentNode;
               delta.to = currToProc;
+              T.start();
               var (score, deme) = v.processNode(network.globalNodes[currToProc], delta);
+              T.stop();
 
               // now, set the chromosome.
               var nc = network.globalNodes[currToProc].chromosome;
               cLock.rl();
               var inChromeID = chromes[nc].returnNodeNumber(currToProc);
+              this.log.log("Node ID:", currToProc : string, "Score:", score : string, "Deme:", deme : string, "Time:", T.elapsed() : string, hstring=v.header);
+              T.clear();
               this.log.log('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
               this.log.log('DemeDomain in chromosome:', chromes[nc].geneIDs : string, hstring=v.header);
               chromes[nc].scores[inChromeID] = score;
@@ -433,7 +443,7 @@ class Propagator {
               // actually, if that's the case, we can't do shit.  So break and yield.
               break;
             }
-            begin this.log.log('Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
+            //begin this.log.log('Remaining in generation:', inCurrentGeneration.read() : string, 'priorityNodes:', v.priorityNodes : string, hstring=v.header);
             if this.shutdown {
               this.exitRoutine();
             }
@@ -454,7 +464,7 @@ class Propagator {
     }
   }
 
-  proc continueEndOfGeneration(ref v: shared valkyrie.valkyrieHandler, ref nG: shared network.networkGenerator, gen: int, ref ygg: shared network.GeneNetwork, yh: ygglog.yggHeader) {
+  proc continueEndOfGeneration(ref v: shared valkyrie.valkyrieHandler, ref nG: shared network.networkGenerator, gen: int, ref ygg: shared network.networkMapper, yh: ygglog.yggHeader) {
     // Same stuff here, but as this is the last Valkyrie, we also
     // do global cleanup to ensure the global arrays are ready.
     this.log.log('Handling cleanup on gen', gen : string, yh);
@@ -519,7 +529,7 @@ class Propagator {
     moveOn[gen] = true;
   }
 
-  proc waitEndOfGeneration(ref v: shared valkyrie.valkyrieHandler, ref nG: shared network.networkGenerator, gen: int, ref ygg: shared network.GeneNetwork, yh: ygglog.yggHeader) {
+  proc waitEndOfGeneration(ref v: shared valkyrie.valkyrieHandler, ref nG: shared network.networkGenerator, gen: int, ref ygg: shared network.networkMapper, yh: ygglog.yggHeader) {
     // Reset a lot of the variables for the Valkyrie while we're idle.
     // Then wait until all the other Valkyries have finished.
     // In addition, add to some global variables so that we can compute

@@ -9,7 +9,6 @@ use Time;
 
 extern proc chpl_nodeName(): c_string;
 config const awaitResponse = false;
-config const yieldWhileWait = false;
 config const heartBeat: int = 100;
 config const yieldOnWait: bool = false;
 config const trueSleep: bool = true;

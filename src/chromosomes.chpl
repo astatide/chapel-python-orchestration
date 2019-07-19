@@ -423,7 +423,7 @@ record Chromosome {
   Generally, don't call this.
   */
 
-  proc bestGene(ygg: network.GeneNetwork) {
+  proc bestGene(ygg: network.networkMapper) {
     var bestNode: string;
     var bestScore: real = 0;
     if true {

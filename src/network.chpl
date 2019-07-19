@@ -223,7 +223,7 @@ class networkGenerator {
     this.l.url();
   }
 
-  inline proc addToMap(ygg: shared GeneNetwork) {
+  inline proc addToMap(ygg: shared networkMapper) {
     for id in this.all {
       ygg.add_node(id);
     }
@@ -345,7 +345,7 @@ class networkGenerator {
     this.newNodeStartingPoint = this.N+1;
   }
 
-  inline proc addUnprocessed(ref ygg: shared GeneNetwork) {
+  inline proc addUnprocessed(ref ygg: shared networkMapper) {
     globalLock.wl();
     on this.locale {
       for node in currentGeneration {
@@ -429,7 +429,7 @@ record pathSet {
   var paths: [entryPoints] pathHistory;
 }
 
-class GeneNetwork {
+class networkMapper {
   // Hash table for our nodes and edges.  Basically, it's a dictionary of lists;
   // kind of easy to think of it that way, for those of us coming from Python.
   var id: string;
@@ -466,7 +466,7 @@ class GeneNetwork {
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__addNode__';
     this.lock.wl(vstring);
-    //this.log.debug('Adding node', id : string, 'to GeneNetwork ID:', this.id : string, hstring=vstring);
+    //this.log.debug('Adding node', id : string, 'to networkMapper ID:', this.id : string, hstring=vstring);
     if !this.ids.contains(id) {
       this.ids.add(id);
     }
@@ -493,7 +493,7 @@ class GeneNetwork {
 
   inline proc init() {
     this.lock = new shared spinlock.SpinLock();
-    this.lock.t = 'GeneNetwork';
+    this.lock.t = 'networkMapper';
     this.rootNode = new shared genes.GeneNode(id='root', ctype='root');
     this.log = new shared ygglog.YggdrasilLogging();
     this.complete();
@@ -774,8 +774,8 @@ class GeneNetwork {
     return delta;
   }
 
-  inline proc clone(ref networkCopy: shared GeneNetwork) {
-    //var networkCopy = new shared GeneNetwork();
+  inline proc clone(ref networkCopy: shared networkMapper) {
+    //var networkCopy = new shared networkMapper();
     networkCopy.log = this.log;
     //networkCopy.initializeRoot();
     forall i in this.ids {
