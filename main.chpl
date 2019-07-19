@@ -23,14 +23,14 @@ coforall L in Locales {
   //if (propagator.useLocale0 || !(L == Locales[0])) {
   {
     on L do {
-      var ragnarok = new shared propagator.Propagator(propagator.maxValkyries);
+      var ragnarok = new shared propagator.Propagator();
       //ragnarok.initRun();
       //proc handler(x : int) : void {
       //    ragnarok.setShutdown();
       //}
       // Capturing sigint.
       //signal(2, c_ptrTo(handler));
-      ragnarok.run(L);
+      ragnarok.run();
     }
   }
 }

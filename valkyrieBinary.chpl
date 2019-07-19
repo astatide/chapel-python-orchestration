@@ -14,7 +14,6 @@ VUUID.UUID4();
 
 config var recvPort: string;
 config var sendPort: string;
-config var vSize: int;
 
 proc main {
   // first, register the sigint handler.
