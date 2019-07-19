@@ -2,6 +2,7 @@
 #import importlib
 #import faulthandler
 #faulthandler.enable()
+import subprocess
 import gc
 gc.disable()
 import gjallarbru as gj
@@ -959,6 +960,7 @@ def runParallel():
 
 
 def run():
+    start = time.time()
     from keras import backend as K
     # This is the main function that we'll call.  Also, you're a bitch.
     loki = yggdrasilModel()
@@ -992,4 +994,8 @@ def run():
     #gc.collect()
     #q.put(final_val)
     print("Valkyrie ID: " + vId + " " + "Returning score: " + str(final_val))
+    end = time.time()
+    p = subprocess.call('echo ' + str(end-start) + '>> /tmp/yggtime', stdout=subprocess.PIPE, shell=True)
+    p.communicate()
+
     return final_val
