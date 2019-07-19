@@ -8,24 +8,17 @@ class TooManyLocksError : Error {
 }
 
 class SpinLock {
-  //var l: atomic bool;
   var l: chpl__processorAtomicType(bool);
-  //var l: chpl__processorAtomicType(bool);
-  //var log = new shared ygglog.YggdrasilLogging();
   var log: shared ygglog.YggdrasilLogging;
-  //var n: atomic int;
   var n: chpl__processorAtomicType(int);
   var t: string;
   var writeLock: chpl__processorAtomicType(int);
   var readHandles: chpl__processorAtomicType(int);
+  //// The locks are noisy, but we do need to debug them sometimes.
+  // This shuts them up unless you really want them to sing.  Their song is
+  // a terrible noise; an unending screech which ends the world.
+  // (okay, they're just super verbose)
   var lockLog: bool;
-
-  //proc init() {
-  //  this.complete();
-    // set it with a log.
-  //  this.log = new shared ygglog.YggdrasilLogging();
-  //  this.log.currentDebugLevel = 0;
-  //}
 
 
   proc lock(hstring: ygglog.yggHeader) throws {
@@ -125,8 +118,6 @@ class SpinLock {
 
 class NetworkSpinLock : SpinLock {
       var l: atomic bool;
-      //var l: chpl__processorAtomicType(bool);
-      //var log = new shared ygglog.YggdrasilLogging();
       var log: shared ygglog.YggdrasilLogging;
       var n: atomic int;
       var t: string;

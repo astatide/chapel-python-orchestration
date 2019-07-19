@@ -27,7 +27,7 @@ clean:
 	rm yggdrasil
 
 valkyrie:
-	chpl -o valkyrie valkyrie.chpl $(LINCLUDE) $(MACLUDE) --ccflags "-O2 -w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" --comm none --launcher none $(DEBUG)
+	chpl -o valkyrie valkyrieBinary.chpl $(LINCLUDE) $(MACLUDE) --ccflags "-O2 -w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" --comm none --launcher none $(DEBUG)
 
 yggdrasil:
 	chpl -o yggdrasil main.chpl $(LINCLUDE)    $(MACLUDE) --ccflags "-O2 -w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" $(COMM) $(DEBUG)

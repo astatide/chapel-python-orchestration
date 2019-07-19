@@ -24,7 +24,7 @@ coforall L in Locales {
   {
     on L do {
       var ragnarok = new shared propagator.Propagator(propagator.maxValkyries);
-      ragnarok.initRun();
+      //ragnarok.initRun();
       //proc handler(x : int) : void {
       //    ragnarok.setShutdown();
       //}
