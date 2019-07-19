@@ -348,7 +348,7 @@ PyObject* loadPythonModule(char * module) {
 
 double run(char * function) {
   PyObject *pFunc, *pArgs, *pValue;
-  double score;
+  double score = 0.0;
   PyObject* inptDict = PyThreadState_GetDict();
   unsigned long long valkyrie = PyLong_AsUnsignedLongLong(PyDict_GetItemString(inptDict, "valkyrieID"));
   pModule = loadPythonModule("gjTest.gjTest");
@@ -401,7 +401,7 @@ struct threadArgs {
 };
 
 
-double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long deme, double * score, char * buffer)
+double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long deme, double * score)
 //void *pythonRunInThread(void * arguments)
 
 {
@@ -409,14 +409,9 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
-  double s2;
+  //double s2;
   int pid;
   int stat;
-
-
-  //score = mmap(NULL, sizeof *score, PROT_READ | PROT_WRITE,
-  //              MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-
 
   pid = 0;
 
@@ -427,18 +422,15 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   globalArray = arr;
 
   functionRunOnce = false;
-  s2 = run("run");
-  printf("S2 is %f\n", s2);
+  *score = run("run");
+  //printf("S2 is %f\n", s2);
   functionRunOnce = false;
   Py_CLEAR(returnList);
   returnList = NULL;
   moduleImportedOnce = true;
-  *score = s2;
+  //*score = s2;
   printf("score is %f\n", *score);
   fflush(stdout);
-
-  //*score2 = *score;
-  return s2;
 }
 
 

@@ -12,7 +12,7 @@ extern type PyThreadState;
 extern proc returnNumpyArray(ref arr: c_float, ref dims: npy_intp) : PyObject;
 extern proc weights(ref self: PyObject, ref args: PyObject): PyObject;
 extern proc run();
-extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong, deme : c_ulonglong, ref score : c_double, ref buffer : c_string) : c_double;
+extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong, deme : c_ulonglong, ref score : c_double);
 extern proc pythonInit(n: c_ulonglong): c_void_ptr;
 extern proc pythonFinal();
 extern proc newThread() : c_void_ptr;
@@ -65,12 +65,12 @@ class Gjallarbru {
     // We're gonna pass in the file object.
     //var score: real;
     //var score2: [0..1] real = Math.INFINITY;
-    var buffer : [0..1023] c_string;
-    var moveOn: [0..1] bool = false;
+    //var buffer : [0..1023] c_string;
+    //var moveOn: [0..1] bool = false;
 
     var score: c_double;
-    var s2: c_double;
-    s2 = pythonRun(matrix, valkyrie : c_ulonglong, deme: c_ulonglong, score, buffer[0]);
+    //var s2: c_double;
+    pythonRun(matrix, valkyrie : c_ulonglong, deme: c_ulonglong, score);
     //writeln("S2 in Chapel: ", s2 : real : string);
     writeln("score in Chapel: ", score : real : string);
     //score2[0] = score;

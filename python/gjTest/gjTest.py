@@ -21,42 +21,13 @@ import sys
 #sys.stderr = open(os.devnull, 'w')
 #import tensorflow as tf
 #tf.logging.set_verbosity(tf.logging.ERROR)
-
-
-#import threading
-
-
-def oldrun():
-    # This is the main function that we'll call.  Also, you're a bitch.
-    config = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1, allow_soft_placement=False, device_count = {'CPU': 1})
-    with tf.Graph().as_default() as graph:
-        with tf.Session(config=config, graph=graph) as session:
-            #with tf.Session(config=config, graph=graph) as sess:
-            K.set_session(session)
-            tartarus = Tartarus()
-            model = build_model()
-            final_val = 1
-            weights = [(24,320),
-                      (80,320),
-                      (320,),
-                      (80,3),
-                      (3)]
-            # 33843 elements
-            vId = str(gj.valkyrieID())
-            a = gj.weights_multi(weights)
-            print("Valkyrie ID: " + vId + " " + str(a[0][0,0]))
-            model.set_weights(a)
-            model._make_predict_function()
-            evaluate = Evaluate()
-            final_val, final_state = evaluate.eval_tartarus(model, 0)
-            print("Valkyrie ID: " + vId + " " + str(model.get_weights()[0][0,0]))
-
-            gc.collect()
-            #session.close()
-
-        #gc.get_objects()
-
-    return final_val
+from keras.utils import to_categorical
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LSTM
+from keras.layers import Input
+from keras.models import Model
+from keras.initializers import VarianceScaling, Zeros, RandomNormal
 
 class Tartarus():
     def create_empty_board(self, rows, columns):
@@ -882,13 +853,6 @@ class yggdrasilModel():
         #import sys
         #stdout = sys.stdout
         #sys.stdout = open('/dev/null', 'w')
-        from keras.utils import to_categorical
-        from keras.models import Sequential
-        from keras.layers import Dense
-        from keras.layers import LSTM
-        from keras.layers import Input
-        from keras.models import Model
-        from keras.initializers import VarianceScaling, Zeros, RandomNormal
         input_val = 24
         output_val = 3
         model_layer_units = [80]
@@ -908,10 +872,10 @@ class yggdrasilModel():
         model.add(LSTM(model_layer_units[layer_count], input_shape=(None, input_val), kernel_initializer=Zeros(), recurrent_initializer=Zeros(), bias_initializer=Zeros()))
         model.add(Dense(output_val, kernel_initializer=Zeros(), bias_initializer=Zeros(), activation="softmax"))
 
-        import tensorflow as tf
-        v = tf.Variable(0, name='my_variable')
-        sess = tf.Session()
-        tf.train.write_graph(sess.graph_def, '/tmp/my-model', 'train.pbtxt')
+        #import tensorflow as tf
+        #v = tf.Variable(0, name='my_variable')
+        #sess = tf.Session()
+        #tf.train.write_graph(sess.graph_def, '/tmp/my-model', 'train.pbtxt')
 
         return model
 
@@ -957,37 +921,24 @@ def runParallel():
     #with Pool(2) as p:
     #    return p.map(run_model, [])
 
-
-
 def run():
+    return 5.0
+
+def runOld():
     start = time.time()
-    from keras import backend as K
-    # This is the main function that we'll call.  Also, you're a bitch.
     loki = yggdrasilModel()
-    #print(id(loki))
-    #import tensorflow as tf
-    #config = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1, allow_soft_placement=True, device_count = {'CPU': 1})
-    #with tf.Graph().as_default() as graph:
-    #with tf.Session(config=config, graph=graph) as session:
-    #with loki.graph as graph:
-    #session = loki.session
-        #with loki.session as session:
-    #K.set_session(session)
-    #if loki.modelBuilt == False:
     loki.model = loki.build_model()
-        #loki.modelBuilt = True
-    #a = gj.weights_multi(loki.weights)
     vId = str(gj.valkyrieID())
     deme = gj.demeID()
     w = gj.weights_multi(loki.w)
-    print("Valkyrie ID: " + vId + " " + str(w[0][0,0]))
+    #print("Valkyrie ID: " + vId + " " + str(w[0][0,0]))
     #print(w)
     #print(loki.w)
     loki.model.set_weights(w)
     #loki.model._make_predict_function()
-    print("okay, eval this shit")
+    #print("okay, eval this shit")
     final_val, final_state = loki.evaluate.eval_tartarus(loki.model, deme)
-    print("Valkyrie ID: " + vId + " " + "TF End")
+    #print("Valkyrie ID: " + vId + " " + "TF End")
     #print(final_val)
     #print("Valkyrie ID: " + vId + " " + str(loki.model.get_weights()[0][0,0]))
 
@@ -996,6 +947,6 @@ def run():
     print("Valkyrie ID: " + vId + " " + "Returning score: " + str(final_val))
     end = time.time()
     p = subprocess.call('echo ' + str(end-start) + '>> /tmp/yggtime', stdout=subprocess.PIPE, shell=True)
-    p.communicate()
+    #p.communicate()
 
     return final_val
