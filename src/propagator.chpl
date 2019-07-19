@@ -445,16 +445,16 @@ class Propagator {
           }
 
           if valkyriesDone[gen].fetchAdd(1) < howManyValks {
-            this.waitEndOfGeneration(v, nG, gen, currentYggHeader);
+            this.waitEndOfGeneration(v, nG, gen, ygg, currentYggHeader);
           } else {
-            this.continueEndOfGeneration(v, nG, gen, currentYggHeader);
+            this.continueEndOfGeneration(v, nG, gen, ygg, currentYggHeader);
           }
         }
       }
     }
   }
 
-  proc continueEndOfGeneration(ref v: shared valkyrie.valkyrieHandler, ref nG: shared network.networkGenerator, gen: int, yh: ygglog.yggHeader) {
+  proc continueEndOfGeneration(ref v: shared valkyrie.valkyrieHandler, ref nG: shared network.networkGenerator, gen: int, ref ygg: shared network.GeneNetwork, yh: ygglog.yggHeader) {
     // Same stuff here, but as this is the last Valkyrie, we also
     // do global cleanup to ensure the global arrays are ready.
     this.log.log('Handling cleanup on gen', gen : string, yh);
@@ -519,7 +519,7 @@ class Propagator {
     moveOn[gen] = true;
   }
 
-  proc waitEndOfGeneration(ref v: shared valkyrie.valkyrieHandler, ref nG: shared network.networkGenerator, gen: int, yh: ygglog.yggHeader) {
+  proc waitEndOfGeneration(ref v: shared valkyrie.valkyrieHandler, ref nG: shared network.networkGenerator, gen: int, ref ygg: shared network.GeneNetwork, yh: ygglog.yggHeader) {
     // Reset a lot of the variables for the Valkyrie while we're idle.
     // Then wait until all the other Valkyries have finished.
     // In addition, add to some global variables so that we can compute
