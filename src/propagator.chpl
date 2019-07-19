@@ -360,54 +360,25 @@ class Propagator {
               }
               if currToProc != '' {
 
-                var oldNode = v.currentNode;
-                v.currentNode = currToProc;
-                v.moved = true;
-                v.nProcessed += 1;
                 this.log.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
                 begin nG.removeUnprocessed(currToProc);
                 toProcess.remove(currToProc);
-                // Actually, reduce the count BEFORE we do this.
-                // Otherwise we could have threads stealing focus that should
-                // actually be idle.
                 this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
                 begin inCurrentGeneration.sub(1);
-                this.log.log('inCurrentGeneration successfully reduced', hstring=v.header);
-                ref actualNode = network.globalNodes[currToProc];
-                
-                for deme in actualNode.returnDemes() {
-                  this.log.log('Starting work for ID:', currToProc: string, 'on deme #', deme : string, hstring=v.header);
-                  this.log.debug('PATH:', path : string, hstring=v.header);
 
-                  var d = ygg.deltaFromPath(path, oldNode, hstring=v.header);
-                  d.from = oldNode;
-                  d.to = currToProc;
-                  var newMsg = new messaging.msg(d);
-                  newMsg.i = deme;
-                  newMsg.COMMAND = v.command.RECEIVE_AND_PROCESS_DELTA;
-                  this.log.log("Attempting to run Python on seed ID", currToProc : string, hstring=v.header);
-                  this.log.debug("Sending the following msg:", newMsg : string, hstring=v.header);
-                  v.SEND(newMsg);
-                  this.log.debug("Message & delta sent; awaiting instructions", hstring=v.header);
-                  var m = v.RECV();
-                  var score = m.r;
-                  this.log.log('SCORE FOR', currToProc : string, 'IS', score : string, hstring=v.header);
-                  // we should _not_ need to readlock these domains, as the global domains cannot be and ARE not resized during this loop.
-                  network.globalNodes[currToProc].setDemeScore(deme, score);
-                  // add to the chromosome.
-                  this.log.debug('Adding to chromosome score.', hstring=v.header);
-                  var nc = network.globalNodes[currToProc].chromosome;
-                  cLock.rl();
-                  var inChromeID = chromes[nc].returnNodeNumber(currToProc);
-                  cLock.url();
-                  this.log.log('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
-                  cLock.rl();
-                  this.log.log('DemeDomain in chromosome:', chromes[nc].geneIDs : string, hstring=v.header);
-                  chromes[nc].scores[inChromeID] = score;
-                  cLock.url();
+                // this handles all the ZMQ and TF bits.
+                var (score, deme) = v.processNode(network.globalNodes[currToProc]);
 
-                }
-                network.globalNodes[currToProc].setValkyrie(v.id, v.nProcessed);
+                // now, set the chromosome.
+                var nc = network.globalNodes[currToProc].chromosome;
+                cLock.rl();
+                var inChromeID = chromes[nc].returnNodeNumber(currToProc);
+                this.log.log('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
+                this.log.log('DemeDomain in chromosome:', chromes[nc].geneIDs : string, hstring=v.header);
+                chromes[nc].scores[inChromeID] = score;
+                cLock.url();
+
+
               } else {
                 // actually, if that's the case, we can't do shit.  So break and yield.
                 break;

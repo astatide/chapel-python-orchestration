@@ -121,6 +121,37 @@ class valkyrieHandler : msgHandler {
       yield logo[i];
     }
   }
+
+  proc processNode(ref node: shared genes.GeneNode, delta : genes.deltaRecord) {
+
+    this.log.log('Starting work for ID:', node.id: string, 'on deme #', deme : string, hstring=this.header);
+    var oldNode = this.currentNode;
+    var score: real;
+    var deme: int;
+    this.currentNode = node.id;
+    this.moved = true;
+    this.nProcessed += 1;
+    delta.from = oldNode;
+    delta.to = node.id;
+
+    for d in node.returnDemes() {
+
+      this.log.log("Attempting to run Python on seed ID", node.id : string, hstring=this.header);
+      var newMsg = new messaging.msg(delta);
+      newMsg.i = d;
+      newMsg.COMMAND = v.command.RECEIVE_AND_PROCESS_DELTA;
+      this.log.debug("Sending the following msg:", newMsg : string, hstring=this.header);
+      this.SEND(newMsg);
+      this.log.debug("Message & delta sent; awaiting instructions", hstring=this.header);
+      var m = v.RECV();
+      score = m.r;
+      deme = d;
+      this.log.log('SCORE FOR', node.id : string, 'IS', score : string, hstring=this.header);
+      node.setDemeScore(deme, score);
+    }
+    node.setValkyrie(this.id, this.nProcessed);
+    return (score, deme);
+  }
 }
 
 
