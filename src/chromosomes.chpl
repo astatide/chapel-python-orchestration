@@ -345,9 +345,11 @@ record Chromosome {
           //this.log.debug('Calling combination node', hstring=vstring);
           node.newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes);
           // finalize it.
+          network.globalLock.rl();
           network.globalNodes[this.geneIDs[n]].l.wl();
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
           network.globalNodes[this.geneIDs[n]].l.uwl();
+          network.globalLock.url();
         }
         //this.log.debug('Combination complete; setting node', hstring=vstring);
         this.geneIDs[n] = id;

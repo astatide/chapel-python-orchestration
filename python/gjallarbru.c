@@ -409,7 +409,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   // passing in the array; Chapel needs to make sure it's compatible with
   // what C expects.
 
-  //double s2;
+  double s2 = 0.0;
   int pid;
   int stat;
 
@@ -422,15 +422,16 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   globalArray = arr;
 
   functionRunOnce = false;
-  *score = run("run");
+  s2 = run("run");
   //printf("S2 is %f\n", s2);
   functionRunOnce = false;
   Py_CLEAR(returnList);
   returnList = NULL;
   moduleImportedOnce = true;
-  //*score = s2;
-  printf("score is %f\n", *score);
+  *score = s2;
+  printf("C SCORE IS %f\n", s2);
   fflush(stdout);
+  return s2;
 }
 
 

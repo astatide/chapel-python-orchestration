@@ -38,6 +38,7 @@ record mapperByLocale {
     if ind == 'root'{
       return 0;
     } else if ind != '' {
+      writeln("WHAT IS OUR INDEX:", ind);
       return ind[1..4] : int;
     }
     // you should never be called, but hey.
@@ -123,7 +124,7 @@ class networkGenerator {
     this.generateEmptyNodes(nodeBlockSize);
     this.addToGlobal();
     // right.  That's not going to work, because we haven't processed them.
-    //writeln("Now, add them to the global unprocessed arrayß");
+    //writeln("Now, add them to the global unprocessed array");
     //this.addUnprocessed();
     this.isUpdating.clear();
     //writeln("Spawn end. READ LOCK HANDLES: ", this.l.readHandles.read() : string);
@@ -143,6 +144,7 @@ class networkGenerator {
       rootNode.generation = 1;
       rootNode.combinationID = "-1";
       rootNode.processedOrder = -1;
+      rootNode.ctype = 'root';
       globalIDs.add('root');
       globalNodes['root'] = rootNode;
     }
@@ -150,6 +152,7 @@ class networkGenerator {
     var rootLocaleNode = new shared genes.GeneNode();
     rootLocaleNode.id = this.generateID;
     rootLocaleNode.revision = genes.SPAWNED;
+    rootLocaleNode.ctype = 'root';
     globalIDs.add(rootLocaleNode.id);
     globalNodes['root'].join(rootLocaleNode, new genes.deltaRecord());
     globalNodes[rootLocaleNode.id] = rootLocaleNode;
@@ -237,7 +240,7 @@ class networkGenerator {
     }
     this.l.uwl();
     globalLock.wl();
-    if globalIDs.contains(id) {
+    if globalUnprocessed.contains(id) {
       globalUnprocessed.remove(id);
     }
     globalLock.uwl();
@@ -548,7 +551,8 @@ class networkMapper {
     b_dom.add(id_B);
     var tmp: domain(string);
     var processedArray: [tmp] atomic bool;
-    (b, path, removeFromSet) = this.__calculatePath__(id_A, b_dom, hstring=vstring, processedArray=processedArray, checkArray=false);
+    var steps: int;
+    (b, path, removeFromSet, steps) = this.__calculatePath__(id_A, b_dom, hstring=vstring, processedArray=processedArray, checkArray=false);
     return path;
   }
 
@@ -569,6 +573,7 @@ class networkMapper {
     var vstring: ygglog.yggHeader;
     var thisIsACopy: bool = true;
     var removeFromSet: domain(string);
+    var steps: int = 0;
     vstring = hstring + '__calculatePath__';
     //nodes.add[id_A];
     if !this.ids.contains(id_A) {
@@ -581,7 +586,7 @@ class networkMapper {
     // catch an empty id_B!
     if id_B.isEmpty() {
       this.log.debug('id_B is empty; is this okay?', hstring=vstring);
-      return (id_A, paths[id_A], removeFromSet);
+      return (id_A, paths[id_A], removeFromSet, 0);
     }
     while !id_B.isEmpty() {
       i += 1;
@@ -611,6 +616,7 @@ class networkMapper {
         //this.log.debug("Reading EDGE ID:", edge : string, hstring=vstring);
         //if (!ignoreRoot || !(edge == 'root')) {
         if edge != 'root' {
+          steps += 1;
           this.log.debug('Edge ID:', edge : string, hstring=vstring);
           // why are we a big, errortastical bitch?
           //if !this.ids.contains(edge) {
@@ -649,7 +655,7 @@ class networkMapper {
               if checkArray {
                 if !processedArray[edge].testAndSet() {
                   this.lock.url(vstring);
-                  return (edge, paths[edge], removeFromSet);
+                  return (edge, paths[edge], removeFromSet, steps);
                 } else {
                   // This means we've actually already processed it, so
                   // we'll pretend it's not a part of id_B by removing it.
@@ -661,7 +667,7 @@ class networkMapper {
                 this.log.debug("Not checking array; returning path for ID:", edge : string, hstring=vstring);
                 this.log.debug('ID:', edge : string, 'Path:', paths[edge] : string, hstring=vstring);
                 this.lock.url(vstring);
-                return (edge, paths[edge], removeFromSet);
+                return (edge, paths[edge], removeFromSet, steps);
               }
             }
           }
@@ -677,11 +683,11 @@ class networkMapper {
       if id_B.isEmpty() {
         // If we've removed everything, then we can't process anything.
         // Returning an empty string dodges the processing logic.
-        return ('', paths[id_A], removeFromSet);
+        return ('', paths[id_A], removeFromSet, steps);
       }
       if unvisited.isEmpty() {
         // no paths
-        return ('', paths[id_A], removeFromSet);
+        return ('', paths[id_A], removeFromSet, steps);
       } else {
         // get the current minimum from here.
         i = 0;
@@ -702,9 +708,9 @@ class networkMapper {
     //this.log.debug('id_B:', id_B : string, 'currentNode:', currentNode, 'id_A:', id_A, hstring=vstring);
     //writeln("What are our paths?: ", paths : string);
     if !id_B.isEmpty() {
-      return (currentNode, paths[currentNode], removeFromSet);
+      return (currentNode, paths[currentNode], removeFromSet, steps);
     } else {
-      return ('', paths[id_A], removeFromSet);
+      return ('', paths[id_A], removeFromSet, steps);
     }
 
   }

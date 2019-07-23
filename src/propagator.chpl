@@ -43,6 +43,9 @@ config var nChromosomes = 6;
 config var chromosomeSize = 36;
 config var nDuplicates = 4;
 
+config var createEdgeOnMove: bool = true;
+config var stepsForEdge: int = 15;
+
 config const reportTasks: bool = false;
 
 // These are all the global things we need to access from everywhere.
@@ -400,21 +403,22 @@ class Propagator {
             var existsInDomainAndCanProcess: bool = false;
             // This function now does the atomic test.
             this.log.log('Returning nearest unprocessed', hstring=v.header);
+            var steps: int;
             T.start();
-            (currToProc, path, removeFromSet) = ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
+            (currToProc, path, removeFromSet, steps) = ygg.returnNearestUnprocessed(v.currentNode, toProcess, v.header, network.globalIsProcessed);
             T.stop();
             this.log.log('Unprocessed found in:', T.elapsed() : string, 'ID:', currToProc : string, hstring=v.header);
             T.clear();
-            for i in removeFromSet {
-              if toProcess.contains(i) {
-                this.log.debug('Removing ID:', i : string, hstring=v.header);
-                toProcess.remove(i);
+            for z in removeFromSet {
+              if toProcess.contains(z) {
+                this.log.debug('Removing ID:', z : string, hstring=v.header);
+                toProcess.remove(z);
               }
             }
             if currToProc != '' {
-
               this.log.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
-              begin nG.removeUnprocessed(currToProc);
+              // AHA!
+              //begin nG.removeUnprocessed(currToProc);
               toProcess.remove(currToProc);
               //this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
               begin inCurrentGeneration.sub(1);
@@ -423,19 +427,41 @@ class Propagator {
               var delta = ygg.deltaFromPath(path, v.currentNode, hstring=v.header);
               delta.from = v.currentNode;
               delta.to = currToProc;
+              network.globalLock.rl();
+              ref newNode = network.globalNodes[currToProc];
+              network.globalLock.url();
+              if createEdgeOnMove {
+                if steps > stepsForEdge {
+                  network.globalLock.rl();
+                  ref oldNode = network.globalNodes[v.currentNode];
+                  network.globalLock.url();
+                  oldNode.join(newNode, delta, v.header);
+                  newNode.join(oldNode, delta*-1, v.header);
+                }
+              }
               T.start();
-              var (score, deme) = v.processNode(network.globalNodes[currToProc], delta);
+              var (score, deme) = v.processNode(newNode, delta);
               T.stop();
 
               // now, set the chromosome.
-              var nc = network.globalNodes[currToProc].chromosome;
+              ref nc = chromes[newNode.chromosome];
               cLock.rl();
-              var inChromeID = chromes[nc].returnNodeNumber(currToProc);
+              nc.l.wl();
+              var inChromeID = nc.returnNodeNumber(currToProc);
               this.log.log("Node ID:", currToProc : string, "Score:", score : string, "Deme:", deme : string, "Time:", T.elapsed() : string, hstring=v.header);
+              this.log.log('Node:', newNode : string, hstring=v.header);
               T.clear();
               this.log.log('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
-              this.log.log('DemeDomain in chromosome:', chromes[nc].geneIDs : string, hstring=v.header);
-              chromes[nc].scores[inChromeID] = score;
+              this.log.log('DemeDomain in chromosome:', nc.geneIDs : string, hstring=v.header);
+              try {
+                assert(nc.scores.domain.contains(inChromeID));
+              } catch {
+                this.log.log('ID NOT IN CHROMOSOME:', currToProc : string, hstring=v.header);
+                this.log.log('Node:', newNode : string, hstring=v.header);
+                this.log.log('Chromosome', nc : string, hstring=v.header);
+              }
+              nc.scores[inChromeID] = score;
+              nc.l.uwl();
               cLock.url();
 
 

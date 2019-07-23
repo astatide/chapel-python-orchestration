@@ -335,7 +335,7 @@ class GeneEdge {
 class GeneNode {
   // This is a node.  It contains the Chapel implementation of a hash table
   // (akin to a python dict); we're going to store the gene edges in it.
-  var id: string;
+  var id: string = '0000-GENE-00000000-0000-0000-0000-000000000000';
   var nodes: domain(string);
   var edges: [nodes] shared GeneEdge;
   var generation: int;
@@ -393,11 +393,11 @@ class GeneNode {
     this.l.t = ' '.join('GENE', this.id);
   }
 
-  proc writeThis(wc) {
-    wc.writeln(this.id);
-    wc.writeln('nodes: ', this.nodes : string);
-    wc.writeln('edges: ', this.edges : string);
-  }
+  //proc writeThis(wc) {
+  //  wc.writeln(this.id);
+  //  wc.writeln('nodes: ', this.nodes : string);
+  //  wc.writeln('edges: ', this.edges : string);
+  //}
 
   // some validation functions
   proc nodeInEdges(id: string, hstring: ygglog.yggHeader) {
@@ -600,12 +600,13 @@ class GeneNode {
       // now, we add 1/N of that to each other one.
       // except... that's pretty tough.  We'll calculate this stuff on the fly.
       // We _know_ that we have these connections, so.
-      for id in idList {
-        network.globalLock.rl();
-        ref oldNode = gN[id];
-        network.globalLock.url();
-        this.joinPaths(oldNode, idList, deme);
-      }
+      // also, this is broken.  So don't make these edges, yet.
+      //for id in idList {
+      //  network.globalLock.rl();
+      //  ref oldNode = gN[id];
+      //  network.globalLock.url();
+      //  this.joinPaths(oldNode, idList, deme);
+      //}
     }
   }
 

@@ -921,13 +921,14 @@ def runParallel():
     #with Pool(2) as p:
     #    return p.map(run_model, [])
 
-def run():
+def runFive():
     return 5.0
 
-def runOld():
+loki = yggdrasilModel()
+loki.model = loki.build_model()
+
+def run():
     start = time.time()
-    loki = yggdrasilModel()
-    loki.model = loki.build_model()
     vId = str(gj.valkyrieID())
     deme = gj.demeID()
     w = gj.weights_multi(loki.w)

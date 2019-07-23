@@ -37,7 +37,7 @@ class valkyrieHandler : msgHandler {
   var currentLocale: string;
 
   var UUIDP = new owned uuid.UUID();
-  var id = UUIDP.UUID4();
+  var id = '%04i'.format(here.id) + '-VALK-' + UUIDP.UUID4();
 
   var yh = new ygglog.yggHeader();
 
@@ -129,13 +129,16 @@ class valkyrieHandler : msgHandler {
 
     for d in node.returnDemes() {
       this.log.log('Starting work for ID:', node.id: string, 'on deme #', deme : string, hstring=this.header);
-      this.log.log("Attempting to run Python on seed ID", node.id : string, hstring=this.header);
+      this.log.log("Attempting to run Python on seed ID", node.id : string, 'DELTA:', delta : string, hstring=this.header);
+      assert(!delta.seeds.isEmpty());
       var newMsg = new messaging.msg(delta);
+      this.log.log("ID", node.id : string, 'MSG:', newMsg : string, hstring=this.header);
       newMsg.i = d;
+      this.log.log("DEME SET:", d : string, hstring=this.header);
       newMsg.COMMAND = this.command.RECEIVE_AND_PROCESS_DELTA;
-      this.log.debug("Sending the following msg:", newMsg : string, hstring=this.header);
+      this.log.log("Sending the following msg:", newMsg : string, hstring=this.header);
       this.SEND(newMsg);
-      this.log.debug("Message & delta sent; awaiting instructions", hstring=this.header);
+      this.log.log("Message & delta sent; awaiting instructions", hstring=this.header);
       var m = this.RECV();
       score = m.r;
       deme = d;
