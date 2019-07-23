@@ -596,6 +596,7 @@ class GeneNode {
       network.globalLock.rl();
       ref oldNode = gN[oldId];
       network.globalLock.url();
+      this.parent = oldId;
       this.join(oldNode, delta, new ygglog.yggHeader() + "newCombinationNode");
       // now, we add 1/N of that to each other one.
       // except... that's pretty tough.  We'll calculate this stuff on the fly.

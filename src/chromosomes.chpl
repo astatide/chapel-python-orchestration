@@ -6,6 +6,7 @@ use spinlock;
 use genes;
 use Sort;
 use network;
+use rng;
 
 // Global UUID, with an entropy lock, guarantees unique IDs for chromosomes.
 // Keep in mind, it's possible that since we're using two UUID generators
@@ -21,6 +22,9 @@ use network;
 //var AssocDom:domain(int);
 //type AssocArrayType = [AssocDom] int;
 
+config var mutateChance: real = 0.01;
+config var additionChance: real = 0.1;
+config var deletionChance: real = 0.1;
 
 /*
 
@@ -188,6 +192,9 @@ record Chromosome {
   var geneSeeds: [geneNumbers] int;
   var scores: [geneNumbers] real;
 
+  var wasMutated: [geneNumbers] bool;
+  var mutantDelta: [geneNumbers] genes.deltaRecord;
+
   // shadow genes.  These are the nodes that represented the previous state;
   // this is particularly useful for merge operations, as we have _already_
   // done a lot of the work to merge genes.
@@ -197,6 +204,9 @@ record Chromosome {
 
   //var geneNumbers: domain(int);
   var actualGenes: [geneNumbers] domain(int);
+
+  var udevrandom = new owned rng.UDevRandomHandler();
+  var newrng = udevrandom.returnRNG();
 
   proc init() {
     //this.complete();
@@ -274,7 +284,7 @@ record Chromosome {
     }
   }
 
-  proc __generateNodes__(ref nG: shared network.networkGenerator, initial=false, gen: int, hstring: ygglog.yggHeader) {
+  proc __generateNodes__(ref nG: shared network.networkGenerator, ref nM: shared network.networkMapper, initial=false, gen: int, hstring: ygglog.yggHeader, mutate: bool = false) {
     // chromosomes should build nodes according to their desires.
     // first, prep all the initial nodes.
     var vstring = hstring + '__generateNodes__';
@@ -308,7 +318,33 @@ record Chromosome {
           network.globalLock.rl();
           ref oldNode = network.globalNodes[this.geneIDs[n]];
           network.globalLock.url();
-          node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
+          if mutate {
+            // now we gonna mutate, son.
+            if this.newrng.getNext() < mutateChance {
+              // I mean, only if the above is successful, really.
+              this.wasMutated[n] = true;
+              // get our path.  We either do deletion, addition, or mutation.
+              var d = nM.calculateHistory(this.geneIDs[n]);
+              //var mutationTypeChance: real = this.newrng.getNext();
+              select this.newrng.getNext() {
+                when < deletionChance do {
+                  // do a mutation; delete a random one from the path!
+                }
+                when < additionChance + deletionChance && > deletionChance do {
+                  // do an addition; just add a random seed on!
+                }
+                when > additionChance + deletionChance do {
+                  // otherwise, perform a mutation; mutate one seed to another.
+                }
+              }
+              this.mutantDelta[n] = d;
+              node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode, mutantDelta = d);
+            } else {
+              node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
+            }
+          } else {
+            node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
+          }
           oldNode.revision = genes.FINALIZED;
         }
         //this.log.debug('Node successfully advanced', hstring=vstring);
@@ -362,12 +398,12 @@ record Chromosome {
     }
   }
 
-  proc generateNodes(ref nG: shared network.networkGenerator, hstring: ygglog.yggHeader) {
-    this.__generateNodes__(nG, initial=true, gen=1, hstring=hstring);
+  proc generateNodes(ref nG: shared network.networkGenerator, ref nM: shared network.networkMapper, hstring: ygglog.yggHeader) {
+    this.__generateNodes__(nG, nM, initial=true, gen=1, hstring=hstring, mutate=false);
   }
 
-  proc advanceNodes(ref nG: shared network.networkGenerator, hstring: ygglog.yggHeader, gen: int) {
-    this.__generateNodes__(nG, initial=false, gen=gen, hstring=hstring);
+  proc advanceNodes(ref nG: shared network.networkGenerator, ref nM: shared network.networkMapper, hstring: ygglog.yggHeader, gen: int) {
+    this.__generateNodes__(nG, nM, initial=false, gen=gen, hstring=hstring, mutate=true);
   }
 
   proc clone () {

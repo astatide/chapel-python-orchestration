@@ -8,18 +8,21 @@ class TooManyLocksError : Error {
 }
 
 class SpinLock {
-  var l: chpl__processorAtomicType(bool);
+  //var l: chpl__processorAtomicType(bool);
+  var l: atomic bool;
   var log: shared ygglog.YggdrasilLogging;
-  var n: chpl__processorAtomicType(int);
+  //var n: chpl__processorAtomicType(int);
+  var n: atomic int;
   var t: string;
-  var writeLock: chpl__processorAtomicType(int);
-  var readHandles: chpl__processorAtomicType(int);
+  //var writeLock: chpl__processorAtomicType(int);
+  //var readHandles: chpl__processorAtomicType(int);
+  var writeLock: atomic int;
+  var readHandles: atomic int;
   //// The locks are noisy, but we do need to debug them sometimes.
   // This shuts them up unless you really want them to sing.  Their song is
   // a terrible noise; an unending screech which ends the world.
   // (okay, they're just super verbose)
   var lockLog: bool;
-
 
   proc lock(hstring: ygglog.yggHeader) throws {
     if this.lockLog {

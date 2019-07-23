@@ -181,7 +181,7 @@ class Propagator {
   // in many respects related more to the movement rather than graph problems,
   // the propagator is responsible for it.
 
-  proc initChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader) {
+  proc initChromosomes(ref nG: shared network.networkGenerator, ref nM: shared network.networkMapper, yH: ygglog.yggHeader) {
 
     on this.locale {
       forall deme in 0..4 with (ref nG) {
@@ -193,7 +193,7 @@ class Propagator {
           nc.prep(startingSeeds, chromosomeSize-startingSeeds);
           nc.currentDeme = deme;
           var n: int = 1;
-          nc.generateNodes(nG, yH);
+          nc.generateNodes(nG, nM, yH);
           cLock.wl();
           chromosomeDomain.add(nc.id);
           chromes[nc.id] = nc;
@@ -203,7 +203,7 @@ class Propagator {
     }
   }
 
-  proc advanceChromosomes(ref nG: shared network.networkGenerator, yH: ygglog.yggHeader, gen: int) {
+  proc advanceChromosomes(ref nG: shared network.networkGenerator, ref nM: shared network.networkMapper, yH: ygglog.yggHeader, gen: int) {
     var newCD: domain(string);
     var newC: [newCD] chromosomes.Chromosome;
     cLock.rl();
@@ -217,7 +217,7 @@ class Propagator {
           for i in 1..nDuplicates {
             var cc = nc.clone();
             cc.id = nG.generateChromosomeID;
-            cc.advanceNodes(nG, yH, gen);
+            cc.advanceNodes(nG, nM, yH, gen);
             newCD.add(cc.id);
             newC[cc.id] = cc;
           }
@@ -321,7 +321,7 @@ class Propagator {
     ygg.lock.log = this.log;
 
     this.log.log("Local networks spawned; creating chromosomes", this.yh);
-    initChromosomes(nG, this.yh);
+    initChromosomes(nG, ygg, this.yh);
     this.log.log("Adding new nodes to unprocessed list", this.yh);
     nG.addUnprocessed(ygg);
     this.log.log("Setting the current generation count", this.yh);
@@ -502,7 +502,7 @@ class Propagator {
     // export the network!
     this.exportCurrentNetworkState(yh);
     readyForChromosomes[gen] = true;
-    advanceChromosomes(nG, yh, gen+1);
+    advanceChromosomes(nG, ygg, yh, gen+1);
     scoreArray = -1;
     this.log.debug("Setting the current generation count", yh);
     // now, make sure we know we have to process all of these.
@@ -580,7 +580,7 @@ class Propagator {
     this.log.log('Grabbing chromosomes to process', hstring=yh);
     // moveOn is an array of sync variables.  We're blocked from reading
     // until that's set to true.
-    advanceChromosomes(nG, yh, gen+1);
+    advanceChromosomes(nG, ygg, yh, gen+1);
     nG.addUnprocessed(ygg);
     this.log.debug("Setting the current generation count", yh);
     finishedChromoProp.add(1);
