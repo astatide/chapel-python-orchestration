@@ -326,6 +326,7 @@ record Chromosome {
               // get our path.  We either do deletion, addition, or mutation.
               var d = nM.calculateHistory(this.geneIDs[n]);
               //var mutationTypeChance: real = this.newrng.getNext();
+              /*
               select this.newrng.getNext() {
                 when < deletionChance do {
                   // do a mutation; delete a random one from the path!
@@ -336,7 +337,7 @@ record Chromosome {
                 when > additionChance + deletionChance do {
                   // otherwise, perform a mutation; mutate one seed to another.
                 }
-              }
+              }*/
               this.mutantDelta[n] = d;
               node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode, mutantDelta = d);
             } else {
