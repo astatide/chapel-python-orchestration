@@ -206,7 +206,6 @@ record Chromosome {
   var actualGenes: [geneNumbers] domain(int);
 
   var udevrandom = new owned rng.UDevRandomHandler();
-  var newrng:
 
   proc init() {
     //this.complete();
