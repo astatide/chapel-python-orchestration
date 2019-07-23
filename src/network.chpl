@@ -780,6 +780,10 @@ class networkMapper {
     return delta;
   }
 
+  proc calculateHistory(id: string) : genes.deltaRecord {
+    return this.calculateHistory(id, new ygglog.yggHeader());
+  }
+
   inline proc clone(ref networkCopy: shared networkMapper) {
     //var networkCopy = new shared networkMapper();
     networkCopy.log = this.log;
