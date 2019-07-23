@@ -206,7 +206,7 @@ record Chromosome {
   var actualGenes: [geneNumbers] domain(int);
 
   var udevrandom = new owned rng.UDevRandomHandler();
-  var newrng = udevrandom.returnRNG();
+  var newrng:
 
   proc init() {
     //this.complete();
@@ -319,13 +319,14 @@ record Chromosome {
           ref oldNode = network.globalNodes[this.geneIDs[n]];
           network.globalLock.url();
           if mutate {
+            var newrng = udevrandom.returnRNG();
             // now we gonna mutate, son.
-            if this.newrng.getNext() < mutateChance {
+            if newrng.getNext() < mutateChance {
               // I mean, only if the above is successful, really.
               this.wasMutated[n] = true;
               // get our path.  We either do deletion, addition, or mutation.
               var d = nM.calculateHistory(this.geneIDs[n]);
-              //var mutationTypeChance: real = this.newrng.getNext();
+              //var mutationTypeChance: real = newrng.getNext();
               /*
               select this.newrng.getNext() {
                 when < deletionChance do {
