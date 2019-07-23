@@ -38,7 +38,7 @@ record mapperByLocale {
     if ind == 'root'{
       return 0;
     } else if ind != '' {
-      writeln("WHAT IS OUR INDEX:", ind);
+      //writeln("WHAT IS OUR INDEX:", ind);
       return ind[1..4] : int;
     }
     // you should never be called, but hey.
