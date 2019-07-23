@@ -184,8 +184,8 @@ class Propagator {
   proc initChromosomes(ref nG: shared network.networkGenerator, ref nM: shared network.networkMapper, yH: ygglog.yggHeader) {
 
     on this.locale {
-      forall deme in 0..4 with (ref nG) {
-        forall i in 1..nChromosomes with (ref nG) {
+      forall deme in 0..4 with (ref nG, ref nM) {
+        forall i in 1..nChromosomes with (ref nG, ref nM) {
           // Here, we're going to be given the instructions for generating chromosomes.
           // No reason this can't be parallel, so let's do it.
           var nc = new chromosomes.Chromosome();
