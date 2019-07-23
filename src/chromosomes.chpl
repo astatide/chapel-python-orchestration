@@ -205,8 +205,6 @@ record Chromosome {
   //var geneNumbers: domain(int);
   var actualGenes: [geneNumbers] domain(int);
 
-  var udevrandom = new owned rng.UDevRandomHandler();
-
   proc init() {
     //this.complete();
     //var CUUID = new owned uuid.UUID();
@@ -318,6 +316,7 @@ record Chromosome {
           ref oldNode = network.globalNodes[this.geneIDs[n]];
           network.globalLock.url();
           if mutate {
+            var udevrandom = new owned rng.UDevRandomHandler();
             var newrng = udevrandom.returnRNG();
             // now we gonna mutate, son.
             if newrng.getNext() < mutateChance {
