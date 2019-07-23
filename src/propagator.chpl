@@ -274,6 +274,21 @@ class Propagator {
   }
 
   proc startLoggingTasks() {
+    if reportTasks {
+      begin {
+        while true {
+          var T: Time.Timer;
+          T.start();
+          this.log.log('runningTasks: ', here.runningTasks() : string, this.yh);
+          this.log.log('queuedTasks: ', here.queuedTasks() : string, this.yh);
+          this.log.log('blockedTasks: ', here.blockedTasks() : string, this.yh);
+          this.log.log('totalThreads: ', here.totalThreads() : string, this.yh);
+          this.log.log('idleThreads: ', here.idleThreads() : string, this.yh);
+          T.stop();
+          sleep(10 - T.elapsed(TimeUnits.seconds));
+        }
+      }
+    }
     begin {
       while true {
         var T: Time.Timer;
@@ -281,19 +296,6 @@ class Propagator {
         this.log.log('CURRENT GENERATION COUNT:', inCurrentGeneration.read() : string, this.yh);
         T.stop();
         sleep(30 - T.elapsed(TimeUnits.seconds));
-      }
-    }
-    begin {
-      while reportTasks {
-        var T: Time.Timer;
-        T.start();
-        this.log.log('runningTasks: ', here.runningTasks() : string, this.yh);
-        this.log.log('queuedTasks: ', here.queuedTasks() : string, this.yh);
-        this.log.log('blockedTasks: ', here.blockedTasks() : string, this.yh);
-        this.log.log('totalThreads: ', here.totalThreads() : string, this.yh);
-        this.log.log('idleThreads: ', here.idleThreads() : string, this.yh);
-        T.stop();
-        sleep(10 - T.elapsed(TimeUnits.seconds));
       }
     }
   }
@@ -480,10 +482,14 @@ class Propagator {
             // do something about it, why don't you.
           }
 
-          if valkyriesDone[gen].fetchAdd(1) < howManyValks {
-            this.waitEndOfGeneration(v, nG, gen, ygg, currentYggHeader);
+          valkyriesDone[gen].fetchAdd(1);
+          //if valkyriesDone[gen].fetchAdd(1) < howManyValks {
+          if this.locale == Locales[0] && i == 1 {
+            // why are we waiting on locale0?  Sanity.
+            while valkyriesDone[gen].read() < howManyValks do chpl_task_yield();
+            this.continueEndOfGeneration(v, nG, gen, ygg, this.yh);
           } else {
-            this.continueEndOfGeneration(v, nG, gen, ygg, currentYggHeader);
+            this.waitEndOfGeneration(v, nG, gen, ygg, currentYggHeader);
           }
         }
       }
