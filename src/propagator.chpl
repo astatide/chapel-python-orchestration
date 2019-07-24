@@ -508,7 +508,7 @@ class Propagator {
               while true {
                 var T: Time.Timer;
                 T.start();
-                this.log.log('Finished valkyries:', howManyValks.read() : string, this.yh);
+                this.log.log('Finished valkyries:', valkyriesDone[gen].read() : string, this.yh);
                 T.stop();
                 sleep(10 - T.elapsed(TimeUnits.seconds));
               }
