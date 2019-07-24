@@ -518,7 +518,7 @@ class Propagator {
                 sleep(10 - T.elapsed(TimeUnits.seconds));
               }
             }
-            while valkyriesDone[gen].read() < howManyValks do chpl_task_yield();
+            while valkyriesDone[gen].read() < howManyValks+1 do chpl_task_yield();
             this.continueEndOfGeneration(v, nG, gen, ygg, this.yh);
           } else {
             this.waitEndOfGeneration(v, nG, gen, ygg, currentYggHeader);
