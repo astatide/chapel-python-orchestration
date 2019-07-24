@@ -79,6 +79,19 @@ var nextGeneration: domain(string);
 var valkyriesProcessed: [1..maxValkyries*Locales.size] atomic int;
 var priorityValkyriesProcessed: [1..maxValkyries*Locales.size] atomic real;
 
+iter returnChromosomesOnLocale() {
+  for id in chromosomeDomain {
+    if id[1..4] : int == here.id {
+      yield id;
+    }
+  }
+  for id in chromosomeDomain {
+    if id[1..4] : int != here.id {
+      yield id;
+    }
+  }
+}
+
 class Propagator {
   // this is going to actually hold all the logic for running EvoCap.
   var generation: int;
@@ -210,10 +223,10 @@ class Propagator {
     // how many should this task get?  Only get about that many.
     var maxProcessed: int = ceil((nDuplicates * maxPerGeneration / Locales.size) / maxValkyries-1): int;
     var processed: int = 0;
-    for chrome in chromosomeDomain {
+    for chrome in returnChromosomesOnLocale() {
       if processed < maxProcessed {
         if !chromes[chrome].isProcessed.testAndSet() {
-          var nc = chromes[chrome];
+          var nc = chromes[chrome].clone();
           for i in 1..nDuplicates {
             var cc = nc.clone();
             cc.id = nG.generateChromosomeID;
@@ -251,7 +264,7 @@ class Propagator {
         if bestScore > lowestScore {
           scoreArray[deme, minLoc] = bestScore;
           idArray[deme, minLoc] = chrome;
-        }  
+        }
       }
     }
     for deme in 0..4 {
