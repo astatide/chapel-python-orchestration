@@ -258,11 +258,8 @@ class Propagator {
     this.log.log('Determining which chromosomes to advance', yh);
 
     for chrome in chromosomeDomain {
-      var bestScore: real;
-      var bestNode: string;
-      var deme: int;
       // copy it back to us.
-      deme = chromes[chrome].currentDeme;
+      var deme = chromes[chrome].currentDeme;
       var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
       var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme,..], scoreArray.domain.dim(2));
       this.log.log('Finding the highest scoring node on this chromosome and seeing if it is good enough.', yh);

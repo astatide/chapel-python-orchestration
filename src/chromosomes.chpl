@@ -478,10 +478,10 @@ record Chromosome {
   }
 
   proc bestGeneInDeme(deme=0) {
+    var bestNode: string;
+    // Are scores high or low?  I guess it depends on our metric.  Blah.
+    var bestScore: real = 0;
     on this.locale {
-      var bestNode: string;
-      // Are scores high or low?  I guess it depends on our metric.  Blah.
-      var bestScore: real = 0;
       if this.lowestIsBest {
         bestScore = Math.INFINITY : real;
         for i in 1..totalGenes {
@@ -504,8 +504,8 @@ record Chromosome {
           //}
         }
       }
-      return (bestScore, bestNode);  
     }
+    return (bestScore, bestNode);
   }
 
   proc returnNodeNumber(node: string) {
