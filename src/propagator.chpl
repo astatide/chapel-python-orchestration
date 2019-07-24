@@ -48,6 +48,8 @@ config var stepsForEdge: int = 15;
 
 config const reportTasks: bool = false;
 
+config var exportNetwork: bool = false;
+
 // These are all the global things we need to access from everywhere.
 
 allLocalesBarrier.reset(maxValkyries);
@@ -316,11 +318,13 @@ class Propagator {
   }
 
   proc exportCurrentNetworkState(yh: ygglog.yggHeader) {
-    this.log.log('Exporting network', hstring=yh);
-    network.globalLock.rl();
-    network.exportGlobalNetwork(0);
-    network.globalLock.url();
-    this.log.log('Export complete!', hstring=yh);
+    if exportNetwork {
+      this.log.log('Exporting network', hstring=yh);
+      network.globalLock.rl();
+      network.exportGlobalNetwork(0);
+      network.globalLock.url();
+      this.log.log('Export complete!', hstring=yh);  
+    }
   }
 
   proc run() {
