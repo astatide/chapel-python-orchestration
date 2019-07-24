@@ -258,15 +258,19 @@ class Propagator {
     this.log.log('Determining which chromosomes to advance', yh);
 
     for chrome in chromosomeDomain {
-      on chromes[chrome].locale {
-        var deme = chromes[chrome].currentDeme;
-        var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme,..], scoreArray.domain.dim(2));
-        this.log.log('Finding the highest scoring node on this chromosome and seeing if it is good enough.', yh);
+      var bestScore: real;
+      var bestNode: string;
+      var deme: int;
+      // copy it back to us.
+      on chromes[chrome].locale with (ref bestScore, ref bestNode, ref deme) {
+        deme = chromes[chrome].currentDeme;
         var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
-        if bestScore > lowestScore {
-          scoreArray[deme, minLoc] = bestScore;
-          idArray[deme, minLoc] = chrome;
-        }
+      }
+      var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme,..], scoreArray.domain.dim(2));
+      this.log.log('Finding the highest scoring node on this chromosome and seeing if it is good enough.', yh);
+      if bestScore > lowestScore {
+        scoreArray[deme, minLoc] = bestScore;
+        idArray[deme, minLoc] = chrome;
       }
     }
     for deme in 0..4 {
@@ -323,7 +327,7 @@ class Propagator {
       network.globalLock.rl();
       network.exportGlobalNetwork(0);
       network.globalLock.url();
-      this.log.log('Export complete!', hstring=yh);  
+      this.log.log('Export complete!', hstring=yh);
     }
   }
 
