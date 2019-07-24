@@ -324,21 +324,28 @@ record Chromosome {
               this.wasMutated[n] = true;
               // get our path.  We either do deletion, addition, or mutation.
               var d = nM.calculateHistory(this.geneIDs[n]);
-              //var mutationTypeChance: real = newrng.getNext();
-              /*
-              select this.newrng.getNext() {
-                when < deletionChance do {
-                  // do a mutation; delete a random one from the path!
-                }
-                when < additionChance + deletionChance && > deletionChance do {
-                  // do an addition; just add a random seed on!
-                }
-                when > additionChance + deletionChance do {
-                  // otherwise, perform a mutation; mutate one seed to another.
-                }
-              }*/
-              this.mutantDelta[n] = d;
-              node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode, mutantDelta = d);
+              var mutantDelta = new genes.deltaRecord();
+              var mutationTypeChance: real = newrng.getNext();
+              //select this.newrng.getNext() {
+              if mutationTypeChance < deletionChance {
+                // do a mutation; delete a random one from the path!
+                var (randomSeed, coefficient) = d.returnRandomSeed();
+                mutantDelta += (randomSeed, coefficient*-1);
+              }
+              if (mutationTypeChance < (additionChance + deletionChance)) && mutationTypeChance > deletionChance {
+                // do an addition; just add a random seed on!
+                mutantDelta += (nG.newSeed(), 1);
+              }
+              if mutationTypeChance > (additionChance + deletionChance) {
+                // otherwise, perform a mutation; mutate one seed to another.
+                var (randomSeed, coefficient) = d.returnRandomSeed();
+                mutantDelta += (randomSeed, coefficient*-1);
+                mutantDelta += (nG.newSeed(), coefficient);
+              }
+
+              this.mutantDelta[n] = mutantDelta;
+              node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode, mutantDelta = mutantDelta);
+              node.isMutant = true;
               //node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
             } else {
               node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);

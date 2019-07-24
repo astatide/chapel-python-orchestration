@@ -18,8 +18,8 @@ class UDevRandomHandler {
     return x;
   }
 
-  proc returnRNG() {
-    var RandomNumberGenerator = makeRandomStream(real, seed=this.seed());
+  proc returnRNG(type t = real) {
+    var RandomNumberGenerator = makeRandomStream(t, seed=this.seed());
     return RandomNumberGenerator;
   }
 

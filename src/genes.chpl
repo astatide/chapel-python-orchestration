@@ -84,7 +84,7 @@ record deltaRecord {
 	if this.seeds.size == 0 then return (0, 0.0);
 	// Get random index...
   var udevrandom = new owned rng.UDevRandomHandler();
-  var newrng = udevrandom.returnRNG();
+  var newrng = udevrandom.returnRNG(int);
 	var idx = abs(newrng.getNext()) % this.seeds.table.size;
 	while true {
 		if this.seeds.table[idx].status == chpl__hash_status.empty {
@@ -399,6 +399,8 @@ class GeneNode {
   var initialized: atomic bool = false;
 
   var revision: int = NEW;
+
+  var isMutant: bool = false;
 
   proc init() {
     // Blank initializer so that we can check on it later.
