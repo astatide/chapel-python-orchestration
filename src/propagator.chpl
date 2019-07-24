@@ -538,7 +538,7 @@ class Propagator {
     this.setBestChromosomes(yh);
     // export the network!
     this.exportCurrentNetworkState(yh);
-    nG.setCurrentGeneration();
+    //nG.setCurrentGeneration();
     readyForChromosomes[gen] = true;
     advanceChromosomes(nG, ygg, yh, gen+1);
     scoreArray = -1;
@@ -601,7 +601,7 @@ class Propagator {
     // some statistics of how well we're running.
     // Then wait on the sync variable.
     if v.currentTask == 1 {
-      nG.setCurrentGeneration();
+      //nG.setCurrentGeneration();
     }
     v.moved = false;
     this.log.log('Waiting in gen', gen : string, yh);
