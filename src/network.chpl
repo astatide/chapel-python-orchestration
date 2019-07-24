@@ -199,19 +199,21 @@ class networkGenerator {
     var mIdcIdSetAtomic: atomic bool = false;
     */
     //var cId, mId: int;
-    if !mIdcIdSet {
-      if !mIdcIdSetAtomic.testAndSet() {
-        this.l.wl();
-        this.cId = this.currentId.read();
-        this.mId = this.firstUnprocessedOld.read();
-        this.mIdcIdSet = true;
-        this.l.uwl();
-      } else {
+    //if !mIdcIdSet {
+    //  if !mIdcIdSetAtomic.testAndSet() {
+    //    this.l.wl();
+    //    this.cId = this.currentId.read();
+    //    this.mId = this.firstUnprocessedOld.read();
+    //    this.mIdcIdSet = true;
+    //    this.l.uwl();
+    //  } else {
         // we want to freaking wait here.
-        while !this.mIdcIdSet do chpl_task_yield();
-      }
-    }
-    this.l.rl();
+    //    while !this.mIdcIdSet do chpl_task_yield();
+    //  }
+    //}
+    //this.l.rl();
+    this.cId = this.currentId.read();
+    this.mId = this.firstUnprocessedOld.read();
     if this.cId > this.N {
       // do not go higher than the actual number of nodes we have.
       this.cId = this.N;
