@@ -547,7 +547,7 @@ class Propagator {
     finishedChromoProp.write(0);
     this.log.log('Switching generations', yh);
     nG.addUnprocessed(ygg);
-    nG.setCurrentGeneration();
+    //nG.setCurrentGeneration();
     // Clear out the current nodesToProcess domain, and swap it for the
     // ones we've set to process for the next generation.
     on Locales[0] {
@@ -622,7 +622,7 @@ class Propagator {
     advanceChromosomes(nG, ygg, yh, gen+1);
     nG.addUnprocessed(ygg);
     if v.currentTask == 1 {
-      nG.setCurrentGeneration();
+      //nG.setCurrentGeneration();
     }
     this.log.debug("Setting the current generation count", yh);
     finishedChromoProp.add(1);

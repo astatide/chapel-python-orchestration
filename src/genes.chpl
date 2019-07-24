@@ -561,7 +561,7 @@ class GeneNode {
     //}
   }
 
-  proc addSeed(seed: int, cId: string, deme: int, ref node: shared GeneNode) {
+  proc addSeed(seed: int, cId: string, deme: int, ref node: shared GeneNode, mutantDelta: genes.deltaRecord = new genes.deltaRecord()) {
     on this.locale {
       this.ctype = 'seed';
       this.parentSeedNode = 'root';
@@ -572,6 +572,7 @@ class GeneNode {
       // It's reverse because we're creating the connection from the new node backwards;
       // ergo, you must _undo_ the change.
       delta += (seed, -1.0);
+      delta += mutantDelta*-1;
       //node.l.wl();
       //node.demeDomain.add(deme);
       this.setDeme(deme);

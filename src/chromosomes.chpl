@@ -338,8 +338,8 @@ record Chromosome {
                 }
               }*/
               this.mutantDelta[n] = d;
-              //node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode, mutantDelta = d);
-              node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
+              node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode, mutantDelta = d);
+              //node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
             } else {
               node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
             }
