@@ -75,7 +75,7 @@ var idArray: [0..4,1..maxPerGeneration] string;
 
 // network stuff
 var inCurrentGeneration: atomic int;
-var nextGeneration: domain(string);
+//var nextGeneration: domain(string);
 var valkyriesProcessed: [1..maxValkyries*Locales.size] atomic int;
 var priorityValkyriesProcessed: [1..maxValkyries*Locales.size] atomic real;
 
@@ -328,7 +328,9 @@ class Propagator {
     this.yh += 'run';
     this.header();
     this.log.log("Setting up logging features", this.yh);
-    this.startLoggingTasks();
+    if this.locale == Locales[0] {
+      this.startLoggingTasks();  
+    }
 
     this.log.log("Spawn local network and networkGenerator", this.yh);
     var ygg = new shared network.networkMapper();
@@ -516,7 +518,7 @@ class Propagator {
     // do global cleanup to ensure the global arrays are ready.
     this.log.log('Handling cleanup on gen', gen : string, yh);
     v.moved = false;
-    nextGeneration.clear();
+    //nextGeneration.clear();
     // we'll just throw this in here for now.
     // Only do the max!
     this.setBestChromosomes(yh);
@@ -543,7 +545,7 @@ class Propagator {
         inCurrentGeneration.add(1);
       }
     }
-    nextGeneration.clear();
+    //nextGeneration.clear();
     // Set the count variable.
     valkyriesProcessed[v.currentTask+(here.id*maxValkyries)].write(v.nProcessed);
     // Compute some rough stats.  Buggy.
