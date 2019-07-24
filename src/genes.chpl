@@ -64,7 +64,7 @@ record deltaRecord {
   //var udevrandom = new owned rng.UDevRandomHandler();
   //var newrng = udevrandom.returnRNG();
 
-  iter returnRandomSeed() {
+  proc returnRandomSeed() {
     // THIS IS NOT EFFICIENT
     // @TODO: fix it, yo.
     var udevrandom = new owned rng.UDevRandomHandler();
