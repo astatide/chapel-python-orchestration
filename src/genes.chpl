@@ -64,6 +64,21 @@ record deltaRecord {
   //var udevrandom = new owned rng.UDevRandomHandler();
   //var newrng = udevrandom.returnRNG();
 
+  iter returnRandomSeed() {
+    // THIS IS NOT EFFICIENT
+    // @TODO: fix it, yo.
+    var udevrandom = new owned rng.UDevRandomHandler();
+    var newrng = udevrandom.returnRNG();
+    var randomSelection = (newrng.getNext() * this.seeds.size) : int;
+    var i: int = 0;
+    for s in this.seeds {
+      if i == randomSelection {
+        return (s, this.delta[s]);
+      }
+      i += 1;
+    }
+  }
+
   iter these() {
     //yield (seeds, delta);
     for (s, c) in zip(this.seeds, this.delta) do {
@@ -584,7 +599,7 @@ class GeneNode {
     }
   }
 
-  proc newCombinationNode(idList, seedList, deme, oldId, ref gN) {
+  proc newCombinationNode(idList, seedList, deme, oldId, ref gN, mutantDelta: genes.deltaRecord = new genes.deltaRecord()) {
     //node.newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
     // so, for each seed in the seedlist, we add it to the oldId link node.
     on this.locale {
@@ -592,7 +607,8 @@ class GeneNode {
       for s in seedList {
         delta += (s, -1.0);
       }
-      delta /= seedList.size;
+      delta += mutantDelta;
+      delta /= idList.size;
       this.setDeme(deme);
       network.globalLock.rl();
       ref oldNode = gN[oldId];

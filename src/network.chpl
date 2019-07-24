@@ -203,10 +203,6 @@ class networkGenerator {
       if !mIdcIdSetAtomic.testAndSet() {
         this.l.wl();
         this.cId = this.currentId.read();
-        if this.cId > this.N {
-          // do not go higher than the actual number of nodes we have.
-          this.cId = this.N;
-        }
         this.mId = this.firstUnprocessedOld.read();
         this.mIdcIdSet = true;
         this.l.uwl();
@@ -216,6 +212,10 @@ class networkGenerator {
       }
     }
     this.l.rl();
+    if this.cId > this.N {
+      // do not go higher than the actual number of nodes we have.
+      this.cId = this.N;
+    }
     //writeln("NG: ", this.mId : string, this.cId : string);
     for i in this.mId..this.cId {
       var id = this.idSet[i];

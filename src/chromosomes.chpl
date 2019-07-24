@@ -367,9 +367,13 @@ record Chromosome {
         var seedList: [1..c.size] int;
         var i: int = 1;
         var combLabel: string = '(';
+        var mutantDelta = new genes.deltaRecord();
         for oldId in c {
           idList[i] = this.geneIDs[oldId];
           seedList[i] = this.geneSeeds[oldId];
+          if this.wasMutated[i] {
+            mutantDelta += this.mutantDelta[i];
+          }
           i += 1;
           combLabel += oldId : string + ',';
         }
@@ -380,7 +384,7 @@ record Chromosome {
           node.newCombinationNode(idList, seedList, this.currentDeme, nG.root, network.globalNodes);
         } else {
           //this.log.debug('Calling combination node', hstring=vstring);
-          node.newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes);
+          node.newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes, mutantDelta);
           // finalize it.
           network.globalLock.rl();
           network.globalNodes[this.geneIDs[n]].l.wl();
