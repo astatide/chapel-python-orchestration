@@ -398,7 +398,7 @@ class Propagator {
           var removeFromSet: domain(string);
           this.log.log('Beginning processing; Assessing nodes that must be handled', hstring=v.header);
 
-          for id in nG.all {
+          for id in nG.currentGeneration {
             // don't add root.
             if id != 'root' {
               toProcess.add(id);

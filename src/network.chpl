@@ -213,18 +213,19 @@ class networkGenerator {
     //  }
     //}
     //this.l.rl();
-    this.cId = this.currentId.read();
-    this.mId = this.firstUnprocessedOld.read();
-    if this.cId > this.N {
+    var cId = this.currentId.read();
+    var mId = this.firstUnprocessedOld.read();
+    if cId > this.N {
       // do not go higher than the actual number of nodes we have.
-      this.cId = this.N;
+      cId = this.N;
     }
     //writeln("NG: ", this.mId : string, this.cId : string);
-    for i in this.mId..this.cId {
+    for i in mId..cId {
       var id = this.idSet[i];
-      //if !this.processed[id] {
-      yield id;
-      //}
+      if !this.processed[id] {
+        yield id;
+      } else {
+      }
     }
     this.l.url();
   }
@@ -250,11 +251,11 @@ class networkGenerator {
   }
 
   inline proc setCurrentGeneration() {
-    this.firstUnprocessedOld.write(this.firstUnprocessed.read());
-    this.firstUnprocessed.write(this.currentId.read());
-    this.firstUnprocessedNonAtomic = this.firstUnprocessed.read();
-    this.mIdcIdSet = false;
-    this.mIdcIdSetAtomic.write(false);
+    this.firstUnprocessedOld.write(this.currentId.read());
+    //this.firstUnprocessed.write(this.currentId.read());
+    //this.firstUnprocessedNonAtomic = this.firstUnprocessed.read();
+    //this.mIdcIdSet = false;
+    //this.mIdcIdSetAtomic.write(false);
   }
 
   inline proc generateID {
