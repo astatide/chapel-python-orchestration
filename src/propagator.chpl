@@ -441,7 +441,7 @@ class Propagator {
             if currToProc != '' {
               this.log.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
               // AHA!
-              //begin nG.removeUnprocessed(currToProc);
+              begin nG.removeUnprocessed(currToProc);
               toProcess.remove(currToProc);
               //this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
               begin inCurrentGeneration.sub(1);

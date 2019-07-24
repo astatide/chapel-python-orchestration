@@ -64,7 +64,7 @@ record deltaRecord {
   //var udevrandom = new owned rng.UDevRandomHandler();
   //var newrng = udevrandom.returnRNG();
 
-  proc returnRandomSeed() {
+  proc returnRandomSeedIterator() {
     // THIS IS NOT EFFICIENT
     // @TODO: fix it, yo.
     var udevrandom = new owned rng.UDevRandomHandler();
@@ -78,6 +78,25 @@ record deltaRecord {
       i += 1;
     }
   }
+
+  // Courtesy of https://github.com/LouisJenkinsCS
+  proc returnRandomSeed() {
+	if this.seeds.size == 0 then return (0, 0.0);
+	// Get random index...
+  var udevrandom = new owned rng.UDevRandomHandler();
+  var newrng = udevrandom.returnRNG();
+	var idx = abs(newrng.getNext()) % this.seeds.table.size;
+	while true {
+		if this.seeds.table[idx].status == chpl__hash_status.empty {
+			idx += 1;
+			idx = idx % this.seeds.table.size;
+			continue;
+		}
+		var seed = this.seeds.table[idx].idx;
+    return (seed, this.delta[seed]);
+	}
+	return (0, 0.0);
+}
 
   iter these() {
     //yield (seeds, delta);

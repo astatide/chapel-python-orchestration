@@ -168,12 +168,20 @@ class networkGenerator {
       cId = this.N;
     }
     this.l.rl();
-    for i in this.firstUnprocessedNonAtomic..cId {
+    var currentMin = this.firstUnprocessed.read();
+    for i in currentMin..cId {
       var id = this.idSet[i];
       if !this.processed[id] {
         yield id;
       } else {
         //this.firstUnprocessed.add(1);
+        this.l.url();
+        this.l.wl();
+        if this.firstUnprocessed.read() < i {
+          this.firstUnprocessed.write(i);
+        }
+        this.l.uwl();
+        this.l.rl();
       }
     }
     this.l.url();
