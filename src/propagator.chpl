@@ -229,6 +229,7 @@ class Propagator {
       if processed < maxProcessed {
         if !chromes[chrome].isProcessed.testAndSet() {
           var nc = chromes[chrome].clone();
+          var oldId = chromes[chrome].id;
           this.log.log('Advancing chromosome ID:', nc.id, hstring=yH);
           for i in 1..nDuplicates {
             var cc = nc.clone();
@@ -441,7 +442,7 @@ class Propagator {
             if currToProc != '' {
               this.log.debug('Removing from local networkGenerator, if possible.', hstring=v.header);
               // AHA!
-              begin nG.removeUnprocessed(currToProc);
+              nG.removeUnprocessed(currToProc);
               toProcess.remove(currToProc);
               //this.log.debug('Attempting to decrease count for inCurrentGeneration', hstring=v.header);
               begin inCurrentGeneration.sub(1);
