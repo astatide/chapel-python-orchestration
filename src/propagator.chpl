@@ -262,10 +262,8 @@ class Propagator {
       var bestNode: string;
       var deme: int;
       // copy it back to us.
-      on chromes[chrome].locale with (ref bestScore, ref bestNode, ref deme) {
-        deme = chromes[chrome].currentDeme;
-        var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
-      }
+      deme = chromes[chrome].currentDeme;
+      var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
       var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme,..], scoreArray.domain.dim(2));
       this.log.log('Finding the highest scoring node on this chromosome and seeing if it is good enough.', yh);
       if bestScore > lowestScore {

@@ -478,32 +478,34 @@ record Chromosome {
   }
 
   proc bestGeneInDeme(deme=0) {
-    var bestNode: string;
-    // Are scores high or low?  I guess it depends on our metric.  Blah.
-    var bestScore: real = 0;
-    if this.lowestIsBest {
-      bestScore = Math.INFINITY : real;
-      for i in 1..totalGenes {
-        // Actually, I should make this a function on the gene.
-        // That way we can handle the locking appropriately.
-        //if this.geneIDs[i].demeDomain.contains(deme) {
-          if this.scores[i] < bestScore {
-            bestScore = this.scores[i];
-            bestNode = this.geneIDs[i];
-          }
-        //}
+    on this.locale {
+      var bestNode: string;
+      // Are scores high or low?  I guess it depends on our metric.  Blah.
+      var bestScore: real = 0;
+      if this.lowestIsBest {
+        bestScore = Math.INFINITY : real;
+        for i in 1..totalGenes {
+          // Actually, I should make this a function on the gene.
+          // That way we can handle the locking appropriately.
+          //if this.geneIDs[i].demeDomain.contains(deme) {
+            if this.scores[i] < bestScore {
+              bestScore = this.scores[i];
+              bestNode = this.geneIDs[i];
+            }
+          //}
+        }
+      } else {
+        for i in 1..totalGenes {
+          //if this.geneIDs[i].demeDomain.contains(deme) {
+            if this.scores[i] < bestScore {
+              bestScore = this.scores[i];
+              bestNode = this.geneIDs[i];
+            }
+          //}
+        }
       }
-    } else {
-      for i in 1..totalGenes {
-        //if this.geneIDs[i].demeDomain.contains(deme) {
-          if this.scores[i] < bestScore {
-            bestScore = this.scores[i];
-            bestNode = this.geneIDs[i];
-          }
-        //}
-      }
+      return (bestScore, bestNode);  
     }
-    return (bestScore, bestNode);
   }
 
   proc returnNodeNumber(node: string) {
