@@ -329,7 +329,7 @@ class Propagator {
     this.header();
     this.log.log("Setting up logging features", this.yh);
     if this.locale == Locales[0] {
-      this.startLoggingTasks();  
+      this.startLoggingTasks();
     }
 
     this.log.log("Spawn local network and networkGenerator", this.yh);
@@ -503,6 +503,16 @@ class Propagator {
           //if valkyriesDone[gen].fetchAdd(1) < howManyValks {
           if this.locale == Locales[0] && i == 1 {
             // why are we waiting on locale0?  Sanity.
+            this.log.log('Waiting until all locales are done', this.yh);
+            begin {
+              while true {
+                var T: Time.Timer;
+                T.start();
+                this.log.log('Finished valkyries:', howManyValks.read() : string, this.yh);
+                T.stop();
+                sleep(10 - T.elapsed(TimeUnits.seconds));
+              }
+            }
             while valkyriesDone[gen].read() < howManyValks do chpl_task_yield();
             this.continueEndOfGeneration(v, nG, gen, ygg, this.yh);
           } else {
