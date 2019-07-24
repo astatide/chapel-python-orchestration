@@ -538,6 +538,7 @@ class Propagator {
     this.setBestChromosomes(yh);
     // export the network!
     this.exportCurrentNetworkState(yh);
+    nG.setCurrentGeneration();
     readyForChromosomes[gen] = true;
     advanceChromosomes(nG, ygg, yh, gen+1);
     scoreArray = -1;
@@ -547,7 +548,6 @@ class Propagator {
     finishedChromoProp.write(0);
     this.log.log('Switching generations', yh);
     nG.addUnprocessed(ygg);
-    //nG.setCurrentGeneration();
     // Clear out the current nodesToProcess domain, and swap it for the
     // ones we've set to process for the next generation.
     on Locales[0] {
@@ -600,6 +600,9 @@ class Propagator {
     // In addition, add to some global variables so that we can compute
     // some statistics of how well we're running.
     // Then wait on the sync variable.
+    if v.currentTask == 1 {
+      nG.setCurrentGeneration();
+    }
     v.moved = false;
     this.log.log('Waiting in gen', gen : string, yh);
     valkyriesProcessed[v.currentTask+(here.id*maxValkyries)].write(v.nProcessed);
@@ -609,11 +612,11 @@ class Propagator {
     v.nPriorityNodesProcessed = 0;
 
     // after this, we process the chromosomes and go.
-    if nG.generation.fetchAdd(1) == gen {
-      nG.setCurrentGeneration();
-    } else {
-      nG.generation.sub(1);
-    }
+    //if nG.generation.fetchAdd(1) == gen {
+    //  nG.setCurrentGeneration();
+    //} else {
+    //  nG.generation.sub(1);
+    //}
 
     readyForChromosomes[gen];
     this.log.log('Grabbing chromosomes to process', hstring=yh);
@@ -621,9 +624,6 @@ class Propagator {
     // until that's set to true.
     advanceChromosomes(nG, ygg, yh, gen+1);
     nG.addUnprocessed(ygg);
-    if v.currentTask == 1 {
-      //nG.setCurrentGeneration();
-    }
     this.log.debug("Setting the current generation count", yh);
     finishedChromoProp.add(1);
     moveOn[gen];

@@ -173,6 +173,7 @@ class networkGenerator {
       if !this.processed[id] {
         yield id;
       } else {
+        //this.firstUnprocessed.add(1);
       }
     }
     this.l.url();
