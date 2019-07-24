@@ -620,7 +620,7 @@ class Propagator {
     // until that's set to true.
     advanceChromosomes(nG, ygg, yh, gen+1);
     nG.addUnprocessed(ygg);
-    if v.task == 1 {
+    if v.currentTask == 1 {
       nG.setCurrentGeneration();
     }
     this.log.debug("Setting the current generation count", yh);
