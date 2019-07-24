@@ -589,6 +589,7 @@ class Propagator {
     v.nPriorityNodesProcessed = 0;
     v.nProcessed = 0;
     // time to move the fuck on.
+    this.log.log('MOVING ON in gen', gen : string, yh);
     this.generation = gen + 1;
     moveOn[gen] = true;
   }
@@ -627,7 +628,7 @@ class Propagator {
     finishedChromoProp.add(1);
     moveOn[gen];
     this.lock.rl(yh);
-    this.log.log('MOVING ON in gen', gen : string, nodesToProcess : string, yh);
+    this.log.log('MOVING ON in gen', gen : string, yh);
     this.lock.url(yh);
   }
 }
