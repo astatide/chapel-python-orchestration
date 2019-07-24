@@ -223,14 +223,15 @@ class Propagator {
     var newC: [newCD] chromosomes.Chromosome;
     cLock.rl();
     // how many should this task get?  Only get about that many.
-    var maxProcessed: int = ceil((nDuplicates * maxPerGeneration / Locales.size) / maxValkyries-1): int;
+    // you... you know, you really need at least one.
+    var maxProcessed: int = max(ceil((nDuplicates * maxPerGeneration / Locales.size) / maxValkyries-1): int, 1);
     var processed: int = 0;
     for chrome in returnChromosomesOnLocale() {
       if processed < maxProcessed {
         if !chromes[chrome].isProcessed.testAndSet() {
           var nc = chromes[chrome].clone();
           var oldId = chromes[chrome].id;
-          this.log.log('Advancing chromosome ID:', nc.id, hstring=yH);
+          this.log.log('Advancing chromosome ID:', oldId, hstring=yH);
           for i in 1..nDuplicates {
             var cc = nc.clone();
             cc.id = nG.generateChromosomeID;
