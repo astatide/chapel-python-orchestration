@@ -229,6 +229,7 @@ class Propagator {
       if processed < maxProcessed {
         if !chromes[chrome].isProcessed.testAndSet() {
           var nc = chromes[chrome].clone();
+          this.log.log('Advancing chromosome ID:', nc.id, hstring=yH);
           for i in 1..nDuplicates {
             var cc = nc.clone();
             cc.id = nG.generateChromosomeID;
