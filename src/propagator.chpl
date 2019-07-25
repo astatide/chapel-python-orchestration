@@ -50,7 +50,7 @@ config const reportTasks: bool = false;
 
 config var exportNetwork: bool = false;
 
-allLocalesBarrier.reset(maxValkyries);
+//allLocalesBarrier.reset(maxValkyries);
 
 // These are all the global things we need to access from everywhere.
 
@@ -341,6 +341,9 @@ class Propagator {
     this.log.log("Spawn local network and networkGenerator", this.yh);
     var ygg = new shared network.networkMapper();
     var nG = new shared network.networkGenerator();      // we're gonna want a list of network IDs we can use.
+    if this.locale == Locales[0] {
+      allLocalesBarrier.reset(maxValkyries);
+    }
     ygg.log = this.log;
     ygg.log.currentDebugLevel = debug;
     ygg.lock.log = this.log;
@@ -351,9 +354,6 @@ class Propagator {
     nG.addUnprocessed(ygg);
     this.log.log("Setting the current generation count", this.yh);
     // now, make sure we know we have to process all of these.
-    if this.locale == Locales[0] {
-      //allLocalesBarrier.reset(maxValkyries);
-    }
     begin inCurrentGeneration.add(nG.currentId.read()-1);
 
     coforall i in 1..maxValkyries with (ref nG, ref ygg) {
@@ -428,7 +428,6 @@ class Propagator {
             // Assuming we have some things to process, do it!
             currToProc = '';
             // We can remove nodes from the domain processedArray is built on, which means we need to catch and process.
-            var existsInDomainAndCanProcess: bool = false;
             // This function now does the atomic test.
             this.log.log('Returning nearest unprocessed', hstring=v.header);
             var steps: int;
@@ -459,9 +458,7 @@ class Propagator {
               ref newNode = network.globalNodes[currToProc];
               if createEdgeOnMove {
                 if steps > stepsForEdge {
-                  network.globalLock.rl();
                   ref oldNode = network.globalNodes[v.currentNode];
-                  network.globalLock.url();
                   oldNode.join(newNode, delta, v.header);
                   newNode.join(oldNode, delta*-1, v.header);
                 }
