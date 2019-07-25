@@ -625,10 +625,12 @@ class Propagator {
     // moveOn is an array of sync variables.  We're blocked from reading
     // until that's set to true.
     advanceChromosomes(nG, ygg, yh, gen+1);
-    nG.addUnprocessed(ygg);
     this.log.debug("Setting the current generation count", yh);
     finishedChromoProp.add(1);
     moveOn[gen];
+    if v.currentTask == 1 {
+      nG.addUnprocessed(ygg);  
+    }
     this.lock.rl(yh);
     this.log.log('MOVING ON in gen', gen : string, yh);
     this.lock.url(yh);
