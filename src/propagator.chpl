@@ -550,6 +550,7 @@ class Propagator {
     finishedChromoProp.write(0);
     this.log.log('Switching generations', yh);
     nG.addUnprocessed(ygg);
+    begin inCurrentGeneration.add(nG.currentId.read()-1);
     // Clear out the current nodesToProcess domain, and swap it for the
     // ones we've set to process for the next generation.
     on Locales[0] {
@@ -629,7 +630,8 @@ class Propagator {
     finishedChromoProp.add(1);
     moveOn[gen];
     if v.currentTask == 1 {
-      nG.addUnprocessed(ygg);  
+      nG.addUnprocessed(ygg);
+      begin inCurrentGeneration.add(nG.currentId.read()-1);
     }
     this.lock.rl(yh);
     this.log.log('MOVING ON in gen', gen : string, yh);
