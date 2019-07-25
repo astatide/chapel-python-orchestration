@@ -114,7 +114,7 @@ class networkGenerator {
     this.l.t = 'networkGenerator';
     this.l.log = new shared ygglog.YggdrasilLogging();
     this.generateEmptyNodes(nodeBlockSize);
-    this.addToGlobal();
+    this.addToGlobal(initial=true);
     this.l.uwl();
   }
 
@@ -326,7 +326,7 @@ class networkGenerator {
     return returnString;
   }
 
-  inline proc addToGlobal() {
+  inline proc addToGlobal(initial=false) {
     // Why do it in two steps?  Minimize the time spent keeping it locked
     // globally; writes of new objects are fine, resizes are not!
     var removeSet: domain(string);
@@ -340,6 +340,9 @@ class networkGenerator {
       }
     }
     globalLock.uwl();
+    if initial == true {
+      allLocalesBarrier.barrier();
+    }
     globalLock.rl();
     for i in this.newNodeStartingPoint..this.N {
       var node = this.idSet[i];

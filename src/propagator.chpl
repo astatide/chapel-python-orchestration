@@ -52,7 +52,7 @@ config var exportNetwork: bool = false;
 
 // These are all the global things we need to access from everywhere.
 
-allLocalesBarrier.reset(maxValkyries);
+allLocalesBarrier.reset(1);
 
 // Chromosome stuff
 var cLock = new shared spinlock.NetworkSpinLock();
@@ -351,6 +351,7 @@ class Propagator {
     nG.addUnprocessed(ygg);
     this.log.log("Setting the current generation count", this.yh);
     // now, make sure we know we have to process all of these.
+    allLocalesBarrier.reset(maxValkyries);
     begin inCurrentGeneration.add(nG.currentId.read()-1);
 
     coforall i in 1..maxValkyries with (ref nG, ref ygg) {
