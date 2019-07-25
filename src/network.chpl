@@ -27,6 +27,8 @@ globalLock.log = new shared ygglog.YggdrasilLogging();
 config const nodeBlockSize = 10000;
 config const ignoreRoot = false;
 
+//allLocalesBarrier.reset(1);
+
 // here's some stuff to spread out the array.
 
 record mapperByLocale {
@@ -341,7 +343,7 @@ class networkGenerator {
     }
     globalLock.uwl();
     if initial == true {
-      allLocalesBarrier.barrier();
+      //allLocalesBarrier.barrier();
     }
     globalLock.rl();
     for i in this.newNodeStartingPoint..this.N {
