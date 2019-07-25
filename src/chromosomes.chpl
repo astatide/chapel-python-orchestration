@@ -356,6 +356,9 @@ record Chromosome {
           oldNode.revision = genes.FINALIZED;
         }
         //this.log.debug('Node successfully advanced', hstring=vstring);
+        if this.geneIDSet.contains(this.geneIDs[n]) {
+          this.geneIDSet.remove(this.geneIDs[n]);
+        }
         this.geneIDs[n] = id;
         this.add(n, id);
         this.geneSeeds[n] = seed;
@@ -400,6 +403,9 @@ record Chromosome {
           network.globalLock.url();
         }
         //this.log.debug('Combination complete; setting node', hstring=vstring);
+        if this.geneIDSet.contains(this.geneIDs[n]) {
+          this.geneIDSet.remove(this.geneIDs[n]);
+        }
         this.geneIDs[n] = id;
         this.add(n, id);
         node.chromosomes.add(this.id);

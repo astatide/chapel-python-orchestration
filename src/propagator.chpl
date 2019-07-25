@@ -454,7 +454,6 @@ class Propagator {
               delta.to = currToProc;
               network.globalLock.rl();
               ref newNode = network.globalNodes[currToProc];
-              network.globalLock.url();
               if createEdgeOnMove {
                 if steps > stepsForEdge {
                   network.globalLock.rl();
@@ -486,6 +485,7 @@ class Propagator {
                 this.log.log('Chromosome', nc : string, hstring=v.header);
               }
               nc.scores[inChromeID] = score;
+              network.globalLock.url();
               nc.l.uwl();
               cLock.url();
 
