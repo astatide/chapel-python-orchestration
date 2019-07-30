@@ -3,6 +3,12 @@
 # This ideally makes it a lot easier for me, but hey.
 import zmq
 import argparse
+import re
+import importlib
+import yaml
+import os
+import time
+import sys
 
 class valkyrieExecutor():
 
@@ -14,10 +20,15 @@ class valkyrieExecutor():
                             help='the ZMQ port')
         parser.add_argument('--id',
                             help='the Valkyrie ID')
+        parser.add_argument('--config', default='ygg.yml',
+                            help='the config file')
 
         args = parser.parse_args()
         self.port = args.zmqPort
         self.id = args.id
+        # NOT WORKING OH WELL
+        with open(args.config, 'r') as f:
+            self.config = yaml.load(f)
 
         self.task = 0
 
@@ -30,12 +41,14 @@ class valkyrieExecutor():
             'MOVE': self.move,
             'SET_TIME': self.setTime}
 
+        self.model = None
+
+        self.setConfig()
+
     def returnStatus(self, m):
         print("attempting to return the status")
         self.s.send_string(self.convertDictToMsg(m), encoding='ascii')
         print("Msg sent!  Maybe!")
-        #self.s.send_string("BLAH", encoding='ascii')
-        #return 0
 
     def returnOkay(self, m):
         m['COMMAND'] = m['command']['RETURN_STATUS']
@@ -50,7 +63,18 @@ class valkyrieExecutor():
 
 
     def receiveAndProcessDelta(self, m):
-        return 0
+        start = time.time()
+        deme = m['i']
+        print(m['delta'])
+        self.model.expressDelta(m['delta'])
+        final_val, final_state = self.model.evaluate.eval_tartarus(self.model.model, deme)
+        end = time.time()
+        print("Valkyrie ID: " + self.id + " " + "Returning score: " + str(final_val))
+        m['COMMAND'] = m['command']['RECEIVE_SCORE']
+        m['r'] = final_val
+        m['s'] = final_state
+        self.returnStatus(m)
+
 
     def setId(self, m):
         self.id = m['s']
@@ -67,11 +91,7 @@ class valkyrieExecutor():
 
 
     def convertMsgToDict(self, msg):
-        import re
-        # (STATUS = 3, COMMAND = 1, s = , i = 1, r = 0.0, exists = 0, status = (OK = 0, ERROR = 1, IGNORED = 2, SEALED = 3), command = (RETURN_STATUS = 0, SET_TASK = 1, RECEIVE_AND_PROCESS_DELTA = 2, RECEIVE_SCORE = 3, SET_ID = 4, SHUTDOWN = 5, MOVE = 6, SET_TIME = 7))
-        #dict = eval(msg.replace("(", "{'").replace(')',"}").replace(' = ', "': ").replace(': ,', ': None,',).replace(', ', ", '")) #.replace("s' : ", "s' : '").replace(", 'i'", "', 'i'"))
         dict = msg.replace("(", "{").replace(')',"}").replace(' = ', "': ").replace(': ,', ': None,',).replace(', ', ", '").replace("STATUS", "'STATUS").replace("OK", "'OK").replace("RETURN_'STATUS", "'RETURN_STATUS") #.replace("s' : ", "s' : '").replace(", 'i'", "', 'i'"))
-        #print(dict)
         dict = dict.replace("'s': ", "'s': '").replace(", 'i'", "', 'i'")
         dict = dict.replace('=',':')
         # '{SIZE:2,TO:"0002-GENE-800e3a36-a44b-55af-1f44-41ef92d3a0e1",FROM:"0002-GENE-0e9db6bf-a348-e958-da5c-526ce134e7ad",{'6876917637838023797,1.0},{'5058546265420500405,1.0}}'
@@ -81,42 +101,22 @@ class valkyrieExecutor():
         # actually, just grab the string
         p = re.compile("( 's': )(.+)(, 'i')")
         s = p.findall(dict)
-        #if s is not None:
-            #for i in s:
-                #print(i)
-                #s = s[6:-5]
-                #print("s is not none!")
-                # 1 is the valk id in lots of cases.  Or the actual string!
-                #print(i[1])
         s = s[0][1]
-        print(s)
-        # we get rid of it ultimately, but.
         dict = p.sub(" 'i'", dict)
-        if False:
-            # Grab the delta using regex
-            p = re.compile("\{([-?[0-9]+),([^}]+)\}")
-            # {'STATUS': 3, 'COMMAND': 2, 's': '{'SIZE':2,'TO':"0002-GENE-cfe7363e-c939-766a-7730-7f8064cd323a",'FROM':"0002-GENE-cf2e2add-38e4-c000-8f83-1115ad003982",{8875112097686481946,1.0},{3451562649136780615,1.0}}', 'i': 0, 'r': 0.0, 'exists': 0, 'status': {'OK': 0, 'ERROR': 1, 'IGNORED': 2, 'SEALED': 3}, 'command': {'RETURN_STATUS': 0, 'SET_TASK': 1, 'RECEIVE_AND_PROCESS_DELTA': 2, 'RECEIVE_SCORE': 3, 'SET_ID': 4, 'SHUTDOWN': 5, 'MOVE': 6, 'SET_TIME': 7}}
-            m = p.findall(dict) # this holds the delta!
-            for i in m:
-                dict = p.sub("", dict)
-            # dict = dict.replace(",{",",'DELTA': '{").replace("}}'", "}'}")
-            # this removes too many commas.
-            p = re.compile("(,)+\1{1,}")
-            m = p.findall(dict) # this holds the delta!
-            for i in m:
-                dict = p.sub("", dict)
-            dict = dict.replace('",}','"}')
-            print(dict)
-            print(m)
+        # this will grab the actual delta using regex
+        p = re.compile("\{([-?[0-9]+),([^}]+)\}")
+        # {'STATUS': 3, 'COMMAND': 2, 's': '{'SIZE':2,'TO':"0002-GENE-cfe7363e-c939-766a-7730-7f8064cd323a",'FROM':"0002-GENE-cf2e2add-38e4-c000-8f83-1115ad003982",{8875112097686481946,1.0},{3451562649136780615,1.0}}', 'i': 0, 'r': 0.0, 'exists': 0, 'status': {'OK': 0, 'ERROR': 1, 'IGNORED': 2, 'SEALED': 3}, 'command': {'RETURN_STATUS': 0, 'SET_TASK': 1, 'RECEIVE_AND_PROCESS_DELTA': 2, 'RECEIVE_SCORE': 3, 'SET_ID': 4, 'SHUTDOWN': 5, 'MOVE': 6, 'SET_TIME': 7}}
+        m = p.findall(s) # this holds the delta!
+        delta = {}
+        for i in m:
+            delta[int(i[0])] = float(i[1])
         dict = eval(dict)
         dict['s'] = s
-        print(dict)
-        #print(dict)
-        #dict = eval(msg.replace("(", "{'").replace(')',"}").replace(' = ', "' : ").replace(', ', ", '").replace("s' : ", "s' : '").replace(", 'i'", "', 'i'").replace(": '',", ': None,'))
-
+        dict['delta'] = delta
         return dict
 
     def convertDictToMsg(self, dict):
+        del dict['delta']
         msg = str(dict).replace("{'", "(").replace("}",')').replace("': ", ' = ').replace(", '",', ').replace('= None', '= ',)
         return msg
 
@@ -124,6 +124,18 @@ class valkyrieExecutor():
         self.zContext = zmq.Context()
         self.s = self.zContext.socket(zmq.PAIR)
         self.s.connect(self.port)
+
+    def setConfig(self):
+        # here, we set the configuration options.
+
+        # Do a little string parsing to import the module.
+        sys.path.insert(0, '../' + self.config['valkyrie']['model'].replace(os.path.basename(self.config['valkyrie']['model']), ''))
+        self.modelModule = importlib.import_module(os.path.basename(self.config['valkyrie']['model']).replace('.py', ''))
+
+        # instantiate model.  Probably enforce this structure to some degree.
+        self.model = self.modelModule.yggdrasilModel()
+        self.model.build_model()
+
 
     def mainLoop(self):
         # blah blah blah!
@@ -142,11 +154,11 @@ class valkyrieExecutor():
             if command[c] == COMMAND:
                 print("EXECUTING COMMAND ", c)
                 self.functions[c](m)
-
-
         return 0
 
 if __name__ == '__main__':
     v = valkyrieExecutor()
     v.connectToPort()
+    #v.model = yggdrasilModel()
+    #v.model.model = loki.build_model()
     v.mainLoop()

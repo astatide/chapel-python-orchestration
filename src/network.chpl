@@ -26,6 +26,7 @@ globalLock.log = new shared ygglog.YggdrasilLogging();
 
 config const nodeBlockSize = 10000;
 config const ignoreRoot = false;
+config const howManyBits = 64;
 
 allLocalesBarrier.reset(1);
 
@@ -388,7 +389,7 @@ class networkGenerator {
   inline proc newSeed() {
     // Generates a new seed for use with deltas, etc.
     // we're returning a long.
-    return this.irng.getrandbits(64);
+    return this.irng.getrandbits(howManyBits);
   }
 }
 
