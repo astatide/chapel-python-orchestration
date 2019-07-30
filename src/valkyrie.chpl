@@ -119,19 +119,28 @@ class valkyrieHandler : msgHandler {
     }
   }
 
-  proc processNode(ref node: shared genes.GeneNode, delta : genes.deltaRecord) {
+  iter processNode(ref node: shared genes.GeneNode, delta : genes.deltaRecord) {
     var oldNode = this.currentNode;
     var score: real;
     var deme: int;
+    var dNew = delta;
     this.currentNode = node.id;
     this.moved = true;
     this.nProcessed += 1;
+    var adjustValkyrie: bool = true;
 
+    // should work for multiple demes, now.
     for d in node.returnDemes() {
       this.log.log('Starting work for ID:', node.id: string, 'on deme #', deme : string, hstring=this.header);
       this.log.log("Attempting to run Python on seed ID", node.id : string, 'DELTA:', delta : string, hstring=this.header);
       assert(!delta.seeds.isEmpty());
-      var newMsg = new messaging.msg(delta);
+      if adjustValkyrie {
+        dNew = delta;
+        adjustValkyrie = false;
+      } else {
+        dNew = new genes.deltaRecord();
+      }
+      var newMsg = new messaging.msg(dNew);
       this.log.log("ID", node.id : string, 'MSG:', newMsg : string, hstring=this.header);
       newMsg.i = d;
       this.log.log("DEME SET:", d : string, hstring=this.header);
@@ -144,9 +153,9 @@ class valkyrieHandler : msgHandler {
       deme = d;
       this.log.log('SCORE FOR', node.id : string, 'IS', score : string, hstring=this.header);
       node.setDemeScore(deme, score);
+      node.setValkyrie(this.id, this.nProcessed);
+      yield (score, deme);
     }
-    node.setValkyrie(this.id, this.nProcessed);
-    return (score, deme);
   }
 }
 

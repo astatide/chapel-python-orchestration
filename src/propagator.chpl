@@ -29,7 +29,10 @@ record scoreComparator {
 }
 
 config const mSize = 20;
-config const maxPerGeneration = 10;
+config const highFitnessToKeep = 10;
+config const highNovelToKeep = 10;
+config const archiveChance = 0.05;
+config const maxPerGeneration = 1000;
 config const mutationRate = 0.03;
 config const maxValkyries = 1;
 config const startingSeeds = 4;
@@ -42,6 +45,7 @@ config const unitTestMode = false;
 config var nChromosomes = 6;
 config var chromosomeSize = 36;
 config var nDuplicates = 4;
+config var nDemes = 4;
 
 config var createEdgeOnMove: bool = true;
 config var stepsForEdge: int = 15;
@@ -57,7 +61,9 @@ config var exportNetwork: bool = false;
 // Chromosome stuff
 var cLock = new shared spinlock.NetworkSpinLock();
 var chromosomeDomain: domain(string) dmapped Hashed(idxType=string, mapper = new network.mapperByLocale());
+var chromosomeArchiveDomain: domain(string) dmapped Hashed(idxType=string, mapper = new network.mapperByLocale());
 var chromes: [chromosomeDomain] chromosomes.Chromosome;
+var archive: [chromosomeArchiveDomain] chromosomes.Chromosome;
 cLock.t = 'Chromosomes';
 cLock.log = new shared ygglog.YggdrasilLogging();
 
@@ -72,8 +78,8 @@ var howManyValks = (((Locales.size)*maxValkyries)-1);
 // node stuff
 var nodesToProcess: domain(string);
 var processedArray: [nodesToProcess] atomic bool;
-var scoreArray: [0..4,1..maxPerGeneration] real = -1; //Math.INFINITY;
-var idArray: [0..4,1..maxPerGeneration] string;
+var scoreArray: [0..4,1..highFitnessToKeep] real = -1; //Math.INFINITY;
+var idArray: [0..4,1..highFitnessToKeep] string;
 
 // network stuff
 var inCurrentGeneration: atomic int;
@@ -90,6 +96,20 @@ iter returnChromosomesOnLocale() {
   for id in chromosomeDomain {
     if id[1..4] : int != here.id {
       yield id;
+    }
+  }
+}
+
+//@TODO: this is just a stub.
+proc returnRandomChromosomeOnLocale() {
+  for id in chromosomeDomain {
+    if id[1..4] : int == here.id {
+      return id;
+    }
+  }
+  for id in chromosomeDomain {
+    if id[1..4] : int != here.id {
+      return id;
     }
   }
 }
@@ -224,23 +244,23 @@ class Propagator {
     cLock.rl();
     // how many should this task get?  Only get about that many.
     // you... you know, you really need at least one.
-    var maxProcessed: int = max(ceil((nDuplicates * maxPerGeneration / Locales.size) / maxValkyries-1): int, 1);
+    var maxProcessed: int = max(ceil((nDemes * maxPerGeneration / Locales.size) / maxValkyries-1): int, 1);
     var processed: int = 0;
     for chrome in returnChromosomesOnLocale() {
       if processed < maxProcessed {
-        if !chromes[chrome].isProcessed.testAndSet() {
-          var nc = chromes[chrome].clone();
-          var oldId = chromes[chrome].id;
-          this.log.log('Advancing chromosome ID:', oldId, hstring=yH);
-          for i in 1..nDuplicates {
-            var cc = nc.clone();
-            cc.id = nG.generateChromosomeID;
-            cc.advanceNodes(nG, nM, yH, gen);
-            newCD.add(cc.id);
-            newC[cc.id] = cc;
-          }
-          processed += 1;
+        //if !chromes[chrome].isProcessed.testAndSet() {
+        var nc = chromes[chrome].clone();
+        var oldId = chromes[chrome].id;
+        this.log.log('Advancing chromosome ID:', oldId, hstring=yH);
+        for i in 1..nDuplicates {
+          var cc = nc.clone();
+          cc.id = nG.generateChromosomeID;
+          cc.advanceNodes(nG, nM, yH, gen);
+          newCD.add(cc.id);
+          newC[cc.id] = cc;
         }
+        processed += 1;
+        //}
       }
     }
     cLock.url();
@@ -258,21 +278,29 @@ class Propagator {
     var (bestInGen, minLoc) = maxloc reduce zip(scoreArray, scoreArray.domain);
     var chromosomesToAdvance: domain(string);
     var c: [chromosomesToAdvance] chromosomes.Chromosome;
-    this.log.log('Determining which chromosomes to advance', yh);
+    var udevrandom = new owned rng.UDevRandomHandler();
+    var newrng = udevrandom.returnRNG();
 
+    this.log.log('Determining which chromosomes to advance', yh);
     for chrome in chromosomeDomain {
+      // we're also adding things to the archive, if necessary.
+      if newrng.getNext() < archiveChance {
+        this.log.log('Adding chromosome ID', chrome, 'to the archive',yh);
+        chromosomeArchiveDomain.add(chrome);
+        archive[chrome] = chromes[chrome];
+      }
       // copy it back to us.
       var deme = chromes[chrome].currentDeme;
       var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
       var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme,..], scoreArray.domain.dim(2));
-      this.log.log('Finding the highest scoring node on this chromosome and seeing if it is good enough.', yh);
+      this.log.log('Finding the highest scoring node on chromosome ID', chrome, 'and seeing if it is good enough.', yh);
       if bestScore > lowestScore {
         scoreArray[deme, minLoc] = bestScore;
         idArray[deme, minLoc] = chrome;
       }
     }
     for deme in 0..4 {
-      for z in 1..maxPerGeneration {
+      for z in 1..highFitnessToKeep {
         if idArray[deme,z] != '' {
           this.log.log('Adding the following chromosome ID to be advanced:', idArray[deme,z], yh);
           chromosomesToAdvance.add(idArray[deme,z]);
@@ -464,32 +492,30 @@ class Propagator {
                 }
               }
               T.start();
-              var (score, deme) = v.processNode(newNode, delta);
-              T.stop();
-
-              // now, set the chromosome.
-              ref nc = chromes[newNode.chromosome];
-              cLock.rl();
-              nc.l.wl();
-              var inChromeID = nc.returnNodeNumber(currToProc);
-              this.log.log("Node ID:", currToProc : string, "Score:", score : string, "Deme:", deme : string, "Time:", T.elapsed() : string, hstring=v.header);
-              this.log.log('Node:', newNode : string, hstring=v.header);
-              T.clear();
-              this.log.log('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
-              this.log.log('DemeDomain in chromosome:', nc.geneIDs : string, hstring=v.header);
-              try {
-                assert(nc.scores.domain.contains(inChromeID));
-              } catch {
-                this.log.log('ID NOT IN CHROMOSOME:', currToProc : string, hstring=v.header);
+              for (score, deme) in v.processNode(newNode, delta) {
+                T.stop();
+                // now, set the chromosome.
+                cLock.rl();
+                ref nc = chromes[newNode.chromosome];
+                nc.l.wl();
+                var inChromeID = nc.returnNodeNumber(currToProc);
+                this.log.log("Node ID:", currToProc : string, "Score:", score : string, "Deme:", deme : string, "Time:", T.elapsed() : string, hstring=v.header);
                 this.log.log('Node:', newNode : string, hstring=v.header);
-                this.log.log('Chromosome', nc : string, hstring=v.header);
+                T.clear();
+                this.log.log('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
+                this.log.log('DemeDomain in chromosome:', nc.geneIDs : string, hstring=v.header);
+                try {
+                  assert(nc.scores.domain.contains(inChromeID));
+                } catch {
+                  this.log.log('ID NOT IN CHROMOSOME:', currToProc : string, hstring=v.header);
+                  this.log.log('Node:', newNode : string, hstring=v.header);
+                  this.log.log('Chromosome', nc : string, hstring=v.header);
+                }
+                nc.scores[inChromeID] = score;
+                nc.l.uwl();
+                cLock.url();
               }
-              nc.scores[inChromeID] = score;
               network.globalLock.url();
-              nc.l.uwl();
-              cLock.url();
-
-
             } else {
               // actually, if that's the case, we can't do shit.  So break and yield.
               break;
@@ -511,7 +537,8 @@ class Propagator {
             // why are we waiting on locale0?  Sanity.
             this.log.log('Waiting until all locales are done', this.yh);
             begin {
-              while true {
+              // We do eventually want to end this.
+              while valkyriesDone[gen].read() < howManyValks+1 {
                 var T: Time.Timer;
                 T.start();
                 this.log.log('Finished valkyries:', valkyriesDone[gen].read() : string, this.yh);

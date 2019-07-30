@@ -22,7 +22,8 @@ use rng;
 //var AssocDom:domain(int);
 //type AssocArrayType = [AssocDom] int;
 
-config var mutateChance: real = 0.01;
+config var lowMutateChance: real = 0.01;
+config var highMutateChance: real = 0.1;
 config var additionChance: real = 0.1;
 config var deletionChance: real = 0.1;
 
@@ -288,6 +289,7 @@ record Chromosome {
     if initial {
       //this.log.debug("Initializing nodes.", hstring=vstring);
     }
+    var (score, highestScoringGene) = this.bestGeneInDeme(this.currentDeme);
     for n in 1..totalGenes {
       if !this.geneNumbers.contains(n) {
         this.geneNumbers.add(n);
@@ -302,6 +304,7 @@ record Chromosome {
         // prep the root seeds.
         // handy function to return a node id.
         //this.log.debug('Getting seeds and ID', hstring=vstring);
+        // @TODO: add in the ability to do N seeds initially.
         var seed = nG.newSeed();
         //this.log.debug('ID: %s, SEED: %i'.format(id, seed), hstring=vstring);
         if initial {
@@ -315,10 +318,19 @@ record Chromosome {
           network.globalLock.rl();
           ref oldNode = network.globalNodes[this.geneIDs[n]];
           network.globalLock.url();
+          // @TODO
+          // THE BEST GENE HAS A SEPARATE MUTATION RATE (LOWER)
+          // BE SURE TO ACTUALLY PUT THAT IN THERE.
           if mutate {
             var udevrandom = new owned rng.UDevRandomHandler();
             var newrng = udevrandom.returnRNG();
             // now we gonna mutate, son.
+            var mutateChance: real;
+            if this.geneIDs[n] == highestScoringGene {
+              mutateChance = lowMutateChance;
+            } else {
+              mutateChance = highMutateChance;
+            }
             if newrng.getNext() < mutateChance {
               // I mean, only if the above is successful, really.
               this.wasMutated[n] = true;
@@ -338,6 +350,7 @@ record Chromosome {
               }
               if mutationTypeChance > (additionChance + deletionChance) {
                 // otherwise, perform a mutation; mutate one seed to another.
+                // @TODO: mark this seed as 'gone' from this lineage.
                 var (randomSeed, coefficient) = d.returnRandomSeed();
                 mutantDelta += (randomSeed, coefficient*-1);
                 mutantDelta += (nG.newSeed(), coefficient);
@@ -480,6 +493,21 @@ record Chromosome {
   */
 
   proc bestGene(ygg: network.networkMapper) {
+    var bestNode: string;
+    var bestScore: real = 0;
+    if true {
+      for i in 1..totalGenes {
+        var score = this.geneIDs[i].scores[this.currentDeme];
+        if score > bestScore {
+          bestScore = score;
+          bestNode = this.geneIDs[i];
+        }
+      }
+    }
+    return (bestNode, bestScore);
+  }
+
+  proc bestGene() {
     var bestNode: string;
     var bestScore: real = 0;
     if true {

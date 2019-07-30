@@ -186,7 +186,7 @@ class msgHandlerMultiple {
     // send the message!
     //fout[i].writeln(m);
     //fout[i].flush();
-    this.sendSocket[i].send(m);
+    this.sendSocket[i].send(m : string);
     if awaitResponse {
       this.RECV_STATUS(i);
     }
@@ -330,7 +330,7 @@ class msgHandler {
 
   proc __SEND__(m: msg, i: int) {
     // send the message!
-    this.socket[i].send(m);
+    this.socket[i].send(m : string);
     return true;
   }
 
@@ -343,10 +343,14 @@ class msgHandler {
   proc __RECV__(i: int) {
     // receive the message!
     var m: msg;
+    var s: string;
     m.exists = -1;
-    m = this.socket[i].recv(msg);
-    while m.exists == -1 do chpl_task_yield();
+    //m = this.socket[i].recv(msg);
+    s = this.socket[i].recv(string);
+    writeln(s);
     return m;
+    //while m.exists == -1 do chpl_task_yield();
+    //return m;
   }
 
   proc RECV(i: int) { return this.__RECV__(i); }
