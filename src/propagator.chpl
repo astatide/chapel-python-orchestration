@@ -82,6 +82,8 @@ var nodesToProcess: domain(string);
 var processedArray: [nodesToProcess] atomic bool;
 var scoreArray: [0..4,1..highFitnessToKeep] real = -1; //Math.INFINITY;
 var idArray: [0..4,1..highFitnessToKeep] string;
+var novelScoreArray: [0..4,1..highNovelToKeep] real = -1; //Math.INFINITY;
+var novelIdArray: [0..4,1..highNovelToKeep] string;
 
 // network stuff
 var inCurrentGeneration: atomic int;
@@ -297,7 +299,6 @@ class Propagator {
     var newrng = udevrandom.returnRNG();
 
     this.log.log('Determining which chromosomes to advance', yh);
-    // we'll also do a novelty check, here.
     for chrome in chromosomeDomain {
       // we're also adding things to the archive, if necessary.
       if newrng.getNext() < archiveChance {
@@ -313,6 +314,56 @@ class Propagator {
       if bestScore > lowestScore {
         scoreArray[deme, minLoc] = bestScore;
         idArray[deme, minLoc] = chrome;
+      }
+    }
+    for deme in 0..4 {
+      for z in 1..highFitnessToKeep {
+        if idArray[deme,z] != '' {
+          this.log.log('Adding the following chromosome ID to be advanced:', idArray[deme,z], yh);
+          chromosomesToAdvance.add(idArray[deme,z]);
+        }
+      }
+    }
+    // clear the domain of our losers.
+    this.log.log('Clearing the domain of those who are not continuing.', yh);
+    var delChrome: domain(string);
+    for chrome in chromosomeDomain {
+      if !chromosomesToAdvance.contains(chrome) {
+        delChrome.add(chrome);
+      }
+    }
+    for chrome in delChrome {
+      chromosomeDomain.remove(chrome);
+    }
+  }
+
+  proc setNovelChromosomes(yh: ygglog.yggHeader) {
+    var (bestInGen, minLoc) = maxloc reduce zip(novelScoreArray, novelScoreArray.domain);
+    var chromosomesToAdvance: domain(string);
+    var c: [chromosomesToAdvance] chromosomes.Chromosome;
+    var udevrandom = new owned rng.UDevRandomHandler();
+    var newrng = udevrandom.returnRNG();
+
+    for chrome in chromosomeDomain {
+      if newrng.getNext() < archiveChance {
+        this.log.log('Adding chromosome ID', chrome, 'to the archive',yh);
+        chromosomeArchiveDomain.add(chrome);
+        archive[chrome] = chromes[chrome];
+      }
+    }
+
+    this.log.log('Determining which chromosomes to advance', yh);
+    for chrome in chromosomeDomain {
+      for chrome2 in chromosomeDomain {      // we're also adding things to the archive, if necessary.
+        // copy it back to us.
+        var deme = chromes[chrome].currentDeme;
+        var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
+        var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme,..], scoreArray.domain.dim(2));
+        this.log.log('Finding the highest scoring node on chromosome ID', chrome, 'and seeing if it is good enough.', yh);
+        if bestScore > lowestScore {
+          scoreArray[deme, minLoc] = bestScore;
+          idArray[deme, minLoc] = chrome;
+        }
       }
     }
     for deme in 0..4 {

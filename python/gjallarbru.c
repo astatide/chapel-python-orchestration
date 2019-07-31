@@ -364,14 +364,7 @@ double run(char * function) {
     PyErr_Print();
   }
   if (pValue != NULL) {
-
-    //PyObject* repr = PyObject_Repr(pValue);
-    //PyObject* str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
-    //const char *bytes = PyBytes_AS_STRING(str);
-    //score = atof(bytes);
     score = PyFloat_AsDouble(pValue);
-    //Py_XDECREF(str);
-    //Py_XDECREF(repr);
     if (PyErr_Occurred()) {
       PyErr_Print();
     }
