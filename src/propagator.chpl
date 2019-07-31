@@ -239,39 +239,41 @@ class Propagator {
   }
 
   proc advanceChromosomes(ref nG: shared network.networkGenerator, ref nM: shared network.networkMapper, yH: ygglog.yggHeader, gen: int) {
-    var newCD: domain(string);
-    var newC: [newCD] chromosomes.Chromosome;
-    cLock.rl();
-    // how many should this task get?  Only get about that many.
-    // you... you know, you really need at least one.
-    var maxProcessed: int = max(ceil((nDemes * maxPerGeneration / Locales.size) / maxValkyries-1): int, 1);
-    var processed: int = 0;
-    for chrome in returnChromosomesOnLocale() {
-      if processed < maxProcessed {
-        //if !chromes[chrome].isProcessed.testAndSet() {
-        var nc = chromes[chrome].clone();
-        var oldId = chromes[chrome].id;
-        this.log.log('Advancing chromosome ID:', oldId, hstring=yH);
-        for i in 1..nDuplicates {
-          var cc = nc.clone();
-          cc.id = nG.generateChromosomeID;
-          cc.advanceNodes(nG, nM, yH, gen);
-          newCD.add(cc.id);
-          newC[cc.id] = cc;
+    on this.locale {
+      var newCD: domain(string);
+      var newC: [newCD] chromosomes.Chromosome;
+      cLock.rl();
+      // how many should this task get?  Only get about that many.
+      // you... you know, you really need at least one.
+      var maxProcessed: int = max(ceil((nDemes * maxPerGeneration / Locales.size) / maxValkyries-1): int, 1);
+      var processed: int = 0;
+      for chrome in returnChromosomesOnLocale() {
+        if processed < maxProcessed {
+          //if !chromes[chrome].isProcessed.testAndSet() {
+          var nc = chromes[chrome].clone();
+          var oldId = chromes[chrome].id;
+          this.log.log('Advancing chromosome ID:', oldId, hstring=yH);
+          for i in 1..nDuplicates {
+            var cc = nc.clone();
+            cc.id = nG.generateChromosomeID;
+            cc.advanceNodes(nG, nM, yH, gen);
+            newCD.add(cc.id);
+            newC[cc.id] = cc;
+          }
+          processed += 1;
+          //}
         }
-        processed += 1;
-        //}
       }
+      cLock.url();
+      cLock.wl();
+      //network.globalLock.rl();
+      for chrome in newCD {
+        chromosomeDomain.add(chrome);
+        chromes[chrome] = newC[chrome];
+      }
+      //network.globalLock.url();
+      cLock.uwl();
     }
-    cLock.url();
-    cLock.wl();
-    network.globalLock.rl();
-    for chrome in newCD {
-      chromosomeDomain.add(chrome);
-      chromes[chrome] = newC[chrome];
-    }
-    network.globalLock.url();
-    cLock.uwl();
   }
 
   proc setBestChromosomes(yh: ygglog.yggHeader) {
