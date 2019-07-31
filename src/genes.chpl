@@ -392,6 +392,7 @@ class GeneNode {
   var chromosome: string;
   var combinationID: string;
   var scores: [demeDomain] real;
+  var novelty: [demeDomain] [1..0] int;
 
   var processedBy: string;
   var processedOrder: int;

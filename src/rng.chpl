@@ -25,7 +25,8 @@ class UDevRandomHandler {
 
   proc seed() {
     var x: int;
-    return this.EntropyStream.readbits(x, 64);
+    this.EntropyStream.readbits(x, 64);
+    return x;
   }
 
   proc returnSpecificRNG(seed: int) {

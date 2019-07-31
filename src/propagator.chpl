@@ -20,6 +20,8 @@ use CommDiagnostics;
 use AllLocalesBarriers;
 use valkyrie;
 
+use ReplicatedDist;
+
 record scoreComparator {
   proc keyPart(x: (string, real), i: int) {
     if i > 2 then
@@ -100,20 +102,6 @@ iter returnChromosomesOnLocale() {
   }
 }
 
-//@TODO: this is just a stub.
-proc returnRandomChromosomeOnLocale() {
-  for id in chromosomeDomain {
-    if id[1..4] : int == here.id {
-      return id;
-    }
-  }
-  for id in chromosomeDomain {
-    if id[1..4] : int != here.id {
-      return id;
-    }
-  }
-}
-
 class Propagator {
   // this is going to actually hold all the logic for running EvoCap.
   var generation: int;
@@ -126,6 +114,8 @@ class Propagator {
   var authors: domain(string) = ['Audrey Pratt', 'Benjamin Robbins'];
   var version: real = 0.1;
   var shutdown: bool = false;
+  var udevrandom = new owned rng.UDevRandomHandler();
+  var newrng = udevrandom.returnRNG();
 
   proc init() {
     this.complete();
@@ -238,6 +228,19 @@ class Propagator {
     }
   }
 
+  proc returnRandomChromosome() {
+    // make a copy of the current domain.  For... reasons.
+    var localDomain: [1..(highFitnessToKeep+highNovelToKeep)] string;
+    var j = 1;
+    for i in chromosomeDomain {
+      localDomain[j] = i;
+      j += 1;
+    }
+    // Get random index.
+    var randomSelection = (newrng.getNext() * (highFitnessToKeep+highNovelToKeep)) : int;
+    return localDomain[randomSelection];
+  }
+
   proc advanceChromosomes(ref nG: shared network.networkGenerator, ref nM: shared network.networkMapper, yH: ygglog.yggHeader, gen: int) {
     on this.locale {
       var newCD: domain(string);
@@ -245,24 +248,34 @@ class Propagator {
       cLock.rl();
       // how many should this task get?  Only get about that many.
       // you... you know, you really need at least one.
-      var maxProcessed: int = max(ceil((nDemes * maxPerGeneration / Locales.size) / maxValkyries-1): int, 1);
-      var processed: int = 0;
-      for chrome in returnChromosomesOnLocale() {
-        if processed < maxProcessed {
-          //if !chromes[chrome].isProcessed.testAndSet() {
-          var nc = chromes[chrome].clone();
-          var oldId = chromes[chrome].id;
-          this.log.log('Advancing chromosome ID:', oldId, hstring=yH);
-          for i in 1..nDuplicates {
-            var cc = nc.clone();
-            cc.id = nG.generateChromosomeID;
-            cc.advanceNodes(nG, nM, yH, gen);
-            newCD.add(cc.id);
-            newC[cc.id] = cc;
-          }
-          processed += 1;
-          //}
+      //var maxProcessed: int = max(ceil((nDemes * maxPerGeneration / Locales.size) / maxValkyries-1): int, 1);
+      //var processed: int = 0;
+      var cacheCD: domain(string);
+      var cacheC: [cacheCD] chromosomes.Chromosome;
+      var n: int = max((maxPerGeneration/maxValkyries) : int, 1);
+      for i in 1..(maxPerGeneration/maxValkyries) : int {
+        //if !chromes[chrome].isProcessed.testAndSet() {
+        var chrome = returnRandomChromosome();
+        var nc: chromosomes.Chromosome;
+        // cache the chromosome, as we'll be doing a trillion and a half pulls from it.
+        // So it's worth, you know, sorting or whatever.
+        if cacheCD.contains(chrome) {
+          nc = cacheC[chrome].clone();
+        } else {
+          cacheCD.add(chrome);
+          cacheC[chrome] = chromes[chrome].clone();
+          nc = cacheC[chrome];
         }
+        var oldId = chromes[chrome].id;
+        this.log.log('Advancing chromosome ID:', oldId, hstring=yH);
+        for i in 1..nDuplicates {
+          var cc = nc.clone();
+          cc.id = nG.generateChromosomeID;
+          cc.advanceNodes(nG, nM, yH, gen);
+          newCD.add(cc.id);
+          newC[cc.id] = cc;
+        }
+        //}
       }
       cLock.url();
       cLock.wl();
@@ -284,6 +297,7 @@ class Propagator {
     var newrng = udevrandom.returnRNG();
 
     this.log.log('Determining which chromosomes to advance', yh);
+    // we'll also do a novelty check, here.
     for chrome in chromosomeDomain {
       // we're also adding things to the archive, if necessary.
       if newrng.getNext() < archiveChance {

@@ -567,6 +567,23 @@ record Chromosome {
     return (bestScore, bestNode);
   }
 
+  proc novelGeneInDeme(deme=0) {
+    var bestNode: string;
+    // Are scores high or low?  I guess it depends on our metric.  Blah.
+    var bestNovelty: real = 0;
+    on this.locale {
+      for i in 1..totalGenes {
+        //if this.geneIDs[i].demeDomain.contains(deme) {
+          if this.novelty[i] < bestNovelty {
+            bestNovelty = this.novelty[i];
+            bestNode = this.geneIDs[i];
+          }
+        //}
+      }
+    }
+    return (bestNovelty, bestNode);
+  }
+
   proc returnNodeNumber(node: string) {
     for i in this.geneNumbers {
       //assert(this.geneIDs.contains(i));

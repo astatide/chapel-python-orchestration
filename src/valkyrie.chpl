@@ -151,6 +151,15 @@ class valkyrieHandler : msgHandler {
       var m = this.RECV();
       score = m.r;
       deme = d;
+      //var s = "[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0]";
+      // This is for the novelty, which we are assuming, currently, comes back as a string of an array of ints.
+      // this is not a great general assumption!  But whatever.
+      var s = m['s'];
+      s = s.replace("[","");
+      s = s.replace("]","");
+      for i in s.split(", ") {
+        node.novelty[deme].push_back(i : int);
+      }
       this.log.log('SCORE FOR', node.id : string, 'IS', score : string, hstring=this.header);
       node.setDemeScore(deme, score);
       node.setValkyrie(this.id, this.nProcessed);
