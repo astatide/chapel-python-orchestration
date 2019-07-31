@@ -298,7 +298,6 @@ record Chromosome {
       network.globalLock.rl();
       ref node = network.globalNodes[id];
       node.setGeneration(gen);
-      network.globalLock.url();
       node.revision = genes.SPAWNED;
       if n > 0 && n <= this.nRootGenes {
         // prep the root seeds.
@@ -309,15 +308,18 @@ record Chromosome {
         //this.log.debug('ID: %s, SEED: %i'.format(id, seed), hstring=vstring);
         if initial {
           //this.log.debug("INITIAL GO; adding seed to root.", hstring=vstring);
-          network.globalLock.rl();
+          //network.globalLock.rl();
           ref rootNode = network.globalNodes[nG.root];
-          network.globalLock.url();
+          //network.globalLock.url();
+          nG.l.rl();
           node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = rootNode);
+          nG.l.url();
+          //network.globalLock.url();
         } else {
           //this.log.debug("NOT INITIAL; advancing old node.", hstring=vstring);
-          network.globalLock.rl();
+          //network.globalLock.rl();
           ref oldNode = network.globalNodes[this.geneIDs[n]];
-          network.globalLock.url();
+          //network.globalLock.url();
           // @TODO
           // THE BEST GENE HAS A SEPARATE MUTATION RATE (LOWER)
           // BE SURE TO ACTUALLY PUT THAT IN THERE.
@@ -357,14 +359,23 @@ record Chromosome {
               }
 
               this.mutantDelta[n] = mutantDelta;
+              nG.l.rl();
               node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode, mutantDelta = mutantDelta);
               node.isMutant = true;
+              nG.l.url();
+              //network.globalLock.url();
               //node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
             } else {
+              nG.l.rl();
               node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
+              nG.l.url();
+              //network.globalLock.url();
             }
           } else {
+            nG.l.rl();
             node.addSeed(seed = seed, cId = this.id, deme = this.currentDeme, node = oldNode);
+            nG.l.url();
+            //network.globalLock.url();
           }
           oldNode.revision = genes.FINALIZED;
         }
@@ -405,15 +416,16 @@ record Chromosome {
         if initial {
           //this.log.debug('Calling combination node', hstring=vstring);
           node.newCombinationNode(idList, seedList, this.currentDeme, nG.root, network.globalNodes);
+          //network.globalLock.url();
         } else {
           //this.log.debug('Calling combination node', hstring=vstring);
           node.newCombinationNode(idList, seedList, this.currentDeme, this.geneIDs[n], network.globalNodes, mutantDelta);
           // finalize it.
-          network.globalLock.rl();
+          //network.globalLock.rl();
           network.globalNodes[this.geneIDs[n]].l.wl();
           network.globalNodes[this.geneIDs[n]].revision = genes.FINALIZED;
           network.globalNodes[this.geneIDs[n]].l.uwl();
-          network.globalLock.url();
+          //network.globalLock.url();
         }
         //this.log.debug('Combination complete; setting node', hstring=vstring);
         if this.geneIDSet.contains(this.geneIDs[n]) {
@@ -425,7 +437,9 @@ record Chromosome {
         node.chromosome = this.id;
         node.combinationID = n : string;
         this.geneIDSet.add(id);
+        //network.globalLock.url();
       }
+      network.globalLock.url();
     }
   }
 

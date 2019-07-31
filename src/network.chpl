@@ -122,7 +122,7 @@ class networkGenerator {
   }
 
   inline proc spawn() {
-    this.l.wl();
+    //this.l.wl();
     //writeln("Spawn begin. READ LOCK HANDLES: ", this.l.readHandles.read() : string);
     this.generateEmptyNodes(nodeBlockSize);
     this.addToGlobal();
@@ -131,7 +131,7 @@ class networkGenerator {
     //this.addUnprocessed();
     this.isUpdating.clear();
     //writeln("Spawn end. READ LOCK HANDLES: ", this.l.readHandles.read() : string);
-    this.l.uwl();
+    //this.l.uwl();
   }
 
   inline proc initializeRoot() {
@@ -312,7 +312,7 @@ class networkGenerator {
         // in the global space!  So that's a thing.
         // BUT IT SHOULD.  BECAUSE IT DOES.  WHAT THE EFF YO.
         while this.isUpdating.read() do chpl_task_yield();
-        return node;
+        return this.idSet[nId];
       }
       //}
     }
@@ -333,7 +333,9 @@ class networkGenerator {
     // Why do it in two steps?  Minimize the time spent keeping it locked
     // globally; writes of new objects are fine, resizes are not!
     var removeSet: domain(string);
+    //writeln('LOCKING!');
     globalLock.wl();
+    //writeln('LOCKED!');
     for i in this.newNodeStartingPoint..this.N {
       var node = this.idSet[i];
       if !globalIDs.contains(node) {

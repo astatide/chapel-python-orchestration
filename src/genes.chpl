@@ -623,6 +623,8 @@ class GeneNode {
   proc newCombinationNode(idList, seedList, deme, oldId, ref gN, mutantDelta: genes.deltaRecord = new genes.deltaRecord()) {
     //node.newCombinationNode(idList, seedList, this.geneIDs[n], network.globalNodes);
     // so, for each seed in the seedlist, we add it to the oldId link node.
+    // WE ASSUME THIS IS CALLED NOT IMPROPERLY.
+    // AND THAT THE NETWORK IS LOCKED.
     on this.locale {
       var delta = new genes.deltaRecord();
       for s in seedList {
@@ -631,9 +633,9 @@ class GeneNode {
       delta += mutantDelta;
       delta /= idList.size;
       this.setDeme(deme);
-      network.globalLock.rl();
+      //network.globalLock.rl();
       ref oldNode = gN[oldId];
-      network.globalLock.url();
+      //network.globalLock.url();
       this.parent = oldId;
       this.join(oldNode, delta, new ygglog.yggHeader() + "newCombinationNode");
       // now, we add 1/N of that to each other one.
