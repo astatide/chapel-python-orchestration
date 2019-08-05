@@ -56,6 +56,8 @@ config const reportTasks: bool = false;
 
 config var exportNetwork: bool = false;
 
+config var topKNovel: int = 10;
+
 //allLocalesBarrier.reset(maxValkyries);
 
 // These are all the global things we need to access from everywhere.
@@ -67,7 +69,7 @@ var chromosomeArchiveDomain: domain(string) dmapped Hashed(idxType=string, mappe
 var chromes: [chromosomeDomain] chromosomes.Chromosome;
 var archive: [chromosomeArchiveDomain] chromosomes.Chromosome;
 cLock.t = 'Chromosomes';
-cLock.log = new shared ygglog.YggdrasilLogging();
+//cLock.log = new shared ygglog.YggdrasilLogging();
 
 // valkyrie stuff.
 var valkyriesDone: [1..generations] atomic int;
@@ -82,7 +84,7 @@ var nodesToProcess: domain(string);
 var processedArray: [nodesToProcess] atomic bool;
 var scoreArray: [0..4,1..highFitnessToKeep] real = -1; //Math.INFINITY;
 var idArray: [0..4,1..highFitnessToKeep] string;
-var novelScoreArray: [0..4,1..highNovelToKeep] real = -1; //Math.INFINITY;
+var novelArray: [0..4,1..highNovelToKeep] real = -1; //Math.INFINITY;
 var novelIdArray: [0..4,1..highNovelToKeep] string;
 
 // network stuff
@@ -90,6 +92,17 @@ var inCurrentGeneration: atomic int;
 //var nextGeneration: domain(string);
 var valkyriesProcessed: [1..maxValkyries*Locales.size] atomic int;
 var priorityValkyriesProcessed: [1..maxValkyries*Locales.size] atomic real;
+
+record CustomMapper {
+  proc this(ind:int, targetLocs: [?D] locale) : D.idxType {
+    return ind;
+  }
+}
+
+var GJDomain: domain(int) dmapped Hashed(idxType=int,mapper = new CustomMapper() );
+var GJ: [GJDomain] shared gjallarbru.Gjallarbru;
+
+var chromosomesToAdvance: domain(string);
 
 iter returnChromosomesOnLocale() {
   for id in chromosomeDomain {
@@ -133,7 +146,7 @@ class Propagator {
     this.log.currentDebugLevel = debug;
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'Ragnarok';
-    this.lock.log = this.log;
+    //this.lock.log = this.log;
   }
 
   proc logo() {
@@ -186,7 +199,7 @@ class Propagator {
 
   proc exitRoutine() throws {
     // command the logger to shut down, then exit.
-    this.lock.wl(this.yh);
+    this.lock.wl();
     // NEVER LET GO.
     for i in 1..maxValkyries {
       // tell the Valkyries to quit their shit.
@@ -196,7 +209,7 @@ class Propagator {
     }
     this.log.critical('SHUTDOWN INITIATED');
     this.log.exitRoutine();
-    this.lock.uwl(this.yh);
+    this.lock.uwl();
     throw new owned Error();
   }
 
@@ -293,7 +306,7 @@ class Propagator {
 
   proc setBestChromosomes(yh: ygglog.yggHeader) {
     var (bestInGen, minLoc) = maxloc reduce zip(scoreArray, scoreArray.domain);
-    var chromosomesToAdvance: domain(string);
+    //var chromosomesToAdvance: domain(string);
     var c: [chromosomesToAdvance] chromosomes.Chromosome;
     var udevrandom = new owned rng.UDevRandomHandler();
     var newrng = udevrandom.returnRNG();
@@ -301,11 +314,11 @@ class Propagator {
     this.log.log('Determining which chromosomes to advance', yh);
     for chrome in chromosomeDomain {
       // we're also adding things to the archive, if necessary.
-      if newrng.getNext() < archiveChance {
-        this.log.log('Adding chromosome ID', chrome, 'to the archive',yh);
-        chromosomeArchiveDomain.add(chrome);
-        archive[chrome] = chromes[chrome];
-      }
+      //if newrng.getNext() < archiveChance {
+      //  this.log.log('Adding chromosome ID', chrome, 'to the archive',yh);
+      //  chromosomeArchiveDomain.add(chrome);
+      //  archive[chrome] = chromes[chrome];
+      //}
       // copy it back to us.
       var deme = chromes[chrome].currentDeme;
       var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
@@ -338,8 +351,8 @@ class Propagator {
   }
 
   proc setNovelChromosomes(yh: ygglog.yggHeader) {
-    var (bestInGen, minLoc) = maxloc reduce zip(novelScoreArray, novelScoreArray.domain);
-    var chromosomesToAdvance: domain(string);
+    var (bestInGen, minLoc) = maxloc reduce zip(novelArray, novelArray.domain);
+    //var chromosomesToAdvance: domain(string);
     var c: [chromosomesToAdvance] chromosomes.Chromosome;
     var udevrandom = new owned rng.UDevRandomHandler();
     var newrng = udevrandom.returnRNG();
@@ -352,38 +365,34 @@ class Propagator {
       }
     }
 
-    this.log.log('Determining which chromosomes to advance', yh);
-    for chrome in chromosomeDomain {
-      for chrome2 in chromosomeDomain {      // we're also adding things to the archive, if necessary.
+    this.log.log('Determining which novel chromosomes to advance', yh);
+    for c1 in chromosomeDomain {
+      var deme = chromes[c1].currentDeme;
+      for c2 in chromosomeDomain {
         // copy it back to us.
-        var deme = chromes[chrome].currentDeme;
-        var (bestScore, bestNode) = chromes[chrome].bestGeneInDeme[chromes[chrome].currentDeme];
-        var (lowestScore, minLoc) = minloc reduce zip(scoreArray[deme,..], scoreArray.domain.dim(2));
-        this.log.log('Finding the highest scoring node on chromosome ID', chrome, 'and seeing if it is good enough.', yh);
-        if bestScore > lowestScore {
-          scoreArray[deme, minLoc] = bestScore;
-          idArray[deme, minLoc] = chrome;
-        }
+        chromes[c1].calculateNovelty(chromes[c2]);
+      }
+      // we need to check against the archive, too.
+      for c2 in chromosomeArchiveDomain {
+        // copy it back to us.
+        chromes[c1].calculateNovelty(archive[c2]);
+      }
+      chromes[c1].finalizeNovelty();
+      var (bestScore, bestNode) = chromes[c1].novelGeneInDeme[chromes[c1].currentDeme];
+      var (lowestScore, minLoc) = minloc reduce zip(novelArray[deme,..], novelArray.domain.dim(2));
+      this.log.log('Finding the most novel on chromosome ID', c1, 'and seeing if it is good enough.', yh);
+      if bestScore > lowestScore {
+        novelArray[deme, minLoc] = bestScore;
+        novelIdArray[deme, minLoc] = c1;
       }
     }
     for deme in 0..4 {
-      for z in 1..highFitnessToKeep {
-        if idArray[deme,z] != '' {
-          this.log.log('Adding the following chromosome ID to be advanced:', idArray[deme,z], yh);
-          chromosomesToAdvance.add(idArray[deme,z]);
+      for z in 1..highNovelToKeep {
+        if novelIdArray[deme,z] != '' {
+          this.log.log('Adding the following chromosome ID to be advanced:', novelIdArray[deme,z], yh);
+          chromosomesToAdvance.add(novelIdArray[deme,z]);
         }
       }
-    }
-    // clear the domain of our losers.
-    this.log.log('Clearing the domain of those who are not continuing.', yh);
-    var delChrome: domain(string);
-    for chrome in chromosomeDomain {
-      if !chromosomesToAdvance.contains(chrome) {
-        delChrome.add(chrome);
-      }
-    }
-    for chrome in delChrome {
-      chromosomeDomain.remove(chrome);
     }
   }
 
@@ -441,7 +450,7 @@ class Propagator {
     }
     ygg.log = this.log;
     ygg.log.currentDebugLevel = debug;
-    ygg.lock.log = this.log;
+    //ygg.lock.log = this.log;
 
     this.log.log("Local networks spawned; creating chromosomes", this.yh);
     initChromosomes(nG, ygg, this.yh);
@@ -449,6 +458,15 @@ class Propagator {
     nG.addUnprocessed(ygg);
     this.log.log("Setting the current generation count", this.yh);
     // now, make sure we know we have to process all of these.
+
+    // spawn a python bridge on each locale
+    cLock.wl();
+    GJDomain.add(here.id);
+    GJ[here.id] = new shared gjallarbru.Gjallarbru();
+    GJ[here.id].pInit();
+    cLock.uwl();
+
+
     begin inCurrentGeneration.add(nG.currentId.read()-1);
 
     coforall i in 1..maxValkyries with (ref nG, ref ygg) {
@@ -631,6 +649,7 @@ class Propagator {
     //nextGeneration.clear();
     // we'll just throw this in here for now.
     // Only do the max!
+    this.setNovelChromosomes(yh);
     this.setBestChromosomes(yh);
     // export the network!
     this.exportCurrentNetworkState(yh);
@@ -727,8 +746,8 @@ class Propagator {
       nG.addUnprocessed(ygg);
       begin inCurrentGeneration.add(nG.currentId.read()-1);
     }
-    this.lock.rl(yh);
+    this.lock.rl();
     this.log.log('MOVING ON in gen', gen : string, yh);
-    this.lock.url(yh);
+    this.lock.url();
   }
 }

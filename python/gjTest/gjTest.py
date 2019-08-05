@@ -951,3 +951,11 @@ def run():
     #p.communicate()
 
     return final_val
+
+def calculateNovelty(a, b, c):
+    print("HEY AM I WORKING WHEEEEEEEEEEE", str(b))
+    #rL = gj.ref()
+    #print("YO FROM WHAT UP: " + str(rL))
+
+    #print(x, y)
+    return 12

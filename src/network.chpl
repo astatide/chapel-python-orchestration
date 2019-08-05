@@ -22,7 +22,7 @@ class NodeNotInEdgesError : Error {
 
 var globalLock = new shared spinlock.NetworkSpinLock();
 globalLock.t = 'Ragnarok';
-globalLock.log = new shared ygglog.YggdrasilLogging();
+//globalLock.log = new shared ygglog.YggdrasilLogging();
 
 config const nodeBlockSize = 10000;
 config const ignoreRoot = false;
@@ -115,7 +115,7 @@ class networkGenerator {
     this.l.wl();
     this.initializeRoot();
     this.l.t = 'networkGenerator';
-    this.l.log = new shared ygglog.YggdrasilLogging();
+    //this.l.log = new shared ygglog.YggdrasilLogging();
     this.generateEmptyNodes(nodeBlockSize);
     this.addToGlobal(initial=true);
     this.l.uwl();
@@ -359,7 +359,7 @@ class networkGenerator {
       globalNodes[node].id = node;
       globalNodes[node].l = new shared spinlock.SpinLock();
       globalNodes[node].l.t = ' '.join('GENE', node);
-      globalNodes[node].l.log = globalNodes[node].log;
+      //globalNodes[node].l.log = globalNodes[node].log;
     }
     globalLock.url();
     for node in removeSet {
@@ -488,7 +488,7 @@ class networkMapper {
     // We need to block until such time as we're ready;
     var vstring: ygglog.yggHeader;
     vstring = hstring + '__addNode__';
-    this.lock.wl(vstring);
+    this.lock.wl();
     //this.log.debug('Adding node', id : string, 'to networkMapper ID:', this.id : string, hstring=vstring);
     if !this.ids.contains(id) {
       this.ids.add(id);
@@ -506,7 +506,7 @@ class networkMapper {
       }
     }
     //this.newIDs.add(node.id);
-    this.lock.uwl(vstring);
+    this.lock.uwl();
   }
 
   inline proc generateID {
@@ -527,7 +527,7 @@ class networkMapper {
 
   inline proc initializeRoot() {
     this.rootNode.log = this.log;
-    this.rootNode.l.log = this.log;
+    //this.rootNode.l.log = this.log;
     //this.add_node(this.rootNode, new ygglog.yggHeader() + 'initializeNetwork');
   }
 
@@ -615,20 +615,20 @@ class networkMapper {
       // AH!  I think it was from thread switching at the OS level, maybe.
       // I should apparently speak with Elliot about this, if I'm curious.
       // If we need to update, trigger it.
-      this.lock.rl(vstring);
+      this.lock.rl();
       //globalLock.rl();
       ref actualNode = globalNodes[currentNode];
       //globalLock.url();
       if !this.ids.contains(currentNode) {
         nodes.add(currentNode);
-        this.lock.url(vstring);
+        this.lock.url();
         this.add_node(currentNode);
-        this.lock.rl(vstring);
+        this.lock.rl();
       } else if this.nodeVersion[currentNode] < genes.FINALIZED {
         if actualNode.returnRevision() > this.nodeVersion[currentNode] {
-          this.lock.url(vstring);
+          this.lock.url();
           this.add_node(currentNode);
-          this.lock.rl(vstring);
+          this.lock.rl();
         }
       }
       // we now assume this is an incomplete network.
@@ -674,7 +674,7 @@ class networkMapper {
               this.log.debug("ID:", edge : string, "in id_B!  id_B:", id_B : string, hstring=vstring);
               if checkArray {
                 if !processedArray[edge].testAndSet() {
-                  this.lock.url(vstring);
+                  this.lock.url();
                   return (edge, paths[edge], removeFromSet, steps);
                 } else {
                   // This means we've actually already processed it, so
@@ -686,14 +686,14 @@ class networkMapper {
               } else {
                 this.log.debug("Not checking array; returning path for ID:", edge : string, hstring=vstring);
                 this.log.debug('ID:', edge : string, 'Path:', paths[edge] : string, hstring=vstring);
-                this.lock.url(vstring);
+                this.lock.url();
                 return (edge, paths[edge], removeFromSet, steps);
               }
             }
           }
         }
       }
-      this.lock.url(vstring);
+      this.lock.url();
       visited[currentNode] = true;
       // Doing it like this means we never have a race condition.
       // Should help with load balancing and efficiency.
@@ -747,9 +747,9 @@ class networkMapper {
     path.remove(id);
     for (i, pt) in path {
       //this.log.debug(i: string, pt: string, hstring=vstring);
-      this.lock.rl(vstring);
+      this.lock.rl();
       // LOCK THE NODES.
-      globalNodes[currentNode].l.rl(vstring);
+      globalNodes[currentNode].l.rl();
       if globalNodes[currentNode].nodes.contains(pt) {
         edge = globalNodes[currentNode].edges[pt : string];
         //this.log.debug('EDGE:', edge : string, hstring=vstring);
@@ -758,12 +758,12 @@ class networkMapper {
         this.log.critical('EDGELIST for 1st:', globalNodes[pt : string].nodes : string, hstring=vstring);
         this.log.critical('EDGELIST for 2nd:', globalNodes[currentNode].nodes : string, hstring=vstring);
         this.log.critical('PATH WAS:', path : string, hstring=vstring);
-        globalNodes[currentNode].l.url(vstring);
-        this.lock.url(vstring);
+        globalNodes[currentNode].l.url();
+        this.lock.url();
         //throw new owned NodeNotInEdgesError();
       }
-      globalNodes[currentNode].l.url(vstring);
-      this.lock.url(vstring);
+      globalNodes[currentNode].l.url();
+      this.lock.url();
       if edge.edgeType == genes.DELTA {
         for (s, c) in edge.delta {
           d += (s, c);

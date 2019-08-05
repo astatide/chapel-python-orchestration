@@ -13,6 +13,7 @@ extern proc returnNumpyArray(ref arr: c_float, ref dims: npy_intp) : PyObject;
 extern proc weights(ref self: PyObject, ref args: PyObject): PyObject;
 extern proc run();
 extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong, deme : c_ulonglong, score: c_ptr(c_double)) : c_double;
+extern proc pythonRunFunction(funcName : c_string, retvalue : c_ptr(c_double), argv: [] c_string, argc: c_int) : c_double;
 extern proc pythonInit(n: c_ulonglong): c_void_ptr;
 extern proc pythonFinal();
 extern proc newThread() : c_void_ptr;
@@ -81,4 +82,18 @@ class Gjallarbru {
     stdout.flush();
     return score : real;
   }
+
+  proc runFunction(funcName: string = 'calculateNovelty', arg: [] string) {
+    var retValue: c_double;
+    var argc: c_int;
+    var argv: [1..arg.domain.size] c_string;
+    for i in 1..arg.domain.size {
+      argv[i] = arg[i].c_str();
+      argc += 1;
+    }
+    pythonRunFunction(funcName.c_str(), c_ptrTo(retValue), argv, argc);
+    stdout.flush();
+    return retValue : real;
+  }
+
 }

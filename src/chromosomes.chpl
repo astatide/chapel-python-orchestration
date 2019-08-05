@@ -192,6 +192,8 @@ record Chromosome {
   var geneIDs: [geneNumbers] string;
   var geneSeeds: [geneNumbers] int;
   var scores: [geneNumbers] real;
+  var novelty: [geneNumbers] [1..0] real;
+  var noveltyFinal: [geneNumbers] real;
 
   var wasMutated: [geneNumbers] bool;
   var mutantDelta: [geneNumbers] genes.deltaRecord;
@@ -214,7 +216,7 @@ record Chromosome {
     this.l.t = ' '.join('CHROMOSOME', this.id);
     this.log = new shared ygglog.YggdrasilLogging();
     this.complete();
-    this.l.log = this.log;
+    //this.l.log = this.log;
   }
 
   proc init(id : string) {
@@ -574,14 +576,84 @@ record Chromosome {
     on this.locale {
       for i in 1..totalGenes {
         //if this.geneIDs[i].demeDomain.contains(deme) {
-          if this.novelty[i] < bestNovelty {
-            bestNovelty = this.novelty[i];
+          if this.noveltyFinal[i] < bestNovelty {
+            bestNovelty = this.noveltyFinal[i];
             bestNode = this.geneIDs[i];
           }
         //}
       }
     }
     return (bestNovelty, bestNode);
+  }
+
+  proc calculateNovelty(c: Chromosome) {
+    // here, we calculate the novelty score for each chromosome.
+    for i in 1..totalGenes {
+      on c.locale {
+        for j in 1..c.totalGenes {
+          //var k = propagator.GJ[c.locale.id].runFunction('calculateNovelty', network.globalNodes[this.geneIDs[i]].novelty[this.currentDeme].c_str(), network.globalNodes[c.geneIDs[j]].novelty[c.currentDeme].c_str());
+          writeln(c.locale.id);
+          // okay, so we can get to this, which is good.
+          writeln(propagator.GJ[c.locale.id].rounds : string);
+          var k: real;
+          var sOne = network.globalNodes[this.geneIDs[i]].novelty[this.currentDeme];
+          var sTwo = network.globalNodes[c.geneIDs[j]].novelty[c.currentDeme];
+          k = this.noveltyFunction(sOne, sTwo);
+          network.globalNodes[this.geneIDs[i]].allNovelty.push_back(k);
+          //k = propagator.GJ[c.locale.id].runFunction('calculateNovelty', ["12", "12.0", "real talk though"]);
+          //this.novelty[i].push_front(k);
+        }
+      }
+    }
+  }
+
+  proc noveltyFunction(sOne: string, sTwo: string) {
+    // first, convert the vectors.
+    var actualVecsOne: [1..0] int;
+    var actualVecsTwo: [1..0] int;
+    //var novel: [1..0] real;
+    writeln(sOne);
+    writeln(sTwo);
+    var s = sOne.replace("[","");
+    s = s.replace("]","");
+    for i in s.split(", ") {
+      actualVecsOne.push_back(i : int);
+    }
+    s = sTwo.replace("[","");
+    s = s.replace("]","");
+    for i in s.split(", ") {
+      actualVecsTwo.push_back(i : int);
+    }
+    // now that you've done that, calculate the difference.
+    // Ben was using the vector norm, so.
+    var novel = (actualVecsOne - actualVecsTwo);
+    //var nReal: [1..novel.domain.size] real;
+    var norm: real = 0;
+    for i in 1..novel.domain.size {
+      norm += (novel[i] : real)**2;
+    }
+    norm = Math.sqrt(norm);
+    return norm;
+  }
+
+  proc finalizeNovelty() {
+    //for k in propagator.GJ[c.locale.id].runFunction('calculateNovelty', network.globalNodes[this.geneIDs[i]].novelty[this.currentDeme], network.globalNodes[c.geneIDs[j]].novelty[c.currentDeme])
+    for i in 1..totalGenes {
+      on this.locale {
+        var k = network.globalNodes[this.geneIDs[i]].allNovelty;
+        var trueNovelty: real;
+        var s: int = 1;
+        for i in k.sorted() {
+          if s < propagator.topKNovel {
+            trueNovelty += i;
+          } else {
+            break;
+          }
+        }
+        trueNovelty /= propagator.topKNovel;
+        this.noveltyFinal[i] = trueNovelty;
+      }
+    }
   }
 
   proc returnNodeNumber(node: string) {

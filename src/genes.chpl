@@ -392,7 +392,8 @@ class GeneNode {
   var chromosome: string;
   var combinationID: string;
   var scores: [demeDomain] real;
-  var novelty: [demeDomain] [1..0] int;
+  var novelty: [demeDomain] string;
+  var allNovelty: [1..0] real;
 
   var processedBy: string;
   var processedOrder: int;
@@ -409,7 +410,7 @@ class GeneNode {
     this.l = new shared spinlock.SpinLock();
     this.l.t = ' '.join('GENE', this.id);
     this.complete();
-    this.l.log = this.log;
+    //this.l.log = this.log;
   }
 
   proc init(id, ctype='', parent='', parentSeedNode='') {

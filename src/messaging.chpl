@@ -346,8 +346,17 @@ class msgHandler {
     var s: string;
     m.exists = -1;
     //m = this.socket[i].recv(msg);
+    // working with a python client is a bit different; namely, we need to pull into a string, not a msg.
+    // but then we can de-serialize it.
     s = this.socket[i].recv(string);
-    writeln(s);
+    var lf = openmem();
+    var c = lf.writer();
+    var z = lf.reader();
+    c.writeln(s : string);
+    c.flush();
+    c.close();
+    m = z.readln(msg);
+    writeln("MSG in MESSAGING: ", m : string);
     return m;
     //while m.exists == -1 do chpl_task_yield();
     //return m;

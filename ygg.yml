@@ -1,2 +1,11 @@
 valkyrie:
   model: src/tartarus.py
+yggdrasil:
+  novelty:
+    function: src/novelty.py
+  chromosome:
+    information: ['','']
+    yourMom:
+      isNice: true
+  gene:
+    information: ['','']

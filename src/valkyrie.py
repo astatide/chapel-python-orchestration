@@ -10,6 +10,10 @@ import os
 import time
 import sys
 
+import mist
+
+mist.chpl_setup()
+
 class valkyrieExecutor():
 
     def __init__(self):
@@ -47,7 +51,7 @@ class valkyrieExecutor():
 
     def returnStatus(self, m):
         print("attempting to return the status")
-        self.s.send_string(self.convertDictToMsg(m), encoding='ascii')
+        self.s.send_string(self.convertDictToMsg(m) + "\n", encoding='ascii')
         print("Msg sent!  Maybe!")
 
     def returnOkay(self, m):

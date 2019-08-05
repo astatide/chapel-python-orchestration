@@ -15,6 +15,7 @@
 #include <unistd.h>
 // we crash on OSX if we don't init the time.
 #include <time.h>
+//#include <wchar.h>
 
 
 //#include "../tf/aegir.c"
@@ -25,6 +26,7 @@ static PyObject *returnNumpyArray(double *arr, unsigned long long *dims);
 static PyObject *weights(PyObject *self, PyObject *args);
 PyObject *weights_multi(PyObject *self, PyObject *args);
 PyObject *valkyrieID(PyObject *self, PyObject *args);
+PyObject *ref(PyObject *self, PyObject *args);
 PyObject *demeID(PyObject *self, PyObject *args);
 static PyObject * gjallarbru_write(PyObject *self, PyObject *args);
 //static PyObject returnNumpyArray();
@@ -57,6 +59,7 @@ static PyMethodDef methods[] = {
   { "weights", weights, METH_VARARGS, "Descriptions"},
   { "weights_multi", weights_multi, METH_VARARGS, "Descriptions"},
   { "valkyrieID", valkyrieID, METH_VARARGS, "Descriptions"},
+  { "ref", ref, METH_VARARGS, "Descriptions"},
   { "demeID", demeID, METH_VARARGS, "Descriptions"},
   { "write", gjallarbru_write, METH_VARARGS, "Descriptions"},
   { NULL, NULL, 0, NULL }
@@ -124,6 +127,35 @@ PyObject *valkyrieID(PyObject *self, PyObject *args) {
   return valkyrie;
 
 }
+
+PyObject *ref(PyObject *self, PyObject *args) {
+  // this just returns the thread ID so we can use it
+  // from within Python.
+
+  PyObject* inptDict = PyThreadState_GetDict();
+  PyObject* sOne = PyDict_GetItemString(inptDict, "sOne");
+  PyObject* sTwo = PyDict_GetItemString(inptDict, "sTwo");
+
+  PyObject * rL;
+  rL = NULL;
+  rL = PyList_New(2);
+  Py_XINCREF(rL);
+  if (PyErr_Occurred()) {
+    PyErr_Print();
+  }
+  PyList_SET_ITEM(rL, 0, sOne);
+  if (PyErr_Occurred()) {
+    PyErr_Print();
+  }
+  PyList_SET_ITEM(rL, 1, sTwo);
+  if (PyErr_Occurred()) {
+    PyErr_Print();
+  }
+
+  return rL;
+
+}
+
 
 PyObject *demeID(PyObject *self, PyObject *args) {
   // this just returns the thread ID so we can use it
@@ -349,8 +381,8 @@ PyObject* loadPythonModule(char * module) {
 double run(char * function) {
   PyObject *pFunc, *pArgs, *pValue;
   double score = 0.0;
-  PyObject* inptDict = PyThreadState_GetDict();
-  unsigned long long valkyrie = PyLong_AsUnsignedLongLong(PyDict_GetItemString(inptDict, "valkyrieID"));
+  //PyObject* inptDict = PyThreadState_GetDict();
+  //unsigned long long valkyrie = PyLong_AsUnsignedLongLong(PyDict_GetItemString(inptDict, "valkyrieID"));
   pModule = loadPythonModule("gjTest.gjTest");
 
   pFunc = PyObject_GetAttrString(pModule, function);
@@ -360,6 +392,64 @@ double run(char * function) {
 
   if (pFunc && PyCallable_Check(pFunc)) {
     pValue = PyObject_CallObject(pFunc, NULL);
+  } else {
+    PyErr_Print();
+  }
+  if (pValue != NULL) {
+    score = PyFloat_AsDouble(pValue);
+    if (PyErr_Occurred()) {
+      PyErr_Print();
+    }
+  } else {
+    PyErr_Print();
+  }
+  Py_XDECREF(pFunc);
+  Py_XDECREF(pValue);
+  // this MIGHT be a borrowed reference
+  Py_XDECREF(pModule);
+  printf("Score is %f\n", score);
+  return score;
+
+}
+
+double runNew(char * function, char * argv[], int argc) {
+  PyObject *pFunc, *pArgs, *pValue;
+  int i,j;
+  double score = 0.0;
+  int isNumber = 1;
+  //PyObject* inptDict = PyThreadState_GetDict();
+  //unsigned long long valkyrie = PyLong_AsUnsignedLongLong(PyDict_GetItemString(inptDict, "valkyrieID"));
+  pModule = loadPythonModule("gjTest.gjTest");
+
+  pFunc = PyObject_GetAttrString(pModule, function);
+
+  // okay, now we want to submit the arguments.
+  pArgs = PyTuple_New(argc);
+  for (i = 0; i < argc; i++) {
+    // Check and see whether each char is a digit.  If they're all digits, that's a number.
+    // I mean, we're assuming.  I can't think of any other scenario where you have all digits.
+    for (j = 0; j < argc; j++) {
+     if (!isdigit(argv[i][j])) {
+       // oh HO.  You're not a number then!?  I see how it is.
+       isNumber = 0;
+     }
+    }
+    if (isNumber) {
+      // base 10, bitches.
+      pValue = PyLong_FromUnsignedLongLong(strtol(argv[i], argv[i+1], 10));
+    } else {
+      // OKAY FINE LEAVE IT AS A STRING THEN GOD.
+      pValue = PyUnicode_FromString(argv[i]);
+    }
+    PyTuple_SetItem(pArgs, i, pValue);
+  }
+
+  if (PyErr_Occurred()) {
+    PyErr_Print();
+  }
+
+  if (pFunc && PyCallable_Check(pFunc)) {
+    pValue = PyObject_CallObject(pFunc, pArgs);
   } else {
     PyErr_Print();
   }
@@ -427,14 +517,52 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   return s2;
 }
 
+double pythonRunFunction(char * funcName, double * retValue, char * argv[], int argc)
+
+{
+  // We're setting the pointer.  Keep in mind that this hinges on properly
+  // passing in the array; Chapel needs to make sure it's compatible with
+  // what C expects.
+
+  double rv = 0.0;
+  int pid;
+  int stat;
+
+  pid = 0;
+
+  PyThreadState *ts = PyThreadState_New(mainInterpreterState);
+  PyEval_AcquireThread(ts);
+
+  PyObject* inptDict = PyThreadState_GetDict();
+  // ... remember that Chapel doesn't start at 0.
+  //PyDict_SetItemString(inptDict, "x", PyUnicode_FromString(sOne));
+  //PyDict_SetItemString(inptDict, "y", PyUnicode_FromString(sTwo));
+  PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(0));
+  rv = runNew(funcName, argv, argc);
+  Py_CLEAR(returnList);
+  returnList = NULL;
+  *retValue = rv;
+  //fflush(stdout);
+  //PyThreadState_Clear(ts);
+  PyEval_ReleaseThread(ts);
+  //PyThreadState_Delete(ts);
+  return rv;
+}
+
 
 PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // disable buffering for debugging.
   // we're adding this to the list of builtins in order to export it.
+  //threads = malloc(sizeof(PyThreadState*)*maxValkyries);
   setbuf(stdout, NULL);
   PyImport_AppendInittab("gjallarbru", &PyInit_gjallarbru);
   Py_Initialize();
+  PyEval_InitThreads();
   //PyRun_SimpleString("import tensorflow as tf");
+  mainThreadState = PyThreadState_Get();
+  mainInterpreterState = mainThreadState->interp;
+  //PyEval_ReleaseLock();
+  PyEval_SaveThread();
   initializedAlready = true;
   return threads;
 }

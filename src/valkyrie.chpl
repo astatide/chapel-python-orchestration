@@ -2,7 +2,7 @@
 // So that's what this is.  We'll need to actually compile it separately,
 // then call it later.
 
-use propagator;
+//use propagator;
 use genes;
 use uuid;
 use messaging;
@@ -56,7 +56,7 @@ class valkyrieHandler : msgHandler {
     super.init(1);
     this.complete();
     this.log = new shared ygglog.YggdrasilLogging();
-    this.log.currentDebugLevel = debug;
+    this.log.currentDebugLevel = 0;
   }
 
   proc init(n: int) {
@@ -65,7 +65,7 @@ class valkyrieHandler : msgHandler {
     super.init(n);
     this.complete();
     this.log = new shared ygglog.YggdrasilLogging();
-    this.log.currentDebugLevel = debug;
+    this.log.currentDebugLevel = 0;
   }
 
   override proc PROCESS(m: msg, i: int) {
@@ -149,18 +149,22 @@ class valkyrieHandler : msgHandler {
       this.SEND(newMsg);
       this.log.log("Message & delta sent; awaiting instructions", hstring=this.header);
       var m = this.RECV();
+      writeln("MSG: ", m : string);
       score = m.r;
       deme = d;
       //var s = "[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0]";
       // This is for the novelty, which we are assuming, currently, comes back as a string of an array of ints.
       // this is not a great general assumption!  But whatever.
-      var s = m['s'];
-      s = s.replace("[","");
-      s = s.replace("]","");
-      for i in s.split(", ") {
-        node.novelty[deme].push_back(i : int);
-      }
+      //var s = m['s'];
+      //s = s.replace("[","");
+      //s = s.replace("]","");
+      //for i in s.split(", ") {
+      //  node.novelty[deme].push_back(i : int);
+      //}
+      writeln('NOVEL: ', m.s : string);
+      node.novelty[deme] = m.s;
       this.log.log('SCORE FOR', node.id : string, 'IS', score : string, hstring=this.header);
+      this.log.log('NOVELTY FOR', node.id : string, 'IS', node.novelty[deme] : string, hstring=this.header);
       node.setDemeScore(deme, score);
       node.setValkyrie(this.id, this.nProcessed);
       yield (score, deme);
@@ -190,7 +194,7 @@ class valkyrieExecutor: msgHandler {
 
   var yh = new ygglog.yggHeader();
 
-  var gj = new owned gjallarbru.Gjallarbru();
+  //var gj = new owned gjallarbru.Gjallarbru();
 
 
   var newDelta: genes.deltaRecord;
@@ -201,7 +205,7 @@ class valkyrieExecutor: msgHandler {
     super.init(n);
     this.size = n;
     this.complete();
-    gj.pInit();
+    //gj.pInit();
   }
 
   proc header {
@@ -222,16 +226,6 @@ class valkyrieExecutor: msgHandler {
   proc move(delta: genes.deltaRecord) {
     delta.express(this.matrixValues);
     this.currentNode = delta.to;
-    if unitTestMode {
-      if this.matrixValues[0] != this.currentNode : real {
-        // in unit test mode, we set up our IDs and matrix values such that
-        // every value of the matrix should be equal to ID.
-        // in that event, return a failure code.
-        return this.moveFailed;
-      } else {
-        return this.moveSuccessful;
-      }
-    }
     return this.moveSuccessful;
   }
 
@@ -258,7 +252,7 @@ class valkyrieExecutor: msgHandler {
         //throw new owned Error();
       }
     }
-    gj.final();
+    //gj.final();
   }
 
   // this is implemented as part of the messaging class.
@@ -297,7 +291,8 @@ class valkyrieExecutor: msgHandler {
         var delta: genes.deltaRecord;
         m.open(delta);
         this.move(delta);
-        var score: real = gj.lockAndRun(this.matrixValues, this.currentTask, m.i, hstring=this.header);
+        //var score: real = gj.lockAndRun(this.matrixValues, this.currentTask, m.i, hstring=this.header);
+        var score: real;
         writeln("score in valkyrie: " + score : string);
         var newMsg = new messaging.msg(score);
         //newMsg.s = "";
@@ -319,4 +314,87 @@ class valkyrieExecutor: msgHandler {
     writeln("VALKYRIE PROCESSED MSG");
     stdout.flush();
   }
+}
+
+class valkyrieExecutorPythonLib: valkyrieExecutor {
+
+  var delta: genes.deltaRecord;
+
+  proc init(n: int) {
+    // basically, the inheritance isn't working as I would have expected.
+    // see https://github.com/chapel-lang/chapel/issues/8232
+    super.init(n);
+    this.size = n;
+    this.complete();
+    //gj.pInit();
+  }
+
+  override proc run() throws {
+    var t: Timer;
+    t.start();
+    // basically, while we're able to read in a record...
+    // ... we pretty much read and process.
+    this.receiveMessage();
+  }
+
+  override proc PROCESS(m: msg, i: int) {
+    // overriden from the messaging class
+    writeln("STARTING TO PROCESS");
+    writeln(m : string);
+    select m.COMMAND {
+      when this.command.SET_ID do {
+        m.open(this.id);
+        //var newMsg = new messaging.msg(0);
+        //newMsg.STATUS = this.status.OK;
+        //SEND(newMsg);
+      }
+      when this.command.SET_TIME do {
+      }
+      when this.command.SHUTDOWN do {
+        exit(0);
+        //var newMsg = new messaging.msg(0);
+        //newMsg.STATUS = this.status.OK;
+        //SEND(newMsg);
+      }
+      when this.command.SET_TASK do {
+        m.open(this.currentTask);
+        //var newMsg = new messaging.msg(0);
+        //newMsg.STATUS = this.status.OK;
+        //SEND(newMsg);
+      }
+      when this.command.RECEIVE_AND_PROCESS_DELTA do {
+        //var delta: genes.deltaRecord;
+        m.open(this.delta);
+        //this.move(delta);
+        //var score: real = gj.lockAndRun(this.matrixValues, this.currentTask, m.i, hstring=this.header);
+        //writeln("score in valkyrie: " + score : string);
+        //var newMsg = new messaging.msg(score);
+        //newMsg.s = "";
+        //newMsg.r = score;
+        //newMsg.COMMAND = this.command.RECEIVE_SCORE;
+        //writeln("what is our msg?: " + newMsg : string);
+        //SEND(newMsg);
+      }
+    }
+    writeln("VALKYRIE PROCESSED MSG");
+    stdout.flush();
+  }
+}
+
+var v: shared valkyrieExecutorPythonLib;
+
+export proc createValkyrie(port: c_string) {
+  //writeln("VALKYRIE on locale %i, spawned.".format(here.id));
+  // get the information necessary.  We need a currentTask, for instance.
+  v = new shared valkyrie.valkyrieExecutorPythonLib(1);
+  writeln('VALKYRIE %s on locale %i, running task %i : port %s'.format(v.id, here.id, v.currentTask, port : string));
+  v.initRecvSocket(1, port : string);
+  writeln('VALKYRIE %s on locale %i, ports initialized'.format(v.id, here.id));
+  //v.run();
+}
+
+export proc receiveInstructions() {
+  v.run();
+  //return v.delta;
+  return 1;
 }
