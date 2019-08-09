@@ -7,11 +7,13 @@ use genes;
 use uuid;
 use messaging;
 use Time;
+use Reflection;
+//use mist;
 
 var VUUID = new owned uuid.UUID();
 VUUID.UUID4();
 
-config var vSize: int;
+config var vSize: int = 1;
 
 // As we have our tree of life, so too do we have winged badasses who choose
 // who lives and who dies.
@@ -174,7 +176,7 @@ class valkyrieHandler : msgHandler {
 
 
 class valkyrieExecutor: msgHandler {
-  var matrixValues: [0..vSize] c_double;
+  //var matrixValues: [0..vSize] c_double;
   var takeAnyPath: bool = false;
   var moved: bool = false;
   var canMove: bool = false;
@@ -218,13 +220,13 @@ class valkyrieExecutor: msgHandler {
 
   proc moveToRoot() {
     // Zero out the matrix, return the root id.
-    this.matrixValues = 0;
+    //this.matrixValues = 0;
     this.currentNode = 'root';
   }
 
   // Assume we're given a delta object so that we may express it.
   proc move(delta: genes.deltaRecord) {
-    delta.express(this.matrixValues);
+    //delta.express(this.matrixValues);
     this.currentNode = delta.to;
     return this.moveSuccessful;
   }
@@ -320,6 +322,9 @@ class valkyrieExecutorPythonLib: valkyrieExecutor {
 
   var delta: genes.deltaRecord;
 
+  var currentCommand: int;
+  var receivedMessage: bool = false;
+
   proc init(n: int) {
     // basically, the inheritance isn't working as I would have expected.
     // see https://github.com/chapel-lang/chapel/issues/8232
@@ -341,6 +346,8 @@ class valkyrieExecutorPythonLib: valkyrieExecutor {
     // overriden from the messaging class
     writeln("STARTING TO PROCESS");
     writeln(m : string);
+    receivedMessage = true;
+    this.currentCommand = m.COMMAND;
     select m.COMMAND {
       when this.command.SET_ID do {
         m.open(this.id);
@@ -377,6 +384,8 @@ class valkyrieExecutorPythonLib: valkyrieExecutor {
       }
     }
     writeln("VALKYRIE PROCESSED MSG");
+    writeln(this.delta : string);
+    writeln(m : string);
     stdout.flush();
   }
 }
@@ -391,6 +400,8 @@ export proc createValkyrie(port: c_string) {
   v.initRecvSocket(1, port : string);
   writeln('VALKYRIE %s on locale %i, ports initialized'.format(v.id, here.id));
   //v.run();
+  //v.delta += (12343, 1.0);
+  //v.delta += (54323, 200.0);
 }
 
 export proc receiveInstructions() {
@@ -398,3 +409,77 @@ export proc receiveInstructions() {
   //return v.delta;
   return 1;
 }
+
+export proc __delta__() : [] real {
+  
+  var delta: [0..v.delta.seeds.size-1] real;
+  var i: int = 0;
+  for j in v.delta.seeds {
+    delta[i] = v.delta.delta[j];
+    i += 1;
+  }
+  return delta;
+}
+
+export proc __seeds__() : [] int {
+  
+  var seeds: [0..v.delta.seeds.size-1] int;
+  var i: int = 0;
+  for j in v.delta.seeds {
+    seeds[i] = j;
+    i += 1;
+  }
+  return seeds;
+}
+
+export proc getCurrentCommand() : int {
+  
+  if v.receivedMessage {
+    v.receivedMessage = false;
+    return v.currentCommand;
+  }
+  return 0;
+}
+
+var cArray: [1..0] c_string;
+var instructionsCompiled: bool = false;
+var instructionNumber: int = 0;
+param n = numFields(messaging.commandRecord);
+
+export proc __getInstructions__(): c_string {
+  //var s = new messaging.statusRecord();
+  //var c = new messaging.commandRecord();
+  if !instructionsCompiled {
+    for param i in 1..n {
+      cArray.push_back(getFieldName(messaging.commandRecord, i) : c_string);
+    }
+    instructionsCompiled = true;
+  }
+  if instructionNumber < n {
+    instructionNumber += 1;
+    return cArray[instructionNumber];
+  } else {
+    return "__END_GETINSTRUCTIONS__" : c_string;
+  }
+}
+
+export proc returnScore(score : real, novelty: [] real) {
+  // we'll send in a novelty vector, cause why not?
+  var newMsg = new messaging.msg(score);
+  newMsg.r = score;
+  newMsg.COMMAND = v.command.RECEIVE_SCORE;
+  v.SEND(newMsg);
+  //for i in novelty {
+  //  newMsg.v.push_back(i);
+  //}
+  newMsg.COMMAND = v.command.RECEIVE_NOVELTY;
+  v.SEND(newMsg);
+}
+
+export proc returnStatus(command : int, status : int) {
+  // we'll send in a novelty vector, cause why not?
+  var newMsg = new messaging.msg(0);
+  newMsg.STATUS = status;
+  newMsg.COMMAND = command;
+  v.SEND(newMsg);
+} 

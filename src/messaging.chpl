@@ -22,7 +22,7 @@ record statusRecord {
 }
 
 record commandRecord {
-  var RETURN_STATUS: int = 0;
+  var IDLE: int = 0;
   var SET_TASK: int = 1;
   var RECEIVE_AND_PROCESS_DELTA: int = 2;
   var RECEIVE_SCORE: int = 3;
@@ -30,6 +30,8 @@ record commandRecord {
   var SHUTDOWN: int = 5;
   var MOVE: int = 6;
   var SET_TIME: int = 7;
+  var RECEIVE_NOVELTY: int = 8;
+  var RETURN_STATUS: int = 9;
 }
 
 record msg {
@@ -39,6 +41,8 @@ record msg {
   var s: string;
   var i: int;
   var r: real;
+  // behold, a vector of reals.
+  //var v: [1..0] real;
   var exists: int = 0;
   // this.complete() means we complete!
   var status: statusRecord;
@@ -330,7 +334,7 @@ class msgHandler {
 
   proc __SEND__(m: msg, i: int) {
     // send the message!
-    this.socket[i].send(m : string);
+    this.socket[i].send(m);
     return true;
   }
 
@@ -345,18 +349,18 @@ class msgHandler {
     var m: msg;
     var s: string;
     m.exists = -1;
-    //m = this.socket[i].recv(msg);
+    m = this.socket[i].recv(msg);
     // working with a python client is a bit different; namely, we need to pull into a string, not a msg.
     // but then we can de-serialize it.
-    s = this.socket[i].recv(string);
-    var lf = openmem();
-    var c = lf.writer();
-    var z = lf.reader();
-    c.writeln(s : string);
-    c.flush();
-    c.close();
-    m = z.readln(msg);
-    writeln("MSG in MESSAGING: ", m : string);
+    //s = this.socket[i].recv(string);
+    //var lf = openmem();
+    //var c = lf.writer();
+    //var z = lf.reader();
+    //c.writeln(s : string);
+    //c.flush();
+    //c.close();
+    //m = z.readln(msg);
+    //writeln("MSG in MESSAGING: ", m : string);
     return m;
     //while m.exists == -1 do chpl_task_yield();
     //return m;

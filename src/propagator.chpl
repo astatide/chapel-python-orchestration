@@ -11,7 +11,7 @@ use spinlock;
 use Time;
 use IO.FormattedIO;
 use chromosomes;
-use gjallarbru;
+//use gjallarbru;
 use Spawn;
 use messaging;
 use HashedDist;
@@ -99,8 +99,8 @@ record CustomMapper {
   }
 }
 
-var GJDomain: domain(int) dmapped Hashed(idxType=int,mapper = new CustomMapper() );
-var GJ: [GJDomain] shared gjallarbru.Gjallarbru;
+//var GJDomain: domain(int) dmapped Hashed(idxType=int,mapper = new CustomMapper() );
+//var GJ: [GJDomain] shared gjallarbru.Gjallarbru;
 
 var chromosomesToAdvance: domain(string);
 
@@ -460,11 +460,11 @@ class Propagator {
     // now, make sure we know we have to process all of these.
 
     // spawn a python bridge on each locale
-    cLock.wl();
-    GJDomain.add(here.id);
-    GJ[here.id] = new shared gjallarbru.Gjallarbru();
-    GJ[here.id].pInit();
-    cLock.uwl();
+    //cLock.wl();
+    //GJDomain.add(here.id);
+    //GJ[here.id] = new shared gjallarbru.Gjallarbru();
+    //GJ[here.id].pInit();
+    //cLock.uwl();
 
 
     begin inCurrentGeneration.add(nG.currentId.read()-1);
