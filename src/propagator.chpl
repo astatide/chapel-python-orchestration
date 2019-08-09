@@ -1,9 +1,8 @@
 // Do I need all this?  Probably not but I'll sort that issue later.
-
 use rng;
 use genes;
 use network;
-use uuid;
+//use uuid;
 use Math;
 //use VisualDebug;
 use ygglog;
@@ -16,11 +15,11 @@ use Spawn;
 use messaging;
 use HashedDist;
 use Time;
-use CommDiagnostics;
+//use CommDiagnostics;
 use AllLocalesBarriers;
 use valkyrie;
 
-use ReplicatedDist;
+//use ReplicatedDist;
 
 record scoreComparator {
   proc keyPart(x: (string, real), i: int) {
@@ -30,7 +29,7 @@ record scoreComparator {
   }
 }
 
-config const mSize = 20;
+//config const mSize = 20;
 config const highFitnessToKeep = 10;
 config const highNovelToKeep = 10;
 config const archiveChance = 0.05;
@@ -69,6 +68,7 @@ var chromosomeArchiveDomain: domain(string) dmapped Hashed(idxType=string, mappe
 var chromes: [chromosomeDomain] chromosomes.Chromosome;
 var archive: [chromosomeArchiveDomain] chromosomes.Chromosome;
 cLock.t = 'Chromosomes';
+var chromosomesToAdvance: domain(string);
 //cLock.log = new shared ygglog.YggdrasilLogging();
 
 // valkyrie stuff.
@@ -96,24 +96,6 @@ var priorityValkyriesProcessed: [1..maxValkyries*Locales.size] atomic real;
 record CustomMapper {
   proc this(ind:int, targetLocs: [?D] locale) : D.idxType {
     return ind;
-  }
-}
-
-//var GJDomain: domain(int) dmapped Hashed(idxType=int,mapper = new CustomMapper() );
-//var GJ: [GJDomain] shared gjallarbru.Gjallarbru;
-
-var chromosomesToAdvance: domain(string);
-
-iter returnChromosomesOnLocale() {
-  for id in chromosomeDomain {
-    if id[1..4] : int == here.id {
-      yield id;
-    }
-  }
-  for id in chromosomeDomain {
-    if id[1..4] : int != here.id {
-      yield id;
-    }
   }
 }
 
@@ -146,7 +128,6 @@ class Propagator {
     this.log.currentDebugLevel = debug;
     this.lock = new shared spinlock.SpinLock();
     this.lock.t = 'Ragnarok';
-    //this.lock.log = this.log;
   }
 
   proc logo() {
@@ -437,6 +418,7 @@ class Propagator {
     // Print out the header, yo.
     this.yh += 'run';
     this.header();
+
     this.log.log("Setting up logging features", this.yh);
     if this.locale == Locales[0] {
       this.startLoggingTasks();
@@ -445,27 +427,20 @@ class Propagator {
     this.log.log("Spawn local network and networkGenerator", this.yh);
     var ygg = new shared network.networkMapper();
     var nG = new shared network.networkGenerator();      // we're gonna want a list of network IDs we can use.
+
     if this.locale == Locales[0] {
+      // reset the barrier
       allLocalesBarrier.reset(maxValkyries);
     }
+
     ygg.log = this.log;
     ygg.log.currentDebugLevel = debug;
-    //ygg.lock.log = this.log;
 
     this.log.log("Local networks spawned; creating chromosomes", this.yh);
     initChromosomes(nG, ygg, this.yh);
     this.log.log("Adding new nodes to unprocessed list", this.yh);
     nG.addUnprocessed(ygg);
     this.log.log("Setting the current generation count", this.yh);
-    // now, make sure we know we have to process all of these.
-
-    // spawn a python bridge on each locale
-    //cLock.wl();
-    //GJDomain.add(here.id);
-    //GJ[here.id] = new shared gjallarbru.Gjallarbru();
-    //GJ[here.id].pInit();
-    //cLock.uwl();
-
 
     begin inCurrentGeneration.add(nG.currentId.read()-1);
 
@@ -482,19 +457,14 @@ class Propagator {
         v.log = this.log;
 
         // we want to pipe some of the output to the ragnarok logs.
-        var currentYggHeader: ygglog.yggHeader;
-        if false {
-          currentYggHeader = this.yh;
-        } else {
-          currentYggHeader = v.header;
-        }
+        var currentYggHeader: ygglog.yggHeader = v.header;
 
         for iL in v.logo {
           this.log.header(iL, hstring=currentYggHeader);
         }
 
         this.log.log('Initiating spawning sequence', hstring=currentYggHeader);
-        var vp = v.valhalla(1, v.id, mSize : string, this.log, vstring=currentYggHeader);
+        var vp = v.valhalla(1, v.id, this.log, vstring=currentYggHeader);
 
         // wait until everyone is nice and spawned.
         allLocalesBarrier.barrier();
@@ -587,7 +557,7 @@ class Propagator {
                 this.log.log("Node ID:", currToProc : string, "Score:", score : string, "Deme:", deme : string, "Time:", T.elapsed() : string, hstring=v.header);
                 this.log.log('Node:', newNode : string, hstring=v.header);
                 T.clear();
-                this.log.log('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
+                //this.log.log('NodeNumber:', inChromeID : string, "Node ID:", currToProc : string, "Chromosome ID:", nc : string, "Deme:", deme : string, hstring=v.header);
                 this.log.log('DemeDomain in chromosome:', nc.geneIDs : string, hstring=v.header);
                 try {
                   assert(nc.scores.domain.contains(inChromeID));

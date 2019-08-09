@@ -42,7 +42,7 @@ record msg {
   var i: int;
   var r: real;
   // behold, a vector of reals.
-  //var v: [1..0] real;
+  var v: [1..0] real;
   var exists: int = 0;
   // this.complete() means we complete!
   var status: statusRecord;
@@ -97,158 +97,6 @@ record msg {
     }
     return this.r;
   }
-}
-
-class msgHandlerMultiple {
-
-  //var channelsOpened: [filesOpened] channel(true,iokind.dynamic,true);
-
-  var size: int = 1;
-  // this is for single receivers/senders.
-  var mId: int = 1;
-
-  var fin: [0..size] channel(false,iokind.dynamic,true);
-  var fout: [0..size] channel(true,iokind.dynamic,true);
-  var STATUS: int;
-  var context: Context;
-
-  var sendPorts: [0..size] string;
-  var recvPorts: [0..size] string;
-
-  var sendSocket: [0..size] Socket;
-  var recvSocket: [0..size] Socket;
-
-  // not in use yet.
-  var blocking: bool = true;
-
-  var msgQueue: [1..0] msg;
-
-  var status: statusRecord;
-  var command: commandRecord;
-
-  proc init(n: int) {
-    this.size = n;
-  }
-
-  proc initSendSocket(i: int) {
-    this.sendSocket[i] = this.context.socket(ZMQ.REQ);
-    this.sendSocket[i].bind("tcp://*:*");
-    this.sendPorts[i] = this.sendSocket[i].getLastEndpoint().replace("0.0.0.0",chpl_nodeName():string);
-  }
-
-  proc initUnlinkedRecvSocket(i: int) {
-    // so, we're going to set up and use a random port.
-    this.recvSocket[i] = this.context.socket(ZMQ.REP);
-    this.recvSocket[i].bind("tcp://*:*");
-    this.recvPorts[i] = this.recvSocket[i].getLastEndpoint().replace("0.0.0.0",chpl_nodeName():string);
-  }
-
-  proc initPrevSendSocket(i: int, port: string) {
-    this.sendSocket[i] = this.context.socket(ZMQ.REQ);
-    this.sendSocket[i].connect(port);
-    this.sendPorts[i] = port;
-  }
-
-  proc initRecvSocket(i: int, port: string) {
-    // so, we're going to set up and use a random port.
-    this.recvSocket[i] = this.context.socket(ZMQ.REP);
-    this.recvSocket[i].connect(port);
-    this.recvPorts[i] = port;
-  }
-
-  proc __receiveMessage__(i: int) {
-    this.__PROCESS__(this.RECV(i), i);
-  }
-
-  proc __OK__(i: int) {
-    //this.sendSocket[i].send(status.OK);
-    this.recvSocket[i].send(status.OK);
-  }
-
-  // convenient handler function
-
-  proc receiveMessage(i: int) { this.__receiveMessage__(i); }
-  proc receiveMessage() { this.__receiveMessage__(this.mId); }
-
-  proc OK(i: int) { this.__OK__(i); }
-  proc OK() { this.__OK__(this.mId); }
-
-  // these are stubs the children should implement, if necessary.
-  // Each time a message is considered received by process, it _must_
-  // end with a status okay.
-
-  proc __PROCESS__(m: msg, i: int) { OK(i); this.PROCESS(m, i); }
-  proc __PROCESS__(m: msg) { OK(this.mId); this.PROCESS(m); }
-
-  proc PROCESS(m: msg, i: int) { }
-  proc PROCESS(m: msg) { }
-
-  // these are functions for sending.  Essentially, all listen functions
-  // must receive a status, or they are blocked.
-
-  proc __SEND__(m: msg, i: int) {
-    // send the message!
-    //fout[i].writeln(m);
-    //fout[i].flush();
-    this.sendSocket[i].send(m : string);
-    if awaitResponse {
-      this.RECV_STATUS(i);
-    }
-    return true;
-  }
-
-  proc SEND(m: msg, i: int) { return this.__SEND__(m, i); }
-  proc SEND(m: msg) { return this.__SEND__(m, this.mId); }
-
-  // these are functions for receiving.  Essentially, all listen functions
-  // must receive a status, or they are blocked.
-
-  proc __RECV__(i: int) {
-    // receive the message!
-    //fin[i].readln(m);
-    var m: msg;
-    m.exists = -1;
-    m = this.recvSocket[i].recv(msg);
-    while m.exists == -1 do chpl_task_yield();
-    return m;
-  }
-
-  proc RECV(i: int) { return this.__RECV__(i); }
-  proc RECV() { return this.__RECV__(this.mId); }
-
-  proc valhalla(i: int, vId: string, mSize : string, vLog: ygglog.YggdrasilLogging, vstring: ygglog.yggHeader) {
-    // ha ha, cause Valkyries are in Valhalla, get it?  Get it?
-    // ... no?
-    // set up a ZMQ client/server
-    var iM: int = i; //+(maxValkyries*here.id);
-    vLog.log("Initializing sockets", hstring=vstring);
-    this.initSendSocket(iM);
-    this.initUnlinkedRecvSocket(iM);
-
-    vLog.log("Spawning Valkyrie", hstring=vstring);
-    var vp: subprocess(kind=iokind.dynamic, locking=true);
-    begin with (ref vp) vp = spawn(["./v.sh", this.sendPorts[iM], this.recvPorts[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=true);
-
-    vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.sendPorts[iM], "--sendPort", this.recvPorts[iM], "--vSize", mSize : string, hstring=vstring);
-
-    var newMsg = new messaging.msg(i);
-    newMsg.COMMAND = command.SET_TASK;
-    vLog.log("Setting task to", i : string, hstring=vstring);
-    this.SEND(newMsg, iM);
-
-    vLog.log("Setting ID to", vId : string, hstring=vstring);
-    newMsg = new messaging.msg(vId);
-    newMsg.COMMAND = command.SET_ID;
-    this.SEND(newMsg, iM);
-    return vp;
-  }
-
-  proc runDONOTUSE() {
-    while true {
-      this.receiveMessage();
-    }
-  }
-
 }
 
 class msgHandler {
@@ -369,7 +217,7 @@ class msgHandler {
   proc RECV(i: int) { return this.__RECV__(i); }
   proc RECV() { return this.__RECV__(this.mId); }
 
-  proc valhalla(i: int, vId: string, mSize : string, vLog: ygglog.YggdrasilLogging, vstring: ygglog.yggHeader) {
+  proc valhalla(i: int, vId: string = '', vLog = new shared ygglog.YggdrasilLogging(), vstring = new ygglog.yggHeader()) {
     // ha ha, cause Valkyries are in Valhalla, get it?  Get it?
     // ... no?
     // set up a ZMQ client/server
@@ -380,9 +228,9 @@ class msgHandler {
 
     vLog.log("Spawning Valkyrie", hstring=vstring);
     var vp: subprocess(kind=iokind.dynamic, locking=true);
-    vp = spawn(["./v.sh", this.ports[iM], this.ports[iM], mSize : string], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=true);
+    vp = spawn(["./v.sh", this.ports[iM], this.ports[iM]], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=true);
 
-    vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.ports[iM], "--sendPort", this.ports[iM], "--vSize", mSize : string, hstring=vstring);
+    vLog.log("SPAWN COMMAND:", "./valkyrie", "--recvPort", this.ports[iM], "--sendPort", this.ports[iM], hstring=vstring);
 
     var newMsg = new messaging.msg(i);
     newMsg.COMMAND = command.SET_TASK;

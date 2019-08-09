@@ -594,7 +594,7 @@ record Chromosome {
           //var k = propagator.GJ[c.locale.id].runFunction('calculateNovelty', network.globalNodes[this.geneIDs[i]].novelty[this.currentDeme].c_str(), network.globalNodes[c.geneIDs[j]].novelty[c.currentDeme].c_str());
           writeln(c.locale.id);
           // okay, so we can get to this, which is good.
-          writeln(propagator.GJ[c.locale.id].rounds : string);
+          //writeln(propagator.GJ[c.locale.id].rounds : string);
           var k: real;
           var sOne = network.globalNodes[this.geneIDs[i]].novelty[this.currentDeme];
           var sTwo = network.globalNodes[c.geneIDs[j]].novelty[c.currentDeme];

@@ -1,6 +1,11 @@
 valkyrie:
   model: src/tartarus.py
+  modelFunction: yggdrasilModel # not functional yet
+  evalulateFunction: evaluate.eval_tartarus # not functional yet
+
 yggdrasil:
+  demes:
+    count: 5
   novelty:
     function: src/novelty.py
   chromosome:

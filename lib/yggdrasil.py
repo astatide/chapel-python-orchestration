@@ -1,5 +1,4 @@
 import mist
-import argparse
 
 # This is the python companion class to our valkyrie.
 class valkyrieCommunicator():
@@ -42,4 +41,14 @@ class valkyrieCommunicator():
 
   def send(self, comm, val):
     # send a command back.
-    mist.returnStatus(comm, val);
+    if type(comm) != str:
+      mist.returnStatus(comm, val)
+    else:
+      command = 0
+      for i in self.__instructions__.keys():
+          if str.encode(comm) == self.__instructions__[i]:
+            command = i
+      mist.returnStatus(command, val)
+
+  def returnScore(self, score, novelty):
+    mist.returnScore(score, novelty)

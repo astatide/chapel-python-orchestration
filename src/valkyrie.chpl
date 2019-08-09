@@ -8,7 +8,6 @@ use uuid;
 use messaging;
 use Time;
 use Reflection;
-//use mist;
 
 var VUUID = new owned uuid.UUID();
 VUUID.UUID4();
@@ -153,6 +152,8 @@ class valkyrieHandler : msgHandler {
       var m = this.RECV();
       writeln("MSG: ", m : string);
       score = m.r;
+      // we want to receive the novelty, now.
+      m = this.RECV();
       deme = d;
       //var s = "[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0]";
       // This is for the novelty, which we are assuming, currently, comes back as a string of an array of ints.
@@ -163,10 +164,10 @@ class valkyrieHandler : msgHandler {
       //for i in s.split(", ") {
       //  node.novelty[deme].push_back(i : int);
       //}
-      writeln('NOVEL: ', m.s : string);
-      node.novelty[deme] = m.s;
+      //writeln('NOVEL: ', m.s : string);
+      //node.novelty[deme] = m.s;
       this.log.log('SCORE FOR', node.id : string, 'IS', score : string, hstring=this.header);
-      this.log.log('NOVELTY FOR', node.id : string, 'IS', node.novelty[deme] : string, hstring=this.header);
+      //this.log.log('NOVELTY FOR', node.id : string, 'IS', node.novelty[deme] : string, hstring=this.header);
       node.setDemeScore(deme, score);
       node.setValkyrie(this.id, this.nProcessed);
       yield (score, deme);
@@ -335,8 +336,6 @@ class valkyrieExecutorPythonLib: valkyrieExecutor {
   }
 
   override proc run() throws {
-    var t: Timer;
-    t.start();
     // basically, while we're able to read in a record...
     // ... we pretty much read and process.
     this.receiveMessage();
@@ -351,36 +350,17 @@ class valkyrieExecutorPythonLib: valkyrieExecutor {
     select m.COMMAND {
       when this.command.SET_ID do {
         m.open(this.id);
-        //var newMsg = new messaging.msg(0);
-        //newMsg.STATUS = this.status.OK;
-        //SEND(newMsg);
       }
       when this.command.SET_TIME do {
       }
       when this.command.SHUTDOWN do {
         exit(0);
-        //var newMsg = new messaging.msg(0);
-        //newMsg.STATUS = this.status.OK;
-        //SEND(newMsg);
       }
       when this.command.SET_TASK do {
         m.open(this.currentTask);
-        //var newMsg = new messaging.msg(0);
-        //newMsg.STATUS = this.status.OK;
-        //SEND(newMsg);
       }
       when this.command.RECEIVE_AND_PROCESS_DELTA do {
-        //var delta: genes.deltaRecord;
         m.open(this.delta);
-        //this.move(delta);
-        //var score: real = gj.lockAndRun(this.matrixValues, this.currentTask, m.i, hstring=this.header);
-        //writeln("score in valkyrie: " + score : string);
-        //var newMsg = new messaging.msg(score);
-        //newMsg.s = "";
-        //newMsg.r = score;
-        //newMsg.COMMAND = this.command.RECEIVE_SCORE;
-        //writeln("what is our msg?: " + newMsg : string);
-        //SEND(newMsg);
       }
     }
     writeln("VALKYRIE PROCESSED MSG");
@@ -391,23 +371,23 @@ class valkyrieExecutorPythonLib: valkyrieExecutor {
 }
 
 var v: shared valkyrieExecutorPythonLib;
+// this is the command array.
+var cArray: [1..0] c_string;
+var instructionsCompiled: bool = false;
+var instructionNumber: int = 0;
+param n = numFields(messaging.commandRecord);
 
 export proc createValkyrie(port: c_string) {
-  //writeln("VALKYRIE on locale %i, spawned.".format(here.id));
   // get the information necessary.  We need a currentTask, for instance.
   v = new shared valkyrie.valkyrieExecutorPythonLib(1);
   writeln('VALKYRIE %s on locale %i, running task %i : port %s'.format(v.id, here.id, v.currentTask, port : string));
   v.initRecvSocket(1, port : string);
   writeln('VALKYRIE %s on locale %i, ports initialized'.format(v.id, here.id));
-  //v.run();
-  //v.delta += (12343, 1.0);
-  //v.delta += (54323, 200.0);
 }
 
 export proc receiveInstructions() {
+  writeln("running!");
   v.run();
-  //return v.delta;
-  return 1;
 }
 
 export proc __delta__() : [] real {
@@ -440,11 +420,6 @@ export proc getCurrentCommand() : int {
   }
   return 0;
 }
-
-var cArray: [1..0] c_string;
-var instructionsCompiled: bool = false;
-var instructionNumber: int = 0;
-param n = numFields(messaging.commandRecord);
 
 export proc __getInstructions__(): c_string {
   //var s = new messaging.statusRecord();

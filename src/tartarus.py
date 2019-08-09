@@ -697,7 +697,6 @@ class Evaluate:
         vId = "1"
 
         #while board_idx < self.eval_count:
-#        print(vId)
         if True:
             move_history = []
             idx = 0
@@ -811,7 +810,6 @@ class yggdrasilModel():
         test = model_layer_units[layer_count]
 
         model = Sequential()
-
         while layer_count < layers - 1:
             model.add(LSTM(model_layer_units[layer_count], input_shape=(None, input_val), return_sequences=True,
                            kernel_initializer=Zeros(),
