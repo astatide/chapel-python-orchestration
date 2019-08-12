@@ -44,6 +44,8 @@ class valkyrieHandler : msgHandler {
 
   var __score__ : real;
 
+  var isRunning: bool = false;
+
 
   proc moveToRoot() {
     // Zero out the matrix, return the root id.
@@ -120,7 +122,7 @@ class valkyrieHandler : msgHandler {
     }
   }
 
-  iter processNode(ref node: shared genes.GeneNode, delta : genes.deltaRecord) {
+  iter processNodeOld(ref node: shared genes.GeneNode, delta : genes.deltaRecord) {
     var oldNode = this.currentNode;
     var score: real;
     var deme: int;
@@ -145,10 +147,75 @@ class valkyrieHandler : msgHandler {
       this.log.log("ID", node.id : string, 'MSG:', newMsg : string, hstring=this.header);
       newMsg.i = d;
       this.log.log("DEME SET:", d : string, hstring=this.header);
-      newMsg.COMMAND = this.command.RECEIVE_AND_PROCESS_DELTA;
+      newMsg.COMMAND = this.command.RECEIVE_DELTA;
       this.log.log("Sending the following msg:", newMsg : string, hstring=this.header);
       this.SEND(newMsg);
-      this.log.log("Message & delta sent; awaiting instructions", hstring=this.header);
+      this.log.log("Message & delta sent; awaiting response", hstring=this.header);
+      var m = this.RECV();
+      writeln("MSG: ", m : string);
+      score = m.r;
+      // we want to receive the novelty, now.
+      m = this.RECV();
+      deme = d;
+      //var s = "[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0]";
+      // This is for the novelty, which we are assuming, currently, comes back as a string of an array of ints.
+      // this is not a great general assumption!  But whatever.
+      //var s = m['s'];
+      //s = s.replace("[","");
+      //s = s.replace("]","");
+      //for i in s.split(", ") {
+      //  node.novelty[deme].push_back(i : int);
+      //}
+      //writeln('NOVEL: ', m.s : string);
+      //node.novelty[deme] = m.s;
+      this.log.log('SCORE FOR', node.id : string, 'IS', score : string, hstring=this.header);
+      //this.log.log('NOVELTY FOR', node.id : string, 'IS', node.novelty[deme] : string, hstring=this.header);
+      node.setDemeScore(deme, score);
+      node.setValkyrie(this.id, this.nProcessed);
+      yield (score, deme);
+    }
+  }
+}
+
+  iter processNode(ref node: shared genes.GeneNode, delta : genes.deltaRecord) {
+    // we should control this from the easier to program Python end.
+    // ergo, we should enter a loop that receives and processes data 
+    // until it's told to stop.
+    this.isRunning = true;
+    while isRunning {
+      this.receiveMessage();
+    }
+  }
+
+
+    var oldNode = this.currentNode;
+    var score: real;
+    var deme: int;
+    var dNew = delta;
+    this.currentNode = node.id;
+    this.moved = true;
+    this.nProcessed += 1;
+    var adjustValkyrie: bool = true;
+
+    // should work for multiple demes, now.
+    for d in node.returnDemes() {
+      this.log.log('Starting work for ID:', node.id: string, 'on deme #', deme : string, hstring=this.header);
+      this.log.log("Attempting to run Python on seed ID", node.id : string, 'DELTA:', delta : string, hstring=this.header);
+      assert(!delta.seeds.isEmpty());
+      if adjustValkyrie {
+        dNew = delta;
+        adjustValkyrie = false;
+      } else {
+        dNew = new genes.deltaRecord();
+      }
+      var newMsg = new messaging.msg(dNew);
+      this.log.log("ID", node.id : string, 'MSG:', newMsg : string, hstring=this.header);
+      newMsg.i = d;
+      this.log.log("DEME SET:", d : string, hstring=this.header);
+      newMsg.COMMAND = this.command.RECEIVE_DELTA;
+      this.log.log("Sending the following msg:", newMsg : string, hstring=this.header);
+      this.SEND(newMsg);
+      this.log.log("Message & delta sent; awaiting response", hstring=this.header);
       var m = this.RECV();
       writeln("MSG: ", m : string);
       score = m.r;
@@ -325,6 +392,7 @@ class valkyrieExecutorPythonLib: valkyrieExecutor {
 
   var currentCommand: int;
   var receivedMessage: bool = false;
+  var m: msg;
 
   proc init(n: int) {
     // basically, the inheritance isn't working as I would have expected.
@@ -343,6 +411,7 @@ class valkyrieExecutorPythonLib: valkyrieExecutor {
 
   override proc PROCESS(m: msg, i: int) {
     // overriden from the messaging class
+    this.m = msg;
     writeln("STARTING TO PROCESS");
     writeln(m : string);
     receivedMessage = true;
@@ -458,3 +527,23 @@ export proc returnStatus(command : int, status : int) {
   newMsg.COMMAND = command;
   v.SEND(newMsg);
 } 
+
+export proc send(command: int, status: int, data: ?T) {
+  // variable stuff for variable sets.
+  var newMsg = new messaging.msg(0);
+  newMsg.STATUS = status;
+  newMsg.COMMAND = command;
+  select T {
+    when isArrayType(T) do with (ref newMsg) {
+      // if this is an array, we want to send it one value at a time.
+      // so basically loop and send until we're done.
+      newMsg
+    }
+    when isStringType(T) do {
+
+    }
+    when isRecordType(T) do {
+
+    }
+  }
+}

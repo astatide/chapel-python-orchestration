@@ -21,17 +21,32 @@ record statusRecord {
   var SEALED: int = 3;
 }
 
+record dataTypeRecord {
+  var isString: int = 0;
+  var isVector: int = 1;
+  var isReal: int = 2;
+  var isInt: int = 3;
+}
+
 record commandRecord {
   var IDLE: int = 0;
   var SET_TASK: int = 1;
-  var RECEIVE_AND_PROCESS_DELTA: int = 2;
-  var RECEIVE_SCORE: int = 3;
-  var SET_ID: int = 4;
-  var SHUTDOWN: int = 5;
-  var MOVE: int = 6;
-  var SET_TIME: int = 7;
-  var RECEIVE_NOVELTY: int = 8;
-  var RETURN_STATUS: int = 9;
+  var RECEIVE_DELTA: int = 2;
+  var RECEIVE_NOVELTY: int = 3;
+  var RECEIVE_SCORE: int = 4;
+  var RECEIVE_AUX: int = 5;
+
+  // we can't use ZMQ for these, so we send them in.
+  var START_RECEIVE_VECTOR: int = 6;
+  var RECEIVE_VECTOR: int = 7;
+  var STOP_RECEIVE_VECTOR: int = 8;
+
+  // these are the actual process commands.
+  var APPLY_DELTA: int = 9;
+  var CHANGE_DEME: int = 10;
+  var RUN: int = 11;
+
+  var SET_ID: int = 12;
 }
 
 record msg {
@@ -41,12 +56,14 @@ record msg {
   var s: string;
   var i: int;
   var r: real;
+  var __dtype__: int;
   // behold, a vector of reals.
-  var v: [1..0] real;
+  //var v: [1..0] real;
   var exists: int = 0;
   // this.complete() means we complete!
   var status: statusRecord;
   var command: commandRecord;
+  var dtype: dataTypeRecord;
 
   proc init() {}
 
@@ -198,8 +215,6 @@ class msgHandler {
     var s: string;
     m.exists = -1;
     m = this.socket[i].recv(msg);
-    // working with a python client is a bit different; namely, we need to pull into a string, not a msg.
-    // but then we can de-serialize it.
     //s = this.socket[i].recv(string);
     //var lf = openmem();
     //var c = lf.writer();
