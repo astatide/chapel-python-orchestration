@@ -1,6 +1,6 @@
-NUMPY:=`python3 -c 'import numpy.distutils.misc_util as m; print(m.get_numpy_include_dirs()[0])'`
-PYTHONC:=`python3-config --cflags`
-PYTHONL:=`python3-config --ldflags` 
+NUMPY:=`/usr/local/opt/python3/bin/python3 -c 'import numpy.distutils.misc_util as m; print(m.get_numpy_include_dirs()[0])'`
+PYTHONC:=`/usr/local/opt/python3/bin/python3-config --cflags`
+PYTHONL:=`/usr/local/opt/python3/bin/python3-config --ldflags` 
 #PYTHONC:=`python3-config --includes`
 #PYTHONL:=`python3-config --includes` 
 LINCLUDE:=--warn-unstable -M src -M python
@@ -12,21 +12,23 @@ ifeq ($(HOST), cicero)
 	MACLUDE:=
 	DEBUG:=--fast
 else
-	COMM:=--comm gasnet
-	#COMM:=--comm none --launcher none
-	MACLUDE:= -L ZMQHelper/ -L /usr/local/lib -I /usr/local/include
+	#COMM:=--comm gasnet
+	COMM:=--comm none --launcher none
+	MACLUDE:= -L /usr/local/lib -I /usr/local/include
 	DEBUG:=-g --codegen --cpp-lines --savec /Users/apratt/work/yggdrasil/C --bounds-checks --stack-checks --nil-checks #--devel
 endif
 
 all:
 	@echo $(HOST)
 	@echo $(COMM)
-	make valkyrie
-	make yggdrasil
+	make embedpython
 
 clean:
 	rm valkyrie
 	rm yggdrasil
+
+embedpython:
+	chpl -o gj main.chpl -M src $(LINCLUDE) $(MACLUDE) --ccflags "-O2 -w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" --comm none --launcher none $(DEBUG)
 
 valkyrie:
 	chpl -o valkyrie valkyrieBinary.chpl $(LINCLUDE) $(MACLUDE) --ccflags "-O2 -w -lpthread -I $(NUMPY) $(PYTHONC)" --ldflags "-lpthread -v $(PYTHONL)" --comm none --launcher none $(DEBUG)

@@ -1,8 +1,6 @@
 // This is the Chapel to C bit.
 
 // We're gonna create a main then try and call the python C bits.
-
-use propagator;
 use Math;
 
 extern type PyObject;
@@ -14,6 +12,7 @@ extern proc weights(ref self: PyObject, ref args: PyObject): PyObject;
 extern proc run();
 extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong, deme : c_ulonglong, score: c_ptr(c_double)) : c_double;
 extern proc pythonRunFunction(funcName : c_string, retvalue : c_ptr(c_double), argv: [] c_string, argc: c_int) : c_double;
+extern proc pythonRunSimple(funcName : c_string);
 extern proc pythonInit(n: c_ulonglong): c_void_ptr;
 extern proc pythonFinal();
 extern proc newThread() : c_void_ptr;
@@ -26,20 +25,20 @@ require "gjallarbru.c";
 
 class Gjallarbru {
 
-  var threads: [1..propagator.maxValkyries] c_void_ptr;
+  var threads: [1..10] c_void_ptr;
   var runGC: atomic bool;
-  var roundsProcessed: [1..propagator.maxValkyries] atomic int;
+  var roundsProcessed: [1..10] atomic int;
   var rounds: int = 0;
   var valkyriesDone: atomic int;
   var valkyriesUnblocked: atomic int;
   var moveOn: sync bool;
-  var log: shared ygglog.YggdrasilLogging;
+  //var log: shared ygglog.YggdrasilLogging;
 
   proc pInit() {
     // return the sub-interpreter
-    this.log = new shared ygglog.YggdrasilLogging();
-    this.log.currentDebugLevel = propagator.debug;
-    this.threads = pythonInit(propagator.maxValkyries : c_ulonglong);
+    //this.log = new shared ygglog.YggdrasilLogging();
+    //this.log.currentDebugLevel = propagator.debug;
+    this.threads = pythonInit(10 : c_ulonglong);
   }
 
   proc gc() {
@@ -95,5 +94,10 @@ class Gjallarbru {
     stdout.flush();
     return retValue : real;
   }
+
+  proc runString(funcName: string = 'calculateNovelty') {
+    pythonRunSimple(funcName.c_str());
+  }
+
 
 }

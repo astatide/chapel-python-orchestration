@@ -31,8 +31,8 @@ RUN apt-get install -y python3-numpy
 RUN apt-get install -y python3-scipy
 RUN apt-get install -y python3-pip
 RUN pip3 install tensorflow keras
-#ENV CHPL_TASKS=fifo CHPL_MEM=cstdlib CHPL_COMM=none
-ENV CHPL_TASKS=fifo CHPL_MEM=cstdlib CHPL_COMM=ugni
+ENV CHPL_TASKS=fifo CHPL_MEM=cstdlib CHPL_COMM=none
+#ENV CHPL_TASKS=fifo CHPL_MEM=cstdlib CHPL_COMM=ugni
 # build yggdrasil, ya big bitch.
 
 RUN apt-get install -y libzmq3-dev
@@ -48,12 +48,6 @@ RUN mkdir -p /opt/chapel \
     && make -C $CHPL_HOME \
     && make -C $CHPL_HOME chpldoc test-venv mason \
     && make -C $CHPL_HOME cleanall
-
-# Copy in the modifications to ZMQ.
-COPY ZMQmod.patch /opt/chapel/$CHPL_VERSION/modules/packages
-#RUN wget https://gist.githubusercontent.com/ajoshpratt/4d2b41fd570747cd2d5df26189ece60b/raw/d69145ec7da09da699bb4e912499356e573f8fd4/ZMQmod.patch \
-RUN cd /opt/chapel/$CHPL_VERSION/modules/packages \
-    && git apply ZMQmod.patch
 
 # Configure locale
 RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \

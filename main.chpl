@@ -1,39 +1,24 @@
-use uuid;
-use rng;
-use genes;
-use network;
-use propagator;
-use spinlock;
-use Spawn;
-//use gjallarbru;
+use gjallarbru;
 
-//use VisualDebug;
+var gj : gjallarbru.Gjallarbru = new shared gjallarbru.Gjallarbru();
+gj.pInit();
 
-// We want to capture kill signals.  @LouisJenkinsCS helped me with this.
-//extern proc signal(sigNum : c_int, handler : c_fn_ptr) : c_fn_ptr;
+// Basic stuff!
+gj.runString("print('You know who is a string?  Me.  I am a string.')");
+gj.runString("a = 12");
+gj.runString("print(a)");
 
+// Ooooh, look, a multiline string!
+var a = "\
+a = 24 \
+print(a)";
+gj.runString(a);
 
-writeln("STARTING YGGDRASIL");
-coforall L in Locales {
-  on L do {
-    // kill all valkyries
-    var vp = spawn(["pkill", "-9", "valkyrie"], stdout=FORWARD, stderr=FORWARD, stdin=FORWARD, locking=true);
-  }
-}
-coforall L in Locales {
-  //if (propagator.useLocale0 || !(L == Locales[0])) {
-  {
-    on L do {
-      var ragnarok = new shared propagator.Propagator();
-      //ragnarok.initRun();
-      //proc handler(x : int) : void {
-      //    ragnarok.setShutdown();
-      //}
-      // Capturing sigint.
-      //signal(2, c_ptrTo(handler));
-      ragnarok.run();
-    }
-  }
-}
-
-var newrng = new owned rng.UDevRandomHandler();
+// Look ma, no 'please continue on the next line' indicators!
+var b = """
+a = 36
+print(a)
+print(a + 24)
+print("oh man!")
+""";
+gj.runString(b);

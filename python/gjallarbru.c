@@ -1,9 +1,4 @@
 #include <Python.h>
-/*#include <longobject.h>
-#include <pylifecycle.h>
-#include <dictobject.h>
-#include <listobject.h>
-#include <pythonrun.h>*/
 #include <numpy/arrayobject.h>
 #include <math.h>
 #include <stdlib.h>
@@ -15,10 +10,6 @@
 #include <unistd.h>
 // we crash on OSX if we don't init the time.
 #include <time.h>
-//#include <wchar.h>
-
-
-//#include "../tf/aegir.c"
 
 // Declare the functions that we'll need later.
 
@@ -200,7 +191,7 @@ PyObject *runTF(PyObject *self, PyObject *args) {
   // we need to parse these into... a numpy array.  And possibly the model string?
   Py_XINCREF(args);
   if (!PyArg_ParseTuple(args, "O!", &PyList_Type, &argList)) {
-    // Eh, what der fuck?
+    // Eh, what der...?
     PyErr_SetString(PyExc_TypeError, "Argument must be a list.");
     return NULL;
   }
@@ -215,7 +206,7 @@ PyObject *runTF(PyObject *self, PyObject *args) {
       m += PyTuple_Size(tempTuple);
     } else {
       // Assume an int, if not a tuple.
-      // AH.  That's where the fucking... jesus.
+      // AH.  That's where the... blagh
       // I forgot to do error checking here.  I mean _come on_.
       m += 1;
     }
@@ -243,7 +234,7 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
   // or return it from blah blah blah.
   // So args is going to contain some standard stuff or whatever.
 
-  // clean that shit up, yo.
+  // clean that up, yo.
 
   if (functionRunOnce) {
     // This _should_ be better than it is.
@@ -282,7 +273,7 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
   // So, it might already be dead?  Unless we grab ownership?
   Py_XINCREF(args);
   if (!PyArg_ParseTuple(args, "O!", &PyList_Type, &argList)) {
-    // Eh, what der fuck?
+    // Eh, what der...?
     PyErr_SetString(PyExc_TypeError, "Argument must be a list.");
     return NULL;
   }
@@ -296,12 +287,12 @@ PyObject *weights_multi(PyObject *self, PyObject *args) {
       m += PyTuple_Size(tempTuple);
     } else {
       // Assume an int, if not a tuple.
-      // AH.  That's where the fucking... jesus.
+      // AH.  That's where the... blargh.
       // I forgot to do error checking here.  I mean _come on_.
       m += 1;
     }
   }
-  // probably fucking up the mallocs
+  // probably mucking up the mallocs
   dimArray = malloc(m * sizeof(unsigned long long));
   returnList = PyList_New(n);
   Py_XINCREF(returnList);
@@ -417,8 +408,6 @@ double runNew(char * function, char * argv[], int argc) {
   int i,j;
   double score = 0.0;
   int isNumber = 1;
-  //PyObject* inptDict = PyThreadState_GetDict();
-  //unsigned long long valkyrie = PyLong_AsUnsignedLongLong(PyDict_GetItemString(inptDict, "valkyrieID"));
   pModule = loadPythonModule("gjTest.gjTest");
 
   pFunc = PyObject_GetAttrString(pModule, function);
@@ -549,6 +538,22 @@ double pythonRunFunction(char * funcName, double * retValue, char * argv[], int 
   return rv;
 }
 
+void pythonRunSimple(char * funcName)
+
+{
+  // We're setting the pointer.  Keep in mind that this hinges on properly
+  // passing in the array; Chapel needs to make sure it's compatible with
+  // what C expects.
+
+  PyThreadState *ts = PyThreadState_New(mainInterpreterState);
+  PyEval_AcquireThread(ts);
+
+  PyObject* inptDict = PyThreadState_GetDict();
+  PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(0));
+  PyRun_SimpleString(funcName);
+  PyEval_ReleaseThread(ts);
+}
+
 
 PyThreadState* pythonInit(unsigned long long maxValkyries) {
   // disable buffering for debugging.
@@ -562,6 +567,8 @@ PyThreadState* pythonInit(unsigned long long maxValkyries) {
   mainThreadState = PyThreadState_Get();
   mainInterpreterState = mainThreadState->interp;
   //PyEval_ReleaseLock();
+  PyRun_SimpleString("import sys");
+  PyRun_SimpleString("print('fired up!')");
   PyEval_SaveThread();
   initializedAlready = true;
   return threads;
