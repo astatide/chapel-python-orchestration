@@ -466,7 +466,7 @@ double runNew(char * moduleName, char * function, char * argv[], int argc) {
   Py_XDECREF(pValue);
   // this MIGHT be a borrowed reference
   Py_XDECREF(pModule);
-  printf("Score is %f\n", score);
+  //printf("Score is %f\n", score);
   return score;
 
 }
@@ -504,7 +504,7 @@ double runNewNoArguments(char * moduleName, char * function) {
   Py_XDECREF(pValue);
   // this MIGHT be a borrowed reference
   Py_XDECREF(pModule);
-  printf("Score is %f\n", score);
+  //printf("Score is %f\n", score);
   return score;
 
 }
