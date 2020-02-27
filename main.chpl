@@ -43,7 +43,7 @@ if argList != "" {
 var pSum: [1..nTasks] real;
 coforall i in 1..nTasks {
   writeln("task ", i);
-  pSum[i] = gj.runFunction(moduleName, functionName, arguments);
+  pSum[i] = gj.runFunction(moduleName, functionName, arguments, i: real);
 }
 var eltAvg = (+ reduce pSum);
 writeln("The sum of all things: ", eltAvg);

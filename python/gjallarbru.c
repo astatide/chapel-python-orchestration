@@ -556,7 +556,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   return s2;
 }
 
-double pythonRunFunction(char * moduleName, char * funcName, double * retValue, char * argv[], int argc)
+double pythonRunFunction(char * moduleName, char * funcName, double * retValue, char * argv[], int argc, double id)
 
 {
   // We're setting the pointer.  Keep in mind that this hinges on properly
@@ -576,7 +576,7 @@ double pythonRunFunction(char * moduleName, char * funcName, double * retValue, 
   // ... remember that Chapel doesn't start at 0.
   //PyDict_SetItemString(inptDict, "x", PyUnicode_FromString(sOne));
   //PyDict_SetItemString(inptDict, "y", PyUnicode_FromString(sTwo));
-  PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(0));
+  PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(id));
   rv = runNew(moduleName, funcName, argv, argc);
   //Py_CLEAR(returnList);
   //returnList = NULL;
@@ -588,7 +588,7 @@ double pythonRunFunction(char * moduleName, char * funcName, double * retValue, 
   return rv;
 }
 
-double pythonRunFunctionNoArguments(char * moduleName, char * funcName, double * retValue)
+double pythonRunFunctionNoArguments(char * moduleName, char * funcName, double * retValue, double id)
 
 {
   // We're setting the pointer.  Keep in mind that this hinges on properly
@@ -608,7 +608,7 @@ double pythonRunFunctionNoArguments(char * moduleName, char * funcName, double *
   // ... remember that Chapel doesn't start at 0.
   //PyDict_SetItemString(inptDict, "x", PyUnicode_FromString(sOne));
   //PyDict_SetItemString(inptDict, "y", PyUnicode_FromString(sTwo));
-  PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(0));
+  PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(id));
   rv = runNewNoArguments(moduleName, funcName);
   //Py_CLEAR(returnList);
   //returnList = NULL;

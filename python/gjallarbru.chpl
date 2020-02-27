@@ -13,8 +13,8 @@ extern proc weights(ref self: PyObject, ref args: PyObject): PyObject;
 extern proc run();
 extern proc pythonRun(arr: [] c_double, valkyrie: c_ulonglong, deme : c_ulonglong, score: c_ptr(c_double)) : c_double;
 //extern proc pythonRunFunction(moduleName: c_string, funcName : c_string, retvalue : c_ptr(c_double), argv, argc) : c_double;
-extern proc pythonRunFunction(moduleName: c_string, funcName : c_string, retvalue : c_ptr(c_double), argv: [] c_string, argc: c_int) : c_double;
-extern proc pythonRunFunctionNoArguments(moduleName: c_string, funcName : c_string, retvalue : c_ptr(c_double)) : c_double;
+extern proc pythonRunFunction(moduleName: c_string, funcName : c_string, retvalue : c_ptr(c_double), argv: [] c_string, argc: c_int, id: c_double) : c_double;
+extern proc pythonRunFunctionNoArguments(moduleName: c_string, funcName : c_string, retvalue : c_ptr(c_double), id: c_double) : c_double;
 extern proc pythonRunSimple(funcName : c_string);
 extern proc pythonInit(n: c_ulonglong): c_void_ptr;
 extern proc pythonFinal();
@@ -85,13 +85,13 @@ class Gjallarbru {
     return score : real;
   }
 
-  proc runFunction(moduleName: string, funcName: string = 'calculateNovelty', arg: list(string)) {
+  proc runFunction(moduleName: string, funcName: string = 'calculateNovelty', arg: list(string), id: real = 1) {
     var retValue: c_double;
     var argc: c_int;
     writeln("How many arguments: ", arg.size);
     if arg.size == 0 {
       //pythonRunFunctionNoArguments(moduleName.c_str(), funcName.c_str(), c_ptrTo(retValue));
-      pythonRunFunctionNoArguments(moduleName.c_str(), funcName.c_str(), c_ptrTo(retValue));
+      pythonRunFunctionNoArguments(moduleName.c_str(), funcName.c_str(), c_ptrTo(retValue), id);
       stdout.flush();
     } else {
       var argv: [1..arg.size] c_string;
@@ -99,7 +99,7 @@ class Gjallarbru {
         argv[i] = arg[i].c_str();
         argc += 1;
       }
-      pythonRunFunction(moduleName.c_str(), funcName.c_str(), c_ptrTo(retValue), argv, argc);
+      pythonRunFunction(moduleName.c_str(), funcName.c_str(), c_ptrTo(retValue), argv, argc, id);
       stdout.flush();
     }
     return retValue : real;

@@ -1,6 +1,8 @@
 import numpy as np
+import gjallarbru as gj
 
 def someFunction(a=2):
+    print("Hello from task:", gj.valkyrieID())
     print("The argument is:", a)
     b = np.ones((120000,12000))
     #b = np.random.random_sample((120000,12000))
