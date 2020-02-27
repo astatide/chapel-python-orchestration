@@ -349,9 +349,11 @@ PyObject* loadPythonModule(char * module) {
 
   // This should allow us to actually add to the stupid path.
   // blah blah, stupid hacks.
-  PyRun_SimpleString("import sys");
-  PyRun_SimpleString("sys.path.append('/lus/snx11254/apratt/yggdrasil/python/')");
-  PyRun_SimpleString("sys.path.append('/Users/apratt/work/yggdrasil/python/')");
+  PyRun_SimpleString("import sys, os");
+  PyRun_SimpleString("sys.path.append(os.getcwd())");
+  //PyRun_SimpleString("sys.path.append('/lus/snx11254/apratt/yggdrasil/python/')");
+  //PyRun_SimpleString("sys.path.append('/Users/apratt/work/yggdrasil/python/')");
+
   //PyRun_SimpleString("sys.path.append('/opt/python/3.6.5.7')");
   //PyRun_SimpleString("sys.path.append('/opt/cray/llm/21.4.570-7.0.0.1_5.9__ge50c6aa.ari/lib64/python')");
   //PyRun_SimpleString("sys.path.append('/opt/python/3.6.5.7/lib/python3.6/site-packages')");
@@ -403,42 +405,90 @@ double run(char * function) {
 
 }
 
-double runNew(char * function, char * argv[], int argc) {
+double runNew(char * moduleName, char * function, char * argv[], int argc) {
   PyObject *pFunc, *pArgs, *pValue;
   int i,j;
   double score = 0.0;
   int isNumber = 1;
-  pModule = loadPythonModule("gjTest.gjTest");
+  pModule = loadPythonModule(moduleName);
 
   pFunc = PyObject_GetAttrString(pModule, function);
 
   // okay, now we want to submit the arguments.
-  pArgs = PyTuple_New(argc);
-  for (i = 0; i < argc; i++) {
-    // Check and see whether each char is a digit.  If they're all digits, that's a number.
-    // I mean, we're assuming.  I can't think of any other scenario where you have all digits.
-    for (j = 0; j < argc; j++) {
-     if (!isdigit(argv[i][j])) {
-       // oh HO.  You're not a number then!?  I see how it is.
-       isNumber = 0;
-     }
+  if (argv != NULL) {
+    pArgs = PyTuple_New(argc);
+    for (i = 0; i < argc; i++) {
+      // Check and see whether each char is a digit.  If they're all digits, that's a number.
+      // I mean, we're assuming.  I can't think of any other scenario where you have all digits.
+      size_t n = sizeof(argv[i])/sizeof(argv[i][0]);
+      for (j = 0; j < n; j++) {
+        if (!isdigit(argv[i][j])) {
+          // oh HO.  You're not a number then!?  I see how it is.
+          isNumber = 0;
+        }
+      }
+      if (isNumber) {
+        // base 10, bitches.
+        pValue = PyLong_FromUnsignedLongLong(strtol(argv[i], argv[i+1], 10));
+      } else {
+        // OKAY FINE LEAVE IT AS A STRING THEN GOD.
+        pValue = PyUnicode_FromString(argv[i]);
+      }
+      PyTuple_SetItem(pArgs, i, pValue);
     }
-    if (isNumber) {
-      // base 10, bitches.
-      pValue = PyLong_FromUnsignedLongLong(strtol(argv[i], argv[i+1], 10));
+
+    if (PyErr_Occurred()) {
+      PyErr_Print();
+    }
+    if (pFunc && PyCallable_Check(pFunc)) {
+      pValue = PyObject_CallObject(pFunc, pArgs);
     } else {
-      // OKAY FINE LEAVE IT AS A STRING THEN GOD.
-      pValue = PyUnicode_FromString(argv[i]);
+      PyErr_Print();
     }
-    PyTuple_SetItem(pArgs, i, pValue);
+  } else {
+    if (pFunc && PyCallable_Check(pFunc)) {
+      pValue = PyObject_CallObject(pFunc, NULL);
+    } else {
+      PyErr_Print();
+    }
   }
+
+
+  if (pValue != NULL) {
+    score = PyFloat_AsDouble(pValue);
+    if (PyErr_Occurred()) {
+      PyErr_Print();
+    }
+  } else {
+    PyErr_Print();
+  }
+  Py_XDECREF(pFunc);
+  Py_XDECREF(pValue);
+  // this MIGHT be a borrowed reference
+  Py_XDECREF(pModule);
+  printf("Score is %f\n", score);
+  return score;
+
+}
+
+double runNewNoArguments(char * moduleName, char * function) {
+  PyObject *pFunc, *pValue, *pArgs;
+  //int i,j;
+  printf("Calling with no arguments");
+  double score = 0.0;
+  //int isNumber = 1;
+  pModule = loadPythonModule(moduleName);
+
+  pFunc = PyObject_GetAttrString(pModule, function);
 
   if (PyErr_Occurred()) {
     PyErr_Print();
   }
 
   if (pFunc && PyCallable_Check(pFunc)) {
-    pValue = PyObject_CallObject(pFunc, pArgs);
+    printf("Function is callable");
+    pValue = PyObject_CallObject(pFunc, NULL);
+    printf("Function was called!");
   } else {
     PyErr_Print();
   }
@@ -506,7 +556,7 @@ double pythonRun(double * arr, unsigned long long valkyrie, unsigned long long d
   return s2;
 }
 
-double pythonRunFunction(char * funcName, double * retValue, char * argv[], int argc)
+double pythonRunFunction(char * moduleName, char * funcName, double * retValue, char * argv[], int argc)
 
 {
   // We're setting the pointer.  Keep in mind that this hinges on properly
@@ -527,9 +577,41 @@ double pythonRunFunction(char * funcName, double * retValue, char * argv[], int 
   //PyDict_SetItemString(inptDict, "x", PyUnicode_FromString(sOne));
   //PyDict_SetItemString(inptDict, "y", PyUnicode_FromString(sTwo));
   PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(0));
-  rv = runNew(funcName, argv, argc);
-  Py_CLEAR(returnList);
-  returnList = NULL;
+  rv = runNew(moduleName, funcName, argv, argc);
+  //Py_CLEAR(returnList);
+  //returnList = NULL;
+  *retValue = rv;
+  //fflush(stdout);
+  //PyThreadState_Clear(ts);
+  PyEval_ReleaseThread(ts);
+  //PyThreadState_Delete(ts);
+  return rv;
+}
+
+double pythonRunFunctionNoArguments(char * moduleName, char * funcName, double * retValue)
+
+{
+  // We're setting the pointer.  Keep in mind that this hinges on properly
+  // passing in the array; Chapel needs to make sure it's compatible with
+  // what C expects.
+
+  double rv = 0.0;
+  int pid;
+  int stat;
+
+  pid = 0;
+
+  PyThreadState *ts = PyThreadState_New(mainInterpreterState);
+  PyEval_AcquireThread(ts);
+
+  PyObject* inptDict = PyThreadState_GetDict();
+  // ... remember that Chapel doesn't start at 0.
+  //PyDict_SetItemString(inptDict, "x", PyUnicode_FromString(sOne));
+  //PyDict_SetItemString(inptDict, "y", PyUnicode_FromString(sTwo));
+  PyDict_SetItemString(inptDict, "valkyrieID", PyLong_FromUnsignedLongLong(0));
+  rv = runNewNoArguments(moduleName, funcName);
+  //Py_CLEAR(returnList);
+  //returnList = NULL;
   *retValue = rv;
   //fflush(stdout);
   //PyThreadState_Clear(ts);

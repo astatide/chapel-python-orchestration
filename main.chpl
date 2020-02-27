@@ -1,4 +1,10 @@
 use gjallarbru;
+use List;
+
+config var moduleName: string = 'meinpythonja';
+config var functionName: string = 'someFunction';
+config var argList: string;
+config var nTasks: int = 12;
 
 var gj : gjallarbru.Gjallarbru = new shared gjallarbru.Gjallarbru();
 gj.pInit();
@@ -22,3 +28,19 @@ print(a + 24)
 print("oh man!")
 """;
 gj.runString(b);
+
+// convert our arguments
+var arguments: list(string);
+writeln(arguments.size, " ", argList);
+var i: int = 1;
+if argList != "" {
+  for arg in argList.split(',') {
+    arguments.append(arg);
+    i += 1;
+  }
+}
+
+coforall i in 1..nTasks {
+  writeln("task ", i);
+  gj.runFunction(moduleName, functionName, arguments);
+}
